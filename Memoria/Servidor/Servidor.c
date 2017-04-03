@@ -10,16 +10,29 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define MAXCOLA 10 //numero de conexiones permitidas
+#define MAXCOLA 10 //numero de conexiones en espera en cola permitidas
 
 int main (void){
 
-	FILE *f = fopen ("/home/utnso/workspace/Memoria/memConfig.txt", "r");
- 	int *MIPUERTO;
- 	fseek(f,7*sizeof(char),SEEK_SET);
- 	fscanf(f, "%i" ,MIPUERTO);
- 	fclose ( f );
- 	
+	/*
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	LECTURA DE LOS ARCHIVOS DE CONFIGURACION
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	*/
+	FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Memoria/memConfig.txt", "r");
+ 	int PUERTO,MARCOS,MARCO_SIZE,ENTRADAS_CACHE,CACHE_X_PROC,RETARDO_MEMORIA;
+ 	char *REEMPLAZO_CACHE;
+ 	fscanf(cfg, "PUERTO=%i\n",&PUERTO);
+ 	fscanf(cfg, "MARCOS=%i\n",&MARCOS);
+ 	fscanf(cfg, "MARCO_SIZE=%i\n",&MARCO_SIZE);
+ 	fscanf(cfg, "ENTRADAS_CACHE=%i\n",&ENTRADAS_CACHE);
+ 	fscanf(cfg, "CACHE_X_PROC=%i\n",&CACHE_X_PROC);
+ 	fscanf(cfg, "REEMPLAZO_CACHE=%s\n",REEMPLAZO_CACHE);
+ 	fscanf(cfg, "RETARDO_MEMORIA=%i",&RETARDO_MEMORIA);
+ 	fclose(cfg);
+ 	/*
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	*/
 
 	int socketListen,socketNuevo;
 	int tamanioStruct = sizeof(struct sockaddr_in);
@@ -30,7 +43,7 @@ int main (void){
 	    exit(1);
 	}
 	miDireccion.sin_family = AF_INET;         	// Ordenación de máquina
-	miDireccion.sin_port = htons(*MIPUERTO);     // short, Ordenación de la red
+	miDireccion.sin_port = htons(PUERTO);     // short, Ordenación de la red
 	miDireccion.sin_addr.s_addr = INADDR_ANY; 	// nuestra IP
 	memset(&(miDireccion.sin_zero), '\0', 8); 	// Poner a cero el resto de la estructura
 
