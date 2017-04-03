@@ -18,17 +18,30 @@ void sigchld_handler(int s){
     }
 int main(void){
 
-	FILE *CFG = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Kernel/kernelCFG.txt", "r");
-		int *MIPUERTO;
-		fseek(CFG,7*sizeof(char),SEEK_SET);
-	    fscanf(CFG, "%i" ,MIPUERTO);
-		fclose ( CFG );
+	/*
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	LECTURA DE LOS ARCHIVOS DE CONFIGURACION
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	*/
+	FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Kernel/kernelCFG.txt", "r");
+ 	int PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,GRADO_MULTIPROG,STACK_SIZE,*SEM_INIT;
+ 	char *ALGORITMO,**SEM_IDS,**SHARED_VARS;
+ 	fscanf(cfg, "PUERTO_PROG=%i\n",&PUERTO_PROG);
+ 	fscanf(cfg, "PUERTO_CPU=%i\n",&PUERTO_CPU);
+ 	fscanf(cfg, "IP_MEMORIA=%i\n",&IP_MEMORIA);
+ 	fscanf(cfg, "PUERTO_MEMORIA=%i\n",&PUERTO_MEMORIA);
+ 	fscanf(cfg, "IP_FS=%i\n",&IP_FS);
+ 	fscanf(cfg, "PUERTO_FS=%i\n",&PUERTO_FS);
+ 	fscanf(cfg, "QUANTUM=%i\n",&QUANTUM);
+ 	fscanf(cfg, "QUANTUM_SLEEP=%i\n",&QUANTUM_SLEEP);
+ 	fscanf(cfg, "ALGORITMO=%s\n",ALGORITMO);
+ 	fscanf(cfg, "GRADO_MULTIPROG=%i\n",&GRADO_MULTIPROG);
 
-
-
-
-				        return 0;
-
+ 	fclose(cfg);
+ 	/*
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	*/
+	
 }
 void iniciarServidor(int *MIPUERTO){
 struct sigaction sa;

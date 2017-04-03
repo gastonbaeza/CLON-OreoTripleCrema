@@ -21,7 +21,7 @@ int main (void){
 	LECTURA DE LOS ARCHIVOS DE CONFIGURACION
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	*/
-	FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Memoria/memConfig.txt", "r");
+	FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Memoria/memoriaCFG.txt", "r");
  	int PUERTO,MARCOS,MARCO_SIZE,ENTRADAS_CACHE,CACHE_X_PROC,RETARDO_MEMORIA;
  	char *REEMPLAZO_CACHE;
  	fscanf(cfg, "PUERTO=%i\n",&PUERTO);

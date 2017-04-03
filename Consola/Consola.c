@@ -11,12 +11,20 @@
 
 int main(int argc, char *argv[])
     {
-	FILE *CFG = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Consola/consolaCFG.txt", "r");
-			int *PUERTO;
-			int *IPKERNEL;
-			fseek(CFG,10*sizeof(char),SEEK_SET);
-		    fscanf(CFG, "%i" ,PUERTO);
-			fclose ( CFG );
+	/*
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    LECTURA DE LOS ARCHIVOS DE CONFIGURACION
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    */
+    FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Consola/consolaCFG.txt", "r");
+    int IP_KERNEL,PUERTO_KERNEL;
+    fscanf(cfg, "IP_KERNEL=%i\n",&IP_KERNEL);
+    fscanf(cfg, "PUERTO_KERNEL=%i",&PUERTO_KERNEL);
+
+    fclose(cfg);
+    /*
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    */
         int socketNuevo, numbytes;  
         char buf[MAXDATASIZE];
         struct hostent *nombreHost;
