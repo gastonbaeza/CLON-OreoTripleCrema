@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         				}
 
 dirDestino.sin_family = AF_INET;    // Ordenación de bytes de la máquina 
-dirDestino.sin_port = htons(PUERTO);  // short, Ordenación de bytes de la red 
+dirDestino.sin_port = htons(PUERTO_KERNEL);  // short, Ordenación de bytes de la red 
 dirDestino.sin_addr = *((struct in_addr *)nombreHost->h_addr);
 memset(&(dirDestino.sin_zero), 8);  // poner a cero el resto de la estructura 
 
