@@ -11,7 +11,9 @@
 #include <signal.h>
 
 #define MAXCOLA 10 //numero de conexiones en espera en cola permitidas
-
+void sigchld_handler(int s){ //orphan collector
+        while(wait(NULL) > 0);
+}
 int main (void){
 
 	/*
@@ -33,7 +35,7 @@ int main (void){
  	/*
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	*/
-
+	struct sigaction sa; // esto es para el orphans collector
 	int socketListen,socketNuevo;
 	int tamanioStruct = sizeof(struct sockaddr_in);
 	struct sockaddr_in miDireccion, direccionEntrante;
@@ -55,6 +57,14 @@ int main (void){
     	perror("listen");
     	exit(1);
     }
+sa.sa_handler = sigchld_handler; // Eliminar procesos muertos
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = SA_RESTART;
+if (sigaction(SIGCHLD, &sa, NULL) == -1) 
+				{
+            			perror("sigaction");
+            			exit(1);
+				}
     while(1){
 		if ((socketNuevo = accept(socketListen, (struct sockaddr *)&direccionEntrante, &tamanioStruct)) == -1) { // crear nuevo socket para la conexion entrante
 			perror("accept");
