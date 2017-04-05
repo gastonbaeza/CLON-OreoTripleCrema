@@ -21,7 +21,7 @@ int main (void){
 	LECTURA DE LOS ARCHIVOS DE CONFIGURACION
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	*/
-	FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Memoria/memoriaCFG.txt", "r");
+	FILE *cfg = fopen ("memoriaCFG.txt", "r");
  	int PUERTO,MARCOS,MARCO_SIZE,ENTRADAS_CACHE,CACHE_X_PROC,RETARDO_MEMORIA;
  	char *REEMPLAZO_CACHE;
  	fscanf(cfg, "PUERTO=%i\n",&PUERTO);
@@ -35,7 +35,7 @@ int main (void){
  	/*
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	*/
-	struct sigaction sa; // esto es para el orphans collector
+	//struct sigaction sa; // esto es para el orphans collector
 	int socketListen,socketNuevo;
 	int tamanioStruct = sizeof(struct sockaddr_in);
 	struct sockaddr_in miDireccion, direccionEntrante;
@@ -57,14 +57,14 @@ int main (void){
     	perror("listen");
     	exit(1);
     }
-sa.sa_handler = sigchld_handler; // Eliminar procesos muertos
+/*sa.sa_handler = sigchld_handler; // Eliminar procesos muertos
 sigemptyset(&sa.sa_mask);
 sa.sa_flags = SA_RESTART;
 if (sigaction(SIGCHLD, &sa, NULL) == -1) 
 				{
             			perror("sigaction");
             			exit(1);
-				}
+				}*/
     while(1){
 		if ((socketNuevo = accept(socketListen, (struct sockaddr *)&direccionEntrante, &tamanioStruct)) == -1) { // crear nuevo socket para la conexion entrante
 			perror("accept");
