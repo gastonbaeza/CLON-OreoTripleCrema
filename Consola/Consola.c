@@ -16,9 +16,11 @@ int main(int argc, char *argv[])
     LECTURA DE LOS ARCHIVOS DE CONFIGURACION
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     */
-    FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Consola/consolaCFG.txt", "r");
-    int IP_KERNEL,PUERTO_KERNEL;
-    fscanf(cfg, "IP_KERNEL=%i\n",&IP_KERNEL);
+    FILE *cfg = fopen ("consolaCFG.txt", "r");
+    int PUERTO_KERNEL;
+    char *IP_KERNEL;
+    IP_KERNEL=malloc(50*sizeof(char));
+    fscanf(cfg, "IP_KERNEL=%s\n",IP_KERNEL);
     fscanf(cfg, "PUERTO_KERNEL=%i",&PUERTO_KERNEL);
 
     fclose(cfg);
@@ -51,13 +53,15 @@ int main(int argc, char *argv[])
 dirDestino.sin_family = AF_INET;    // Ordenación de bytes de la máquina 
 dirDestino.sin_port = htons(PUERTO_KERNEL);  // short, Ordenación de bytes de la red 
 dirDestino.sin_addr = *((struct in_addr *)nombreHost->h_addr);
-memset(&(dirDestino.sin_zero), 8);  // poner a cero el resto de la estructura 
+memset(&(dirDestino.sin_zero), '\0' , 8);  // poner a cero el resto de la estructura 
 
-        if (connect(socketNuevo, (struct sockaddr *)&dirDestino,sizeof(struct sockaddr)) == -1) 
+        if ((connect(socketNuevo, (struct sockaddr *)&dirDestino,sizeof(struct sockaddr))) == -1) 
         				{
             			perror("connect");
             			exit(1);
         				}
+
+free(IP_KERNEL);
 
         if ((numbytes=recv(socketNuevo, buf, MAXDATASIZE-1, 0)) == -1) 
         				{
@@ -68,5 +72,10 @@ memset(&(dirDestino.sin_zero), 8);  // poner a cero el resto de la estructura
 buf[numbytes] = '\0';
 printf("Received: %s",buf);
 close(socketNuevo);
+
+
+//LIBERAMOS MEMORIA RESERVADA
+free(IP_KERNEL); 
+
 return 0;
     } 
