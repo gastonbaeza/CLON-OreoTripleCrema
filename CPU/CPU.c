@@ -7,14 +7,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-
-
 #define IP "127.0.0.1"
 #define PUERTO "7777"
+
+
 int main(){
 int bytesRecibidos,iof;
 char* message=malloc(100*sizeof(char));
-char *handshakeCliente="Hola soy la consola, queria comprar una casa en este terreno";
+char *handshakeCliente="Hola soy el cpu, queria comprar una casa en este terreno";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
@@ -51,11 +51,21 @@ char *handshakeCliente="Hola soy la consola, queria comprar una casa en este ter
 	while(enviar){
 
 
+		if ((bytesRecibidos=recv(serverSocket,messageRecv,100*sizeof(char),0)) == -1){
 
-		scanf("%s", message);			// Lee una linea en el stdin (lo que escribimos en la consola) hasta encontrar un \n (y lo incluye) o llegar a PACKAGESIZE.
+			      // llamada a recv()						perror("recv");
+			      exit(-1);
+						fflush(stdout);
+			     	   }
+
+	    printf("%s\n", messageRecv);
+
+	    /*scanf("%s", message);			// Lee una linea en el stdin (lo que escribimos en la consola) hasta encontrar un \n (y lo incluye) o llegar a PACKAGESIZE.
 		if (!strcmp(message,"exit\n")) enviar = 0;			// Chequeo que el usuario no quiera salir
 		if (enviar) send(serverSocket, message,100*sizeof(char), 0); 	// Solo envio si el usuario no quiere salir.
-	}
+	/*
+	 *
+	 */}
 
 	free(message);
 	free(messageRecv);

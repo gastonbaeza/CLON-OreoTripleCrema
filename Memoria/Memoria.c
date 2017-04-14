@@ -7,22 +7,22 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-
-
 #define IP "127.0.0.1"
 #define PUERTO "7777"
+#define PACKAGESIZE 1024	// Define cual va a ser el size maximo del paquete a enviar
+
 int main(){
 int bytesRecibidos,iof;
 char* message=malloc(100*sizeof(char));
-char *handshakeCliente="Hola soy la consola, queria comprar una casa en este terreno";
+char *handshakeCliente="Hola soy la Memoria, queria comprar una casa en este terreno";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;		
-	hints.ai_socktype = SOCK_STREAM;	
+	hints.ai_family = AF_INET;		// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+	hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
 
-	getaddrinfo(IP, PUERTO, &hints, &serverInfo);	
+	getaddrinfo(IP, PUERTO, &hints, &serverInfo);	// Carga en serverInfo los datos de la conexion
 
 
 
@@ -51,11 +51,17 @@ char *handshakeCliente="Hola soy la consola, queria comprar una casa en este ter
 	while(enviar){
 
 
+		if ((bytesRecibidos=recv(serverSocket,messageRecv,100*sizeof(char),0)) == -1){
 
-		scanf("%s", message);			// Lee una linea en el stdin (lo que escribimos en la consola) hasta encontrar un \n (y lo incluye) o llegar a PACKAGESIZE.
-		if (!strcmp(message,"exit\n")) enviar = 0;			// Chequeo que el usuario no quiera salir
-		if (enviar) send(serverSocket, message,100*sizeof(char), 0); 	// Solo envio si el usuario no quiere salir.
-	}
+			      // llamada a recv()						perror("recv");
+			      exit(-1);
+						fflush(stdout);
+			     	   }
+
+	    printf("%s\n", messageRecv);
+
+
+	 }
 
 	free(message);
 	free(messageRecv);

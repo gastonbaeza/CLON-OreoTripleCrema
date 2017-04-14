@@ -1,110 +1,143 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <commons/txt.h>
+#include <errno.h>
+#define PUERTO "7777"
+#define BACKLOG 5			// Define cuantas conexiones vamos a mantener pendientes al mismo tiempo
+#define clear() printf("\033[H\033[J")
+#include <sys/time.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
-#include <sys/wait.h>
-#include <signal.h>
-#define MAXCOLA 10
+int main(){
+char * bienvenida="Bienevenido a jardines marvin, soy el señor servidor. \n";
+char *handshakeCliente=malloc(100*sizeof(char));
+int nbytes;
+// TODO modularizar, protocolos, crear los logs, cargar las config.
+fd_set fdParaConectar, fdParaLeer;
+char package[100];
+int fdMayor;
+int a,listenningSocket, socketNuevaConexion, unSocket,otroSocket, resultadoSelect,addrlen,rv,iof,i;
 
-void iniciarServidor(int*);
+struct addrinfo hints;
+struct addrinfo *serverInfo;
 
-void sigchld_handler(int s){
-        while(wait(NULL) > 0);
-    }
-int main(void){
-
-	/*
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	LECTURA DE LOS ARCHIVOS DE CONFIGURACION
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	*/
-	FILE *cfg = fopen ("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Kernel/kernelCFG.txt", "r");
- 	int PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,GRADO_MULTIPROG,STACK_SIZE,*SEM_INIT;
- 	char *ALGORITMO,**SEM_IDS,**SHARED_VARS;
- 	fscanf(cfg, "PUERTO_PROG=%i\n",&PUERTO_PROG);
- 	fscanf(cfg, "PUERTO_CPU=%i\n",&PUERTO_CPU);
- 	fscanf(cfg, "IP_MEMORIA=%i\n",&IP_MEMORIA);
- 	fscanf(cfg, "PUERTO_MEMORIA=%i\n",&PUERTO_MEMORIA);
- 	fscanf(cfg, "IP_FS=%i\n",&IP_FS);
- 	fscanf(cfg, "PUERTO_FS=%i\n",&PUERTO_FS);
- 	fscanf(cfg, "QUANTUM=%i\n",&QUANTUM);
- 	fscanf(cfg, "QUANTUM_SLEEP=%i\n",&QUANTUM_SLEEP);
- 	fscanf(cfg, "ALGORITMO=%s\n",ALGORITMO);
- 	fscanf(cfg, "GRADO_MULTIPROG=%i\n",&GRADO_MULTIPROG);
-
- 	fclose(cfg);
- 	/*
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	*/
-	
+for(i=0;i<100;i++){
+	package[i]='\0';
 }
-void iniciarServidor(int *MIPUERTO){
-struct sigaction sa;
-int socketListen,socketNuevo;
-int tamanioStruct = sizeof(struct sockaddr_in);
-struct sockaddr_in miDireccion, direccionEntrante;
 
-if((socketListen=socket(AF_INET,SOCK_STREAM,0))==-1)
-								{  //dominio=AF_INET tipo=SOCK_STREAM protocolo=0 (predeterminado)
-	   							perror("socket");
-	   							exit(1);
-								}
-miDireccion.sin_family = AF_INET;         	// Ordenación de máquina
-miDireccion.sin_port = htons(*MIPUERTO);     // short, Ordenación de la red
-miDireccion.sin_addr.s_addr = INADDR_ANY; 	// nuestra IP
-memset(&(miDireccion.sin_zero), '\0', 8); 	// Poner a cero el resto de la estructura
+memset(&hints, 0, sizeof(hints));
+hints.ai_family = AF_INET;
+hints.ai_flags = AI_PASSIVE;
+hints.ai_socktype = SOCK_STREAM;
 
-if ((bind(socketListen, (struct sockaddr *)&miDireccion, tamanioStruct))== -1)
-								{ //asociar socket a puerto
-	    						perror("bind");
-	    						exit(1);
-								}
-if ((listen(socketListen, MAXCOLA)) == -1)
-								{
-								// abrir cola de espera de conexiones entrantes
-	    						perror("listen");
-	    						exit(1);
-	    						}
-
-sa.sa_handler = sigchld_handler; // Eliminar procesos muertos
-sigemptyset(&sa.sa_mask);
-sa.sa_flags = SA_RESTART;
-if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-            							perror("sigaction");
-            							exit(1);
-        								 }
-while(1)
-			{
-			if ((socketNuevo = accept(socketListen, (struct sockaddr *)&direccionEntrante, &tamanioStruct)) == -1)
-								{ // crear nuevo socket para la conexion entrante
-								perror("accept");
-								continue;
-								}
-	    	printf("server: got connection from %s\n", inet_ntoa(direccionEntrante.sin_addr));
+if ((rv =getaddrinfo(NULL, PUERTO, &hints, &serverInfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+}
 
 
-			}
-if (!fork()) {
-				// Este es el proceso hijo
-                close(socketListen); // El hijo no necesita este descriptor
-                if (send(socketNuevo, "Hello, world!\n", 14, 0) == -1)
-                		{
-                    	perror("send");
-                    	close(socketNuevo);
-                    	exit(0);
-                		}
-               close(socketNuevo);  // El proceso padre no lo necesita
-        	}
+fflush(stdout);
+printf("%s \n", "El server esta configurado.\n");
+sleep(1);
 
 
 
-	}
+listenningSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+sleep(1);
+fflush(stdout);
+printf("%s \n", "Socket Listo.");
+
+
+if(bind(listenningSocket,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1)
+			{perror("la manqueo el bind."); exit(1);}
+fflush(stdout);
+sleep(1);
+printf("%s \n", "bind Listo.\n");
+
+
+freeaddrinfo(serverInfo);
+sleep(1);
+fflush(stdout);
 
 
 
+clear();
+printf("%s \n", "El server se encuentra listo para escuchar conexiones.");
+fflush(stdout);
 
+
+listen(listenningSocket, BACKLOG);
+
+struct sockaddr_in addr;
+
+
+FD_ZERO(&fdParaConectar);
+FD_SET(listenningSocket, &fdParaConectar);
+
+fdMayor = listenningSocket;
+for(;;) {
+	     fdParaLeer = fdParaConectar;
+	     resultadoSelect=select(fdMayor+1, &fdParaLeer, NULL, NULL, NULL);
+	     if ( resultadoSelect== -1)
+	     	 {
+	         perror("la manqueo el select.\n");
+	         exit(1);
+	     	 }
+
+
+
+	    for(unSocket = 0; unSocket <= fdMayor; unSocket++) // Busca en las conexiones alguna que mande un request
+	    				{
+
+	    				if (FD_ISSET(unSocket, &fdParaLeer))
+	    						{  //si hay alguna con request...
+	    						if (unSocket == listenningSocket) {
+	    													// se manejan las nuevas conexiones a partir de los SETS
+	    													addrlen = sizeof(addr);
+	    													if ((socketNuevaConexion = accept(listenningSocket, (struct sockaddr *)&addr,&addrlen)) == -1) { perror("accept");}
+	    													else {
+	    														FD_SET(socketNuevaConexion, &fdParaConectar);
+	    														printf("Server dice:  hay una nueva conexion de %s en el socket %i.\n", inet_ntoa(addr.sin_addr), socketNuevaConexion);
+
+
+	    														send(socketNuevaConexion, bienvenida, 100*sizeof(char), 0);
+	    														recv(socketNuevaConexion,handshakeCliente,100*sizeof(char),0); fflush(stdout); printf("%s \n",handshakeCliente);
+
+	    														// lo mando a la "cola" de pendientes de conexion
+	    														if (socketNuevaConexion > fdMayor) {fdMayor = socketNuevaConexion;}
+
+	    														}
+	    													}
+	    						else {
+	    							// tramito los request del cliente
+	    							if ((nbytes = recv(unSocket, package, 100*sizeof(char), 0)) <= 0)
+	    												{
+	    												if (nbytes == 0) {printf("El cliente %i se cayo.\n", unSocket);}
+	    												else {perror("la manqueo el recv.\n");} fflush(stdout); printf("hubo algun tipo de error.\n");
+	    												close(unSocket);
+	    												FD_CLR(unSocket, &fdParaConectar); // lo saco de los pendientes de conexion
+														}
+	    							else {
+	    									// tenemos datos de algún cliente
+	    									for(otroSocket = 0; otroSocket <= fdMayor; otroSocket++) {
+	    									// ESTO HAY QUE CAMBIARLO PARA LOS PROTOCOLOS; SINO ES UN ECHO MULTICLIENTE
+	    											if (FD_ISSET(otroSocket, &fdParaConectar)) {
+
+	    															if (otroSocket != listenningSocket && otroSocket != unSocket) {
+	    																		if (send(otroSocket, package, 100*sizeof(char), 0) == -1) {perror("la manqueo el send");}
+
+	    																								 }
+	    																				}
+	    																	}
+	    								}
+	    							}
+	                }
+	            }
+	        }
+
+	        return 0;
+	    }
