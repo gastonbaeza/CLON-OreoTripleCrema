@@ -6,26 +6,42 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <commons/config.h>
 
-
-
-#define IP "127.0.0.1"
-#define PUERTO "7777"
 int main(){
-int bytesRecibidos,iof;
-char* message=malloc(100*sizeof(char));
-char *handshakeCliente="Hola soy la consola, queria comprar una casa en este terreno";
+	/* LEER CONFIGURACION
+	*
+	*/
+	
+
+
+	t_config *CFG;
+	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Consola/consolaCFG.txt");
+	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
+	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
+	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
+
+	config_destroy(CFG);
+	
+	/*
+	*
+	*/
+
+	int bytesRecibidos;
+	char *message=malloc(100*sizeof(char));
+	char *handshakeCliente="Hola soy la consola, queria comprar una casa en este terreno";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;		
-	hints.ai_socktype = SOCK_STREAM;	
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
 
-	getaddrinfo(IP, PUERTO, &hints, &serverInfo);	
+	getaddrinfo("127.0.0.1","7777",&hints,&serverInfo);
 
 
-
+	
+	
 	int serverSocket;
 	int flagHandshake=1;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
@@ -33,12 +49,9 @@ char *handshakeCliente="Hola soy la consola, queria comprar una casa en este ter
 
 	connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen);
 
-
-
 	freeaddrinfo(serverInfo);
 
-		int enviar = 1;
-	int i;
+	int enviar = 1;
 
 	char *messageRecv;
 

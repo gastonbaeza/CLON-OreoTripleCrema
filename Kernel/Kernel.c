@@ -7,13 +7,45 @@
 #include <unistd.h>
 #include <commons/txt.h>
 #include <errno.h>
-#define PUERTO "7777"
-#define BACKLOG 5			// Define cuantas conexiones vamos a mantener pendientes al mismo tiempo
 #define clear() printf("\033[H\033[J")
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
+#include <commons/config.h>
+#define BACKLOG 5
+
 int main(){
+	/* LEER CONFIGURACION
+	*
+	*/
+	
+
+
+	t_config *CFG;
+	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Kernel/kernelCFG.txt");
+	char *PUERTO_PROG= config_get_string_value(CFG ,"PUERTO_PROG");
+	char *PUERTO_CPU= config_get_string_value(CFG ,"PUERTO_CPU");
+	char *IP_MEMORIA= config_get_string_value(CFG ,"IP_MEMORIA");
+	char *PUERTO_MEMORIA= config_get_string_value(CFG ,"PUERTO_MEMORIA");
+	char *IP_FS= config_get_string_value(CFG ,"IP_FS");
+	char *PUERTO_FS= config_get_string_value(CFG ,"PUERTO_FS");
+	int QUANTUM= config_get_int_value(CFG ,"QUANTUM");
+	int QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
+	char *ALGORITMO= config_get_string_value(CFG ,"ALGORITMO");
+	int GRADO_MULTIPROG= config_get_int_value(CFG ,"GRADO_MULTIPROG");
+	char* SEM_IDS= config_get_string_value(CFG ,"SEM_IDS");
+	char* SEM_INIT= config_get_string_value(CFG ,"SEM_INIT");
+	char* SHARED_VARS= config_get_string_value(CFG ,"SHARED_VARS");
+	int STACK_SIZE= config_get_int_value(CFG ,"STACK_SIZE");
+	printf("Configuración:\nPUERTO_PROG = %s,\nPUERTO_CPU = %s,\nIP_MEMORIA = %s,\nPUERTO_MEMORIA = %s,\nIP_FS = %s,\nPUERTO_FS = %s,\nQUANTUM = %i,\nQUANTUM_SLEEP = %i,\nALGORITMO = %s,\nGRADO_MULTIPROG = %i,\nSEM_IDS = %s,\nSEM_INIT = %s,\nSHARED_VARS = %s,\nSTACK_SIZE = %i.\n"
+			,PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,ALGORITMO,GRADO_MULTIPROG,SEM_IDS,SEM_INIT,SHARED_VARS,STACK_SIZE);
+	printf("Presione enter para continuar.\n");
+	getchar();
+	config_destroy(CFG);
+	
+	/*
+	*
+	*/
 char * bienvenida="Bienevenido a jardines marvin, soy el señor servidor. \n";
 char *handshakeCliente=malloc(100*sizeof(char));
 int nbytes;
@@ -35,7 +67,7 @@ hints.ai_family = AF_INET;
 hints.ai_flags = AI_PASSIVE;
 hints.ai_socktype = SOCK_STREAM;
 
-if ((rv =getaddrinfo(NULL, PUERTO, &hints, &serverInfo)) != 0) {
+if ((rv =getaddrinfo(NULL, "7777", &hints, &serverInfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 }
 
@@ -123,6 +155,7 @@ for(;;) {
 														}
 	    							else {
 	    									// tenemos datos de algún cliente
+	    									printf("%s\n",package );
 	    									for(otroSocket = 0; otroSocket <= fdMayor; otroSocket++) {
 	    									// ESTO HAY QUE CAMBIARLO PARA LOS PROTOCOLOS; SINO ES UN ECHO MULTICLIENTE
 	    											if (FD_ISSET(otroSocket, &fdParaConectar)) {
