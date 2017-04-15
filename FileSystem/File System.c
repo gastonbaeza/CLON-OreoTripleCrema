@@ -23,15 +23,15 @@ int main(){
 	char *PUNTO_MONTAJE= config_get_string_value(CFG ,"PUNTO_MONTAJE");
 	char *IP= config_get_string_value(CFG ,"IP");
 	printf("Configuración:\nPUERTO = %s,\nPUNTO_MONTAJE = %s,\nIP = %s.\n",PUERTO,PUNTO_MONTAJE,IP);
-
-	config_destroy(CFG);
-	
+		
+	printf("Presione enter para continuar.\n");
+	getchar();
 	/*
 	*
 	*/
 int bytesRecibidos,iof;
 char* message=malloc(100*sizeof(char));
-char *handshakeCliente="Hola soy el fileSystem, queria comprar una casa en este terreno";
+char *handshakeCliente="Hola soy el fileSystem.";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
@@ -39,7 +39,7 @@ char *handshakeCliente="Hola soy el fileSystem, queria comprar una casa en este 
 	hints.ai_family = AF_INET;		
 	hints.ai_socktype = SOCK_STREAM;	
 
-	getaddrinfo("127.0.0.1", "7777", &hints, &serverInfo);	
+	getaddrinfo(IP, PUERTO, &hints, &serverInfo);	
 
 
 
@@ -54,8 +54,9 @@ char *handshakeCliente="Hola soy el fileSystem, queria comprar una casa en este 
 
 	freeaddrinfo(serverInfo);
 
-		int enviar = 1;
-	int i;
+	config_destroy(CFG);
+
+	int enviar = 1;
 
 	char *messageRecv;
 

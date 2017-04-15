@@ -41,12 +41,11 @@ int main(){
 			,PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,ALGORITMO,GRADO_MULTIPROG,SEM_IDS,SEM_INIT,SHARED_VARS,STACK_SIZE);
 	printf("Presione enter para continuar.\n");
 	getchar();
-	config_destroy(CFG);
 	
 	/*
 	*
 	*/
-char * bienvenida="Bienevenido a jardines marvin, soy el señor servidor. \n";
+char * bienvenida="Bienevenido, soy el servidor. \n";
 char *handshakeCliente=malloc(100*sizeof(char));
 int nbytes;
 // TODO modularizar, protocolos, crear los logs, cargar las config.
@@ -67,13 +66,13 @@ hints.ai_family = AF_INET;
 hints.ai_flags = AI_PASSIVE;
 hints.ai_socktype = SOCK_STREAM;
 
-if ((rv =getaddrinfo(NULL, "7777", &hints, &serverInfo)) != 0) {
+if ((rv =getaddrinfo(NULL, PUERTO_PROG, &hints, &serverInfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 }
 
 
 fflush(stdout);
-printf("%s \n", "El server esta configurado.\n");
+printf("%s \n", "El Servidor esta configurado.\n");
 sleep(1);
 
 
@@ -85,20 +84,21 @@ printf("%s \n", "Socket Listo.");
 
 
 if(bind(listenningSocket,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1)
-			{perror("la manqueo el bind."); exit(1);}
+			{perror("Error en el bind."); exit(1);}
 fflush(stdout);
 sleep(1);
-printf("%s \n", "bind Listo.\n");
+printf("%s \n", "Bind Listo.\n");
 
 
 freeaddrinfo(serverInfo);
 sleep(1);
 fflush(stdout);
+config_destroy(CFG);
 
 
 
 clear();
-printf("%s \n", "El server se encuentra listo para escuchar conexiones.");
+printf("%s \n", "El Servidor se encuentra listo para escuchar conexiones.");
 fflush(stdout);
 
 
@@ -116,7 +116,7 @@ for(;;) {
 	     resultadoSelect=select(fdMayor+1, &fdParaLeer, NULL, NULL, NULL);
 	     if ( resultadoSelect== -1)
 	     	 {
-	         perror("la manqueo el select.\n");
+	         perror("Error en el select.\n");
 	         exit(1);
 	     	 }
 
@@ -133,7 +133,7 @@ for(;;) {
 	    													if ((socketNuevaConexion = accept(listenningSocket, (struct sockaddr *)&addr,&addrlen)) == -1) { perror("accept");}
 	    													else {
 	    														FD_SET(socketNuevaConexion, &fdParaConectar);
-	    														printf("Server dice:  hay una nueva conexion de %s en el socket %i.\n", inet_ntoa(addr.sin_addr), socketNuevaConexion);
+	    														printf("Hay una nueva conexion de %s en el socket %i.\n", inet_ntoa(addr.sin_addr), socketNuevaConexion);
 
 
 	    														send(socketNuevaConexion, bienvenida, 100*sizeof(char), 0);
@@ -148,8 +148,8 @@ for(;;) {
 	    							// tramito los request del cliente
 	    							if ((nbytes = recv(unSocket, package, 100*sizeof(char), 0)) <= 0)
 	    												{
-	    												if (nbytes == 0) {printf("El cliente %i se cayo.\n", unSocket);}
-	    												else {perror("la manqueo el recv.\n");} fflush(stdout); printf("hubo algun tipo de error.\n");
+	    												if (nbytes == 0) {printf("El cliente %i se ha desconectado.\n", unSocket);}
+	    												else {perror("Error en el recv.\n");} fflush(stdout); printf("Hubo algun tipo de error.\n");
 	    												close(unSocket);
 	    												FD_CLR(unSocket, &fdParaConectar); // lo saco de los pendientes de conexion
 														}
@@ -161,7 +161,7 @@ for(;;) {
 	    											if (FD_ISSET(otroSocket, &fdParaConectar)) {
 
 	    															if (otroSocket != listenningSocket && otroSocket != unSocket) {
-	    																		if (send(otroSocket, package, 100*sizeof(char), 0) == -1) {perror("la manqueo el send");}
+	    																		if (send(otroSocket, package, 100*sizeof(char), 0) == -1) {perror("Error en el send.");}
 
 	    																								 }
 	    																				}

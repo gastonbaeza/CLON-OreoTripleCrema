@@ -6,15 +6,28 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
-
-#define IP "127.0.0.1"
-#define PUERTO "7777"
+#include <commons/config.h>
 
 
 int main(){
+	/* LEER CONFIGURACION
+	*
+	*/
+
+	t_config *CFG;
+	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/CPU/cpuCFG.txt");
+	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
+	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
+	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
+	
+	printf("Presione enter para continuar.\n");
+	getchar();
+	/*
+	*
+	*/
 int bytesRecibidos,iof;
 char* message=malloc(100*sizeof(char));
-char *handshakeCliente="Hola soy el cpu, queria comprar una casa en este terreno";
+char *handshakeCliente="Hola soy el cpu.";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
@@ -22,7 +35,7 @@ char *handshakeCliente="Hola soy el cpu, queria comprar una casa en este terreno
 	hints.ai_family = AF_INET;		
 	hints.ai_socktype = SOCK_STREAM;	
 
-	getaddrinfo(IP, PUERTO, &hints, &serverInfo);	
+	getaddrinfo(IP_KERNEL, PUERTO_KERNEL, &hints, &serverInfo);	
 
 
 
@@ -37,15 +50,14 @@ char *handshakeCliente="Hola soy el cpu, queria comprar una casa en este terreno
 
 	freeaddrinfo(serverInfo);
 
-		int enviar = 1;
-	int i;
+	int enviar = 1;
 
 	char *messageRecv;
 
 	messageRecv = malloc(100*(sizeof(char)));
 
 	while(flagHandshake){bytesRecibidos=recv(serverSocket,messageRecv,100*sizeof(char),0);
-	if(bytesRecibidos>0){flagHandshake=0;fflush(stdout); printf("%s\n", messageRecv);send(serverSocket, handshakeCliente, 60, 0);}
+	if(bytesRecibidos>0){flagHandshake=0;fflush(stdout); printf("%s\n", messageRecv);send(serverSocket, handshakeCliente, 100*sizeof(char), 0);}
 	}
 
 	while(enviar){
