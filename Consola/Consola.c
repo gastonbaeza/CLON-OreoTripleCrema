@@ -16,7 +16,7 @@ int main(){
 
 
 	t_config *CFG;
-	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Consola/consolaCFG.txt");
+	CFG = config_create("consolaCFG.txt");
 	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
 	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
 	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
@@ -29,7 +29,7 @@ int main(){
 
 	int bytesRecibidos;
 	char *message=malloc(100*sizeof(char));
-	char *handshakeCliente="Hola soy la consola.";
+	char *handshakeCliente="Hola soy una consola.";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 

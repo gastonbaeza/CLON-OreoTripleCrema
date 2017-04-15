@@ -18,7 +18,7 @@ int main(){
 
 
 	t_config *CFG;
-	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/FileSystem/fileSystemCFG.txt");
+	CFG = config_create("fileSystemCFG.txt");
 	char *PUERTO= config_get_string_value(CFG ,"PUERTO");
 	char *PUNTO_MONTAJE= config_get_string_value(CFG ,"PUNTO_MONTAJE");
 	char *IP= config_get_string_value(CFG ,"IP");

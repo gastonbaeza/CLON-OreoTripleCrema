@@ -17,7 +17,7 @@ int main(){
 
 
 	t_config *CFG;
-	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Memoria/memoriaCFG.txt");
+	CFG = config_create("memoriaCFG.txt");
 	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
 	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
 	char *PUERTO= config_get_string_value(CFG ,"PUERTO");

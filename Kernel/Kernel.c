@@ -22,7 +22,7 @@ int main(){
 
 
 	t_config *CFG;
-	CFG = config_create("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/Kernel/kernelCFG.txt");
+	CFG = config_create("kernelCFG.txt");
 	char *PUERTO_PROG= config_get_string_value(CFG ,"PUERTO_PROG");
 	char *PUERTO_CPU= config_get_string_value(CFG ,"PUERTO_CPU");
 	char *IP_MEMORIA= config_get_string_value(CFG ,"IP_MEMORIA");
