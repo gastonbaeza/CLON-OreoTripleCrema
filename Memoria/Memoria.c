@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <commons/config.h>
-
+#define PAGPROGSTACK 0
+#define CODIGO 1
 
 int main(){
 	/* LEER CONFIGURACION
@@ -97,3 +98,22 @@ char *handshakeCliente="Hola soy la Memoria";
 
 
 }
+void desSerializador(unEntero){
+
+switch (unEntero){
+
+ 		case PAGPROGSTACK:// paginas necesarias para guardar el programa y el stack
+ 		break;
+ 		case CODIGO: // codigo del programa
+ 		break;
+ 		
+ 		
+
+
+
+}
+
+
+								
+
+								}

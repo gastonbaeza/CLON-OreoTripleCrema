@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <commons/config.h>
+#define MENSAJE 0
+#define PID 1
+#define Excepcion 2
+
 
 int main(){
 	/* LEER CONFIGURACION
@@ -81,3 +85,23 @@ int main(){
 
 
 }
+void desSerializador(unEntero){
+
+switch (unEntero){
+
+ 		case MENSAJE:// recibe mensajes para imprimirlos por pantalla
+ 		break;
+ 		case PID: // lo recibe de kernel, al mandarle el proceso nuevo
+ 		break;
+ 		case Excepcion: // por falta de memoria
+ 		break;
+ 		
+
+
+
+}
+
+
+								
+
+								}

@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <commons/config.h>
-
+#define INFOPROG 0
+#define PCB 1
 
 int main(){
 	/* LEER CONFIGURACION
@@ -88,3 +89,22 @@ char *handshakeCliente="Hola soy un cpu.";
 
 
 }
+void desSerializador(unEntero){
+
+switch (unEntero){
+
+ 		case INFOPROG:// informacion del programa en ejecucion (memoria)
+ 		break;
+ 		case PCB: // recibe el PCB de un programa para ejecutarlo
+ 		break;
+ 		
+ 		
+
+
+
+}
+
+
+								
+
+								}

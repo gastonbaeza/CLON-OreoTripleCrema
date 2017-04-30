@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <commons/config.h>
-
+#define LEER 0
+#define ESCRIBIR 1
 
 
 int main(){
@@ -94,3 +95,22 @@ char *handshakeCliente="Hola soy el fileSystem.";
 
 
 }
+void desSerializador(unEntero){
+
+switch (unEntero){
+
+ 		case LEER:// peticion del kernel para leer el archivo
+ 		break;
+ 		case ESCRIBIR: // peticion de kernel para escribir en el archivo
+ 		break;
+ 		
+ 		
+
+
+
+}
+
+
+								
+
+								}

@@ -11,14 +11,32 @@
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <commons/config.h>
 #define BACKLOG 5
-
-int main(){
+#define MENSAJE 0
+#define PATH 1
+#define TAMPAGINA 2
+#define PIDFinalizacion 3
+#define PIDINFO 4
+#define BLOQUE  5
+#define FLAGS 6
+#define NOTIFICACION 7
+#define EXCEPCION 8
+#define SYSCALL 9
+#define FD 10
+void desSerializador(int);
+int main(){ 
 	/* LEER CONFIGURACION
 	*
 	*/
-	
+	typedef struct {
+					int pid;
+					int programCounter;
+					int * referenciaATabla;
+					int posicionStack;
+					int exitCode;
+					}pcb;
 
 
 	t_config *CFG;
@@ -174,3 +192,42 @@ for(;;) {
 
 	        return 0;
 	    }
+	    /*
+void desSerializador(unEntero)
+{
+ switch (unEntero){
+ 		case MENSAJE:// recibe mensajes para mandar por eco a otro cliente
+ 		break;
+ 		case PATH: // fijarse si hay memoria para ejectutar el proceso, espera un tam pagina, si hay espacio, lo manda a cpu, sino manda una excepcion a consola
+ 		break;
+ 		case TAMPAGINA: // analizar si el programa de un path entra en la pagina
+ 		break;
+ 		case PIDFinalizacion: //buscar el hilo de ese pid  y terminarlo
+ 		break;
+ 		case PIDINFO:
+ 		break;
+ 		case BLOQUE:
+ 		break;
+ 		case FLAGS:
+ 		break;
+ 		case NOTIFICACION:
+ 		break;
+ 		case EXCEPCION:
+ 		break;
+ 		case SYSCALL:
+ 		break;
+ 		case FD:
+ 		break;
+
+
+
+ 			}
+}*/
+
+/*void procesarPrograma(unPath){
+	FILE * punteroAlArchivo;
+	punteroAlArchivo=fopen(unPath,r);
+	fseek(punteroAlArchivo,SEEK_SET,0);
+	fread(punteroAlArchivo,%s \n,)
+
+							}*/
