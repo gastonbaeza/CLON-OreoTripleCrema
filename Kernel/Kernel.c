@@ -223,11 +223,23 @@ void desSerializador(unEntero)
 
  			}
 }*/
-
-/*void procesarPrograma(unPath){
+/*
+void procesarPrograma(unPath){
 	FILE * punteroAlArchivo;
-	punteroAlArchivo=fopen(unPath,r);
-	fseek(punteroAlArchivo,SEEK_SET,0);
-	fread(punteroAlArchivo,%s \n,)
+	char * lineaDeCodigo;
+	t_list * programa;
+	LineaDeCodigo=malloc(100*sizeof(char));
+	if(punteroAlArchivo=fopen(unPath,r)!=NULL){fflush(stdout);printf("el archivo no existe" );exit(1);}
+	else{
+				while(fgetc(punteroAlArchivo)!=EOF){
+						fseek(punteroAlArchivo,SEEK_SET,0);
+						fscanf(punteroAlArchivo,%s \n,lineaDeCodigo);
+													
+													}
+
+		}
+}
+	
+	
 
 							}*/
