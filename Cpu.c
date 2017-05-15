@@ -7,20 +7,29 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <commons/config.h>
-#define MENSAJE 0
-#define PID 1
-#define Excepcion 2
+#include "desSerializador.h"
+#include "estructuras.h"
+#define INFOPROG 16
+#define PCB 17
 
+if ((header.seleccionador).unaInterfaz==3)
+{
+	switch(tipoPaquete){
+		case INFOPROG:
+		break;
+		case PCB:
+		break;
+		
+	}
+}
 
 int main(){
 	/* LEER CONFIGURACION
 	*
 	*/
-	
-
 
 	t_config *CFG;
-	CFG = config_create("consolaCFG.txt");
+	CFG = config_create("cpuCFG.txt");
 	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
 	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
 	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
@@ -30,22 +39,20 @@ int main(){
 	/*
 	*
 	*/
-
-	int bytesRecibidos;
-	char *message=malloc(100*sizeof(char));
-	char *handshakeCliente="Hola soy una consola.";
+int bytesRecibidos,iof;
+char* message=malloc(100*sizeof(char));
+char *handshakeCliente="Hola soy un cpu.";
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_family = AF_INET;		
+	hints.ai_socktype = SOCK_STREAM;	
 
-	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
+	getaddrinfo(IP_KERNEL, PUERTO_KERNEL, &hints, &serverInfo);	
 
 
-	
-	
+
 	int serverSocket;
 	int flagHandshake=1;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
@@ -53,9 +60,9 @@ int main(){
 
 	connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen);
 
-	freeaddrinfo(serverInfo);
 
-	config_destroy(CFG);
+
+	freeaddrinfo(serverInfo);
 
 	int enviar = 1;
 
@@ -68,13 +75,10 @@ int main(){
 	}
 
 	while(enviar){
+			scanf("%s", message);
+			if (message==)
 
-
-
-		scanf("%s", message);			// Lee una linea en el stdin (lo que escribimos en la consola) hasta encontrar un \n (y lo incluye) o llegar a PACKAGESIZE.
-		if (!strcmp(message,"exit\n")) enviar = 0;			// Chequeo que el usuario no quiera salir
-		if (enviar) send(serverSocket, message,100*sizeof(char), 0); 	// Solo envio si el usuario no quiere salir.
-	}
+	    }
 
 	free(message);
 	free(messageRecv);
@@ -85,23 +89,13 @@ int main(){
 
 
 }
-void desSerializador(unEntero){
 
-switch (unEntero){
+void notificarKernel (char *,int socketKernel){
+	send(socketKernel,char *, 100*sizeof(char), 0)
+}
 
- 		case MENSAJE:// recibe mensajes para imprimirlos por pantalla
- 		break;
- 		case PID: // lo recibe de kernel, al mandarle el proceso nuevo
- 		break;
- 		case Excepcion: // por falta de memoria
- 		break;
- 		
-
-
-
+void enviarPCBKernel (pcb *, int socketKernel){
+	send(socketKernel,pcb *, 100*sizeof(pcb), 0)
 }
 
 
-								
-
-								}

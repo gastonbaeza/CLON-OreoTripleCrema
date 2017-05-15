@@ -7,9 +7,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <commons/config.h>
-#define LEER 0
-#define ESCRIBIR 1
+// #include "desSerializador.h"
+#include "../Kernel/estructuras.h"
 
+// if ((header.seleccionador).unaInterfaz==3)
+// {
+// 	switch(tipoPaquete){
+// 		case LEER:
+// 		break;
+// 		case ESCRIBIR:
+// 		break;
+		
+// 	}
+// }
 
 int main(){
 	/* LEER CONFIGURACION
@@ -40,7 +50,7 @@ char *handshakeCliente="Hola soy el fileSystem.";
 	hints.ai_family = AF_INET;		
 	hints.ai_socktype = SOCK_STREAM;	
 
-	getaddrinfo(IP, PUERTO, &hints, &serverInfo);	
+	getaddrinfo(IP, "5002", &hints, &serverInfo);	
 
 
 
@@ -95,22 +105,9 @@ char *handshakeCliente="Hola soy el fileSystem.";
 
 
 }
-void desSerializador(unEntero){
 
-switch (unEntero){
-
- 		case LEER:// peticion del kernel para leer el archivo
- 		break;
- 		case ESCRIBIR: // peticion de kernel para escribir en el archivo
- 		break;
  		
  		
 
 
 
-}
-
-
-								
-
-								}
