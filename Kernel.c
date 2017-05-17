@@ -24,6 +24,8 @@ int COMUNICACIONHABILITADA=1;
 int ACEPTACIONHABILITADA=1;
 int SOCKETMEMORIA;
 int SOCKETFS;
+int * TAMPAGINA;
+// SEMAFORO
 
 void aceptar(dataParaComunicarse * dataParaAceptar){
 	// VARIABLES PARA LAS CONEXIONES ENTRANTES
@@ -49,13 +51,14 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 			handshakeServer(socketNuevaConexion,KERNEL,interfaz);
 			// CONFIGURACION E INICIO DE HILO COMUNICADOR
 			dataParaConexion = malloc(sizeof(dataParaComunicarse));
-			dataParaConexion->interfaz=*interfaz;
+			dataParaConexion->interfaz=*interfaz; // AGREGAR EL CAMPO INTERFAZ A LA ESTRUCTURA
 			dataParaConexion->socket=socketNuevaConexion;
 			pthread_create(&hiloComunicador,NULL,(void *) comunicarse,dataParaConexion);
 		}
 	}
 	// LIBERO MEMORIA
 	free(interfaz);
+	free(dataParaAceptar);
 }
 
 void comunicarse(dataParaComunicarse * dataDeConexion){
@@ -63,10 +66,17 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	int rv;
 	// NUMERO DE BYTES
 	int nbytes;
+	// BUFFER RECEPTOR
+	void * paquete;
+	//HEADER
+	t_header * header;
 	// CICLO PRINCIPAL
 	while(COMUNICACIONHABILITADA){
 		// RECIBO EL HEADER
-		if ((nbytes = recv(unDataParaComunicarse.socket, header, 100*sizeof(char), 0)) == 0){
+		// WAIT
+		nbytes = recv(dataDeConexion->socket, header, sizeof(t_header), 0);
+		// SIGNAL
+		if (nbytes == 0){
 			// EL CLIENTE FINALIZÓ LA CONEXIÓN
             printf("El cliente finalizó la conexión: socket->%i.\n", dataDeConexion->socket);
         	break;
@@ -79,7 +89,38 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
         	case CONSOLA:
         		switch(header->seleccionador.tipoPaquete){
 					case INICIARPROGRAMA:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
-						
+						// RECIBO EL PATH
+						recibirDinamico(dataDeConexion->socket, paquete);
+						char * path;
+						path = malloc (header->tamanio);
+						memcpy(path,paquete,header->tamanio);
+						// RECIBO EL PID
+						int * pid;
+						pid = malloc (sizeof(int));
+						if ((nbytes = recv(dataDeConexion->socket, pid,sizeof(int), 0)) == 0){
+							// EL CLIENTE FINALIZÓ LA CONEXIÓN
+            				printf("El cliente finalizó la conexión: socket->%i.\n", dataDeConexion->socket);
+        					break;
+        				}
+       	 				else if (nbytes<0){
+         					perror("Error en el recv: socket->%i.\n", dataDeConexion->socket);
+           					break;
+        				}
+						// RECUPERO EL PROGRAMA DEL PATH
+						t_programaSalida * programa;
+						programa= obtenerPrograma(path);
+						// CALCULO LA CANTIDAD DE PAGINAS
+						int cantPaginas = calcularPaginas(TAMPAGINA,programa->tamanio);
+						// SOLICITUD DE MEMORIA
+						t_solicitudMemoria * solicitudMemoria;
+						solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
+						solicitudMemoria->codigo=programa;
+						solicitudMemoria->cantPaginasCodigo=cantPaginas;
+						enviarDinamico(KERNEL,SOLICITUDMEMORIA,dataDeConexion->socket,solicitudMemoria,sizeof(t_solicitudMemoria));
+						pcb *pcb;
+						pcb->
+
+
 						// int id = 0,tamanioAReservar;
 						// int rv;
 						// char * path = (char *)paquete;
@@ -123,7 +164,10 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 		 			// 		hashSerializador=serializador(CONSOLA,MENSAJECONSOLA,dataParaComunicarse->socket,(void*)mensajeConsola)}
 		        		
 
-
+						//LIBERO MEMORIA
+						free(path);
+						free(pid);
+						free(solicitudMemoria);
 					break;
 					case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
 					break;
@@ -188,6 +232,20 @@ else if (rv == 0)
 	printf("Se conectó con memoria correctamente.\n");
 handshakeCliente(socketMemoria,KERNEL,void * interfaz);
 SOCKETMEMORIA=socketMemoria;
+// RECIBO EL TAMAÑO DE PAGINA
+int nbytes;
+int * tamPagina;
+if ((nbytes = recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0)) == 0){
+	// SE CERRÓ LA CONEXION
+    printf("Finalizó la conexión: .\n");
+  	break;
+}
+else if (nbytes<0){
+   	perror("Error en el recv.\n");
+   	break;
+}
+TAMPAGINA=malloc(sizeof(int));
+TAMPAGINA=tamPagina;
 freeaddrinfo(memoria);
 // CONEXION CON FILESYSTEM (NO ES NECESARIO HACER HANDSHAKE, KERNEL ES EL ÚNICO QUE SE CONECTA A FS)
 struct addrinfo *fs;
