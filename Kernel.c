@@ -1,38 +1,276 @@
-#include "desSerializador.h"
-#include "estructuras.h"
+//#include "estructuras.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <commons/config.h>
 #include <commons/txt.h>
+#include <commons/collections/list.h>
 #include <errno.h>
 #define clear() printf("\033[H\033[J")
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
-#include <commons/config.h>
+// #include <openssl/md5.h>
 #define BACKLOG 5
-#define INICIARPROGRAMA 0
-#define FINALIZARPROGRAMA 1
-#define DESCONECTARCONSOLA 2
-extern pcb* procesos;
+#define KERNEL 0
+#define MEMORIA 1
+	#define SOLICITUDMEMORIA 0
+#define CONSOLA 2
+	#define INICIARPROGRAMA 0
+	#define FINALIZARPROGRAMA 1
+	#define DESCONECTARCONSOLA 2
+#define CPU 3
+#define FS 4
 int COMUNICACIONHABILITADA=1;
 int ACEPTACIONHABILITADA=1;
 int SOCKETMEMORIA;
 int SOCKETFS;
-int * TAMPAGINA;
+int TAMPAGINA;
+int ULTIMOPID;
 // SEMAFORO
 
-void aceptar(dataParaComunicarse * dataParaAceptar){
+typedef struct { 
+				int unaInterfaz;
+				int tipoPaquete;
+				} t_seleccionador;
+
+typedef struct {
+				t_seleccionador seleccionador;
+				int tamanio;
+				} t_header;
+
+typedef struct { 
+				char * elPrograma; 
+				int tamanio; // bytes del programa
+				} t_programaSalida;
+
+typedef struct {
+				char ** unPrograma; // el programa en si
+				int  dimension; // cantidad de lineas
+				} t_programa;
+
+typedef struct {
+				t_programaSalida  codigo;
+				int pid;
+				int cantidadPaginasCodigo;
+				int cantidadPaginasStack;
+				}t_solicitudMemoria;
+
+typedef struct {
+				int socket;
+				int interfaz;
+				} t_dataParaComunicarse;
+
+typedef struct {
+				int codigo;
+				char * descripcion;
+				} t_exitCode;
+
+typedef struct {
+				int pid;
+				int estado;
+				int programCounter;
+				int referenciaATabla;
+				int posicionStack;
+				t_exitCode exitCode;
+				} t_pcb;
+
+void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete) { 
+	// unsigned char unHash[MD5_DIGEST_LENGTH];
+ 	// MD5_CTX mdContext;
+ 	t_header * header;
+ 	header->seleccionador.unaInterfaz=unaInterfaz;
+ 	header->seleccionador.tipoPaquete=tipoPaquete;	
+	send(unSocket, header, 3*sizeof(int),0); 
+	send(unSocket,paquete,tamanioPaquete,0);
+	// MD5_Init (&mdContext);
+	// MD5_Update (&mdContext, paquete, tamanioPaquete);
+	// MD5_Final (unHash,&mdContext);
+	// return unHash;	 
+}
+
+void recibirDinamico(int unSocket, void * paquete, int tamanioEstructura) {
+	// unsigned char unHash[MD5_DIGEST_LENGTH];
+ 	// MD5_CTX mdContext;
+	recv(unSocket,paquete,tamanioEstructura,0);
+	// MD5_Init (&mdContext);
+	// MD5_Update (&mdContext, paquete, tamanioEstructura);
+	// MD5_Final (unHash,&mdContext);
+	// return unHash;
+}
+
+void handshakeServer(int unSocket,int unServer, void * unBuffer) {
+	recv(unSocket,unBuffer, sizeof(int),0);
+	void * otroBuffer=malloc(sizeof(int));
+	memcpy(otroBuffer,&unServer,sizeof(int));
+	send(unSocket,otroBuffer,sizeof(int),0);
+}
+
+void handshakeCliente(int unSocket, int unCliente, void * unBuffer) {
+	void * otroBuffer=malloc(sizeof(int));
+	memcpy(otroBuffer,&unCliente,sizeof(int));
+	send(unSocket,otroBuffer, sizeof(int),0);
+	recv(unSocket,unBuffer,sizeof(int),0);
+}
+
+int calcularPaginas(int tamanioPagina,int tamanio) {
+	double cantidadPaginas;
+	int cantidadChains;
+	int cantidadReal;
+	cantidadPaginas=tamanio/tamanioPagina;
+ 	cantidadChains=ceil(cantidadPaginas);
+ 	cantidadReal=ceil((tamanio+cantidadChains*sizeof(unsigned int))/tamanioPagina);
+ 	if((ceil(cantidadPaginas))<cantidadReal) { 	
+		cantidadPaginas=floor(cantidadPaginas ++);
+ 	}
+ 	else
+ 		cantidadPaginas= ceil(cantidadPaginas);					
+ 	return cantidadPaginas;
+ 							
+}
+int strlenConBarraN(char * unString){
+	int cantidad=0;
+	while( *unString!= '\n')
+		cantidad++;unString=unString+sizeof(char); //desplaza el puntero un char //TODO revisar si el string conserva las \n
+	return cantidad;
+}
+
+t_programaSalida * obtenerPrograma( char * unPath){
+	FILE * punteroAlArchivo;
+	char * lineaDeCodigo;
+	char * copiaLineaDecodigo;
+	int tamanioLinea=0,dimensionPrograma;
+	t_list * programa;
+	int tamanioLista;
+	t_programa  programaOut;
+	t_programaSalida * estructuraPrograma;
+	lineaDeCodigo=malloc(100*sizeof(char));
+	if((punteroAlArchivo=fopen(unPath,"r"))==NULL) {
+		fflush(stdout); 
+		printf("el archivo no existe" ); 
+	}
+	else {		
+		programa=list_create();
+		//semaforo
+		while(!feof(punteroAlArchivo)) {
+			fscanf(punteroAlArchivo,"%s\n",lineaDeCodigo);
+			list_add(programa,lineaDeCodigo);
+		}
+		tamanioLista=list_size(programa);
+		programaOut.dimension=tamanioLista;
+	    int posicion;
+	    for (posicion = 0; posicion < tamanioLista; posicion++) { //hay otra forma de maloquear una estructura.... es tan compleja e precisa como un jogo de ajedrez bien jugado https://www.youtube.com/watch?v=Ba8NfkYC5ss
+			copiaLineaDecodigo=list_get(programa,posicion);
+			tamanioLinea=strlenConBarraN(copiaLineaDecodigo)+tamanioLinea;
+	    }
+		dimensionPrograma=tamanioLinea; //para que la wea sea coherente, queda horrible que el tamanio de un programa sea "el tamanio de la linea"
+		programaOut.unPrograma=malloc(dimensionPrograma*sizeof(char));
+		for (posicion = 0; posicion < tamanioLista; posicion++)
+			programaOut.unPrograma[posicion]=list_get(programa,posicion);
+		estructuraPrograma->elPrograma=malloc(dimensionPrograma*sizeof(char)+sizeof(int));
+		memcpy(estructuraPrograma->elPrograma,&programaOut.unPrograma,dimensionPrograma*sizeof(char));
+		estructuraPrograma->tamanio=dimensionPrograma*sizeof(char)+sizeof(int);
+		return estructuraPrograma;	
+		}
+}
+
+void comunicarse(t_dataParaComunicarse * dataDeConexion){
+	// RETURN VALUES
+	int rv;
+	// NUMERO DE BYTES
+	int nbytes;
+	// BUFFER RECEPTOR
+	void * paquete;
+	//HEADER
+	t_header * header;
+	// CICLO PRINCIPAL
+	while(COMUNICACIONHABILITADA){
+		// RECIBO EL HEADER
+		// WAIT
+		nbytes = recv(dataDeConexion->socket, header, sizeof(t_header), 0);
+		// SIGNAL
+		if (nbytes == 0){
+			// EL CLIENTE FINALIZÓ LA CONEXIÓN
+			printf("Socket: %i.\n", dataDeConexion->socket);
+            printf("El cliente finalizó la conexión.\n");
+        	break;
+        }
+        else if (nbytes<0){
+        	printf("Socket: %i.\n", dataDeConexion->socket);
+         	perror("Error en el recv.\n");
+           	break;
+        }
+        switch(header->seleccionador.unaInterfaz){
+        	case CONSOLA:
+        		switch(header->seleccionador.tipoPaquete){
+					case INICIARPROGRAMA:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
+						// RECIBO EL PATH
+						recibirDinamico(dataDeConexion->socket, paquete, header->tamanio);
+						char * path;
+						path = malloc (header->tamanio);
+						memcpy(path,paquete,header->tamanio);
+						// GENERO EL PID
+						int pid;
+						pid = ULTIMOPID;
+						ULTIMOPID++;
+						// RECUPERO EL PROGRAMA DEL PATH
+						t_programaSalida * programa;
+						programa= obtenerPrograma(path);
+						// CALCULO LA CANTIDAD DE PAGINAS
+						int cantPaginas = calcularPaginas(TAMPAGINA,programa->tamanio);
+						// SOLICITUD DE MEMORIA
+						t_solicitudMemoria * solicitudMemoria;
+						solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
+						solicitudMemoria->codigo=*programa;
+						solicitudMemoria->cantidadPaginasCodigo=cantPaginas;
+						solicitudMemoria->pid=pid;
+						enviarDinamico(KERNEL,SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria,sizeof(t_solicitudMemoria));
+						// CREO PCB
+						t_pcb *pcb;
+						pcb=malloc(sizeof(t_pcb));
+						pcb->pid=pid;
+
+						//LIBERO MEMORIA
+						free(pcb);
+						free(path);
+						free(solicitudMemoria);
+					break;
+					case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
+					break;
+					case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
+					break;
+		        }
+		    break;
+        	case CPU:
+        		switch(header->seleccionador.tipoPaquete){
+        			case 0:
+        			break;
+        		}
+        	break;
+        	case MEMORIA:
+        		switch(header->seleccionador.tipoPaquete){
+        			case 0:
+        			break;
+        		}
+        	break;
+        }
+	}
+	// LIBERO MEMORIA
+	free(dataDeConexion);
+}
+
+void aceptar(t_dataParaComunicarse * dataParaAceptar){
 	// VARIABLES PARA LAS CONEXIONES ENTRANTES
-	void * interfaz;
+	int * interfaz;
 	interfaz = malloc(sizeof(int));
 	pthread_t hiloComunicador;
-	dataParaComunicarse * dataParaConexion;
+	t_dataParaComunicarse * dataParaConexion;
 	int socketNuevaConexion;
 	// RETURN VALUES
 	int rv;
@@ -50,141 +288,15 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 			// ME INFORMO SOBRE LA INTERFAZ QUE SE CONECTÓ
 			handshakeServer(socketNuevaConexion,KERNEL,interfaz);
 			// CONFIGURACION E INICIO DE HILO COMUNICADOR
-			dataParaConexion = malloc(sizeof(dataParaComunicarse));
-			dataParaConexion->interfaz=*interfaz; // AGREGAR EL CAMPO INTERFAZ A LA ESTRUCTURA
+			dataParaConexion = malloc(sizeof(t_dataParaComunicarse));
+			dataParaConexion->interfaz=*interfaz; 
 			dataParaConexion->socket=socketNuevaConexion;
-			pthread_create(&hiloComunicador,NULL,(void *) comunicarse,dataParaConexion);
+			pthread_create(&hiloComunicador,NULL,(void *)comunicarse,dataParaConexion);
 		}
 	}
 	// LIBERO MEMORIA
 	free(interfaz);
 	free(dataParaAceptar);
-}
-
-void comunicarse(dataParaComunicarse * dataDeConexion){
-	// RETURN VALUES
-	int rv;
-	// NUMERO DE BYTES
-	int nbytes;
-	// BUFFER RECEPTOR
-	void * paquete;
-	//HEADER
-	t_header * header;
-	// CICLO PRINCIPAL
-	while(COMUNICACIONHABILITADA){
-		// RECIBO EL HEADER
-		// WAIT
-		nbytes = recv(dataDeConexion->socket, header, sizeof(t_header), 0);
-		// SIGNAL
-		if (nbytes == 0){
-			// EL CLIENTE FINALIZÓ LA CONEXIÓN
-            printf("El cliente finalizó la conexión: socket->%i.\n", dataDeConexion->socket);
-        	break;
-        }
-        else if (nbytes<0){
-         	perror("Error en el recv: socket->%i.\n", dataDeConexion->socket);
-           	break;
-        }
-        switch(header->seleccionador.unaInterfaz){
-        	case CONSOLA:
-        		switch(header->seleccionador.tipoPaquete){
-					case INICIARPROGRAMA:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
-						// RECIBO EL PATH
-						recibirDinamico(dataDeConexion->socket, paquete);
-						char * path;
-						path = malloc (header->tamanio);
-						memcpy(path,paquete,header->tamanio);
-						// RECIBO EL PID
-						int * pid;
-						pid = malloc (sizeof(int));
-						if ((nbytes = recv(dataDeConexion->socket, pid,sizeof(int), 0)) == 0){
-							// EL CLIENTE FINALIZÓ LA CONEXIÓN
-            				printf("El cliente finalizó la conexión: socket->%i.\n", dataDeConexion->socket);
-        					break;
-        				}
-       	 				else if (nbytes<0){
-         					perror("Error en el recv: socket->%i.\n", dataDeConexion->socket);
-           					break;
-        				}
-						// RECUPERO EL PROGRAMA DEL PATH
-						t_programaSalida * programa;
-						programa= obtenerPrograma(path);
-						// CALCULO LA CANTIDAD DE PAGINAS
-						int cantPaginas = calcularPaginas(TAMPAGINA,programa->tamanio);
-						// SOLICITUD DE MEMORIA
-						t_solicitudMemoria * solicitudMemoria;
-						solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
-						solicitudMemoria->codigo=programa;
-						solicitudMemoria->cantPaginasCodigo=cantPaginas;
-						enviarDinamico(KERNEL,SOLICITUDMEMORIA,dataDeConexion->socket,solicitudMemoria,sizeof(t_solicitudMemoria));
-						pcb *pcb;
-						pcb->
-
-
-						// int id = 0,tamanioAReservar;
-						// int rv;
-						// char * path = (char *)paquete;
-						// char * buffer = malloc(sizeof(char)*33);
-						// t_programaSalida * programaDePath;
-					
-						// while(*procesosEnEjecucion != '\0') if (id == procesosEnEjecucion[id]->pid) id++;
-						// if (send(dataParaComunicarse.socket, id, sizeof(int), 0) == -1) perror("send");
-						// programaDePath = obtenerPrograma(path);
-						// tamanioAReservar = programaDePath->tamanio;
-						// struct addrinfo hints;
-						// struct addrinfo *serverInfo;
-						// memset(&hints, 0, sizeof(hints));
-						// hints.ai_family = AF_INET;
-						// hints.ai_socktype = SOCK_STREAM;
-						// getaddrinfo(dataParaComunicarse.ipMemoria,dataParaComunicarse.puertoMemoria,&hints,&serverInfo);
-						// int socketMemoria;
-						// socketMemoria = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-						// if ((connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen)) == -1)
-						//  {
-				  //           perror("Error de conexión con la memoria");
-				  //           break;
-		    //     		}
-		    //     		hashSerializador=serializador(KERNEL,SOLICITUDMEMORIA,socketMemoria,&tamanioAReservar);
-		        		
-		    //     		status=recv(socketMemoria,buffer,sizeof(char)*33,0);
-		        		
-		    //     		status=recv(socketMemoria,confirmacion,sizeof(int),0);
-		    //     		if (confirmacion)//==1 esta todo OK  ==0 recibo exception 
-		    //     		{
-		    //     			status=send(socketMemoria,programaDePath->elPrograma,programaDePath->tamanio,0);
-		    //     		} else {
-
-		    //     			status=recv(socketMemoria,header,sizeof(header),0);
-		    //     			hashDesSerializador=desSerializador(KERNEL,EXCEPCION,socketMemoria,(void*)paquete);
-		 					
-		 			// 		send(sockerMemoria,hashDeserializador,33*sizeof(char),0);
-		 			// 		tamanioPaquete=strlen((char*)paquete);
-		 			// 		char*mensajeConsola= malloc(tamanioPaquete);
-		 			// 		strcpy(mensajeConsola,paquete);
-		 			// 		hashSerializador=serializador(CONSOLA,MENSAJECONSOLA,dataParaComunicarse->socket,(void*)mensajeConsola)}
-		        		
-
-						//LIBERO MEMORIA
-						free(path);
-						free(pid);
-						free(solicitudMemoria);
-					break;
-					case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
-					break;
-					case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
-					break;
-		        }
-		    break;
-        	case CPU:
-        		switch(header->seleccionador.tipoPaquete){
-        			case 0:
-        			break;
-        		}
-        	break;
-        }
-	}
-	// LIBERO MEMORIA
-	free(dataDeConexion);
 }
 
 int main(){	
@@ -230,22 +342,19 @@ if ((rv = connect(socketMemoria,memoria->ai_addr,memoria->ai_addrlen)) == -1)
 	perror("No se pudo conectar con memoria.\n");
 else if (rv == 0)
 	printf("Se conectó con memoria correctamente.\n");
-handshakeCliente(socketMemoria,KERNEL,void * interfaz);
+handshakeCliente(socketMemoria,KERNEL,NULL);
 SOCKETMEMORIA=socketMemoria;
 // RECIBO EL TAMAÑO DE PAGINA
 int nbytes;
 int * tamPagina;
 if ((nbytes = recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0)) == 0){
 	// SE CERRÓ LA CONEXION
-    printf("Finalizó la conexión: .\n");
-  	break;
+    printf("Finalizó la conexión con memoria.\n");
 }
 else if (nbytes<0){
-   	perror("Error en el recv.\n");
-   	break;
+   	perror("Error en el recv de tamaño de pagina.\n");
 }
-TAMPAGINA=malloc(sizeof(int));
-TAMPAGINA=tamPagina;
+TAMPAGINA=*tamPagina;
 freeaddrinfo(memoria);
 // CONEXION CON FILESYSTEM (NO ES NECESARIO HACER HANDSHAKE, KERNEL ES EL ÚNICO QUE SE CONECTA A FS)
 struct addrinfo *fs;
@@ -261,6 +370,7 @@ freeaddrinfo(fs);
 struct addrinfo *serverInfo;
 if ((rv =getaddrinfo(NULL, PUERTO_PROG, &hints, &serverInfo)) != 0)
 	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+int socketEscuchador;
 socketEscuchador = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 if(bind(socketEscuchador,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1) 
 	perror("Error en el bind.\n");
@@ -268,8 +378,8 @@ freeaddrinfo(serverInfo);
 // SE LIBERA EL ARCHIVO DE CONFIGURACION
 config_destroy(CFG);
 // CONFIGURACION DE HILO ACEPTADOR
-dataParaComunicarse *dataParaAceptar;
-dataParaAceptar=malloc(sizeof(dataParaComunicarse));
+t_dataParaComunicarse *dataParaAceptar;
+dataParaAceptar=malloc(sizeof(t_dataParaComunicarse));
 dataParaAceptar->socket = socketEscuchador;
 // INICIO DE HILO ACEPTADOR
 pthread_t hiloAceptador;
