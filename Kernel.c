@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 // #include <openssl/md5.h>
+
 #define BACKLOG 5
 #define KERNEL 0
 #define MEMORIA 1
@@ -27,13 +28,22 @@
 	#define DESCONECTARCONSOLA 2
 #define CPU 3
 #define FS 4
+#define TRUE 1
+#define FALSE 0
+#define OK 1
+#define FAIL 0
+#define BLOQUE 20
+
 int COMUNICACIONHABILITADA=1;
 int ACEPTACIONHABILITADA=1;
 int SOCKETMEMORIA;
 int SOCKETFS;
 int TAMPAGINA;
 int ULTIMOPID;
-// SEMAFORO
+int STACK_SIZE;
+int GRADO_MULTIPROG;
+// SEMAFOROS
+pthread_mutex_t mutexColaReady;
 
 typedef struct { 
 				int unaInterfaz;
@@ -56,10 +66,11 @@ typedef struct {
 				} t_programa;
 
 typedef struct {
-				t_programaSalida  codigo;
+				char * codigo;
 				int pid;
 				int cantidadPaginasCodigo;
 				int cantidadPaginasStack;
+				int respuesta; //OK o FAIL
 				}t_solicitudMemoria;
 
 typedef struct {
@@ -80,6 +91,11 @@ typedef struct {
 				int posicionStack;
 				t_exitCode exitCode;
 				} t_pcb;
+
+t_pcb * colaReady[GRADO_MULTIPROG];
+t_pcb ** colaNew;
+int CANTIDADNEWS;
+
 
 void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete) { 
 	// unsigned char unHash[MD5_DIGEST_LENGTH];
@@ -180,6 +196,21 @@ t_programaSalida * obtenerPrograma( char * unPath){
 		}
 }
 
+int gradoMultiprogAlcanzado(){
+	int contador=0;
+	while((colaReady[contador]->pid)!=-1)
+		contador++;
+	if (contador<GRADO_MULTIPROG)
+		return FALSE;
+	else
+		return TRUE;
+}
+
+void inicializarColaReadys(){
+	for (int i = 0; i < GRADO_MULTIPROG; ++i)
+		colaReady[i]->pid=-1;
+}
+
 void comunicarse(t_dataParaComunicarse * dataDeConexion){
 	// RETURN VALUES
 	int rv;
@@ -187,7 +218,10 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 	int nbytes;
 	// BUFFER RECEPTOR
 	void * paquete;
-	//HEADER
+	// JOBS
+	t_pcb ** jobs;
+	int cantidadJobs=0;
+	// HEADERS
 	t_header * header;
 	// CICLO PRINCIPAL
 	while(COMUNICACIONHABILITADA){
@@ -223,19 +257,27 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						t_programaSalida * programa;
 						programa= obtenerPrograma(path);
 						// CALCULO LA CANTIDAD DE PAGINAS
-						int cantPaginas = calcularPaginas(TAMPAGINA,programa->tamanio);
+						int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
+						int cantPaginasStack = calcularPaginas(TAMPAGINA,STACK_SIZE);
 						// SOLICITUD DE MEMORIA
 						t_solicitudMemoria * solicitudMemoria;
 						solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
-						solicitudMemoria->codigo=*programa;
-						solicitudMemoria->cantidadPaginasCodigo=cantPaginas;
+						solicitudMemoria->codigo=programa->elPrograma;
+						solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
+						solicitudMemoria->cantidadPaginasStack=cantPaginasStack;
 						solicitudMemoria->pid=pid;
 						enviarDinamico(KERNEL,SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria,sizeof(t_solicitudMemoria));
 						// CREO PCB
 						t_pcb *pcb;
 						pcb=malloc(sizeof(t_pcb));
 						pcb->pid=pid;
-
+						pcb->estado=NEW;
+						pcb->programCounter=0;
+						pcb->posicionStack=0;
+						if (cantidadJobs % BLOQUE == 0)
+							jobs = realloc ((cantidadJobs+BLOQUE) * sizeof(jobs[0]));
+						jobs[cantidadJobs]=pcb;
+						cantidadJobs++;
 						//LIBERO MEMORIA
 						free(pcb);
 						free(path);
@@ -255,7 +297,33 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
         	break;
         	case MEMORIA:
         		switch(header->seleccionador.tipoPaquete){
-        			case 0:
+        			case RESPUESTAOKMEMORIA:
+        				// RECIBO LA RESPUESTA DE MEMORIA
+						recibirDinamico(dataDeConexion->socket,paquete,header->tamanio);
+						t_solicitudMemoria * respuestaSolicitud;
+						respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
+						respuestaSolicitud=paquete;
+						// VERIFICO SI PUEDO PASAR A READY
+						if (!(gradoMultiprogAlcanzado()) && respuestaSolicitud->respuesta){
+
+
+
+
+							pthread_mutex_lock(&mutexColaReady);
+							if (CANTIDADNEWS % BLOQUE == 0)
+								colaNew = realloc ((cantidadNew+BLOQUE) * sizeof(colaNew[0]));
+
+							pthread_mutex_unlock(&mutexColaReady);	
+
+						}
+							header->seleccionador.unaInterfaz=KERNEL;
+							header->seleccionador.tipoPaquete=EXCEPCIONMULTIPROG;
+							send(dataDeConexion->socket,header,sizeof(header),0);
+							break;
+						}
+						else if (respuestaSolicitud->respuesta==FAIL){
+
+						}
         			break;
         		}
         	break;
@@ -314,11 +382,11 @@ char *PUERTO_FS= config_get_string_value(CFG ,"PUERTO_FS");
 int QUANTUM= config_get_int_value(CFG ,"QUANTUM");
 int QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
 char *ALGORITMO= config_get_string_value(CFG ,"ALGORITMO");
-int GRADO_MULTIPROG= config_get_int_value(CFG ,"GRADO_MULTIPROG");
+GRADO_MULTIPROG= config_get_int_value(CFG ,"GRADO_MULTIPROG");
 char* SEM_IDS= config_get_string_value(CFG ,"SEM_IDS");
 char* SEM_INIT= config_get_string_value(CFG ,"SEM_INIT");
 char* SHARED_VARS= config_get_string_value(CFG ,"SHARED_VARS");
-int STACK_SIZE= config_get_int_value(CFG ,"STACK_SIZE");
+STACK_SIZE= config_get_int_value(CFG ,"STACK_SIZE");
 printf("Configuración:\nPUERTO_PROG = %s,\nPUERTO_CPU = %s,\nIP_MEMORIA = %s,\nPUERTO_MEMORIA = %s,\nIP_FS = %s,\nPUERTO_FS = %s,\nQUANTUM = %i,\nQUANTUM_SLEEP = %i,\nALGORITMO = %s,\nGRADO_MULTIPROG = %i,\nSEM_IDS = %s,\nSEM_INIT = %s,\nSHARED_VARS = %s,\nSTACK_SIZE = %i.\n"
 		,PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,ALGORITMO,GRADO_MULTIPROG,SEM_IDS,SEM_INIT,SHARED_VARS,STACK_SIZE);
 printf("Presione enter para continuar.\n");
@@ -326,6 +394,10 @@ getchar();
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
+// INICIO SEMAFOROS
+pthread_mutex_init(&mutexColaReady,NULL);
+// INICIO COLA READYS
+inicializarColaReadys();
 // RETURN VALUES
 int rv;
 // PREFERENCIAS DE CONEXION
