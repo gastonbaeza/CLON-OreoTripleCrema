@@ -166,29 +166,22 @@ int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estruct
 /////////// LEEEEEEEMEEEEE ME OLVIDE DE HACER FREE DE LOS PAQUETES UNA VEZ QUE LOS MANDO A LA WEA/////
 
 void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete)
-{ //unsigned char unHash[MD5_DIGEST_LENGTH];
+{ 
 	t_header * header;
- 	// MD5_CTX mdContext;	
+ 	
  	 					header->seleccionador.unaInterfaz=unaInterfaz;
  	 					header->seleccionador.tipoPaquete=tipoPaquete;
  	 					header->tamanio=tamanioPaquete;
 						send(unSocket, header, 3*sizeof(int),0); 
 						send(unSocket,paquete,tamanioPaquete,0);
-						/*MD5_Init (&mdContext);
-	 					MD5_Update (&mdContext, paquete, tamanioPaquete);
-	 					MD5_Final (unHash,&mdContext);*/
-	 					free(header);
+						
 						
 }
 void recibirDinamico(int unSocket, void * paquete, int tamanioEstructura)
-{	 //unsigned char unHash[MD5_DIGEST_LENGTH];
- 	/// MD5_CTX mdContext;		
+{	 
  	 		
 								recv(unSocket,paquete,tamanioEstructura,0);
-	 							/*MD5_Init (&mdContext);
-	 							MD5_Update (&mdContext, paquete, tamanioEstructura);
-	 							MD5_Final (unHash,&mdContext);*/
-								
+	 							
 
 }
 int strlenConBarraN(char * unString){
