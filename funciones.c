@@ -2,7 +2,6 @@
 #include "estructuras.h"
 #include <commons/collections/list.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,13 +11,42 @@
 #include <errno.h>
 #define clear() printf("\033[H\033[J")
 #include <sys/time.h>
-#include <sys/select.h>
+#include <string.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stddef.h>
-#include <openssl/md5.h>
+#include <math.h>
+#include <stdint.h>
+#include <commons/config.h>
+
 #define OK 1
 #define FAIL 0
+
+#define BACKLOG 5
+#define KERNEL 0
+	#define ARRAYPIDS 5
+#define MEMORIA 1
+	#define SOLICITUDMEMORIA 0
+	#define SOLICITUDINFOPROG 1
+	#define ESCRIBIRMEMORIA 2
+	#define LIBERARMEMORIA 3
+ 	#define ACTUALIZARPCB 4
+#define CONSOLA 2
+	#define INICIARPROGRAMA 0
+	#define FINALIZARPROGRAMA 1
+	#define DESCONECTARCONSOLA 2
+	#define LIMPIARMENSAJES 3
+	//------------------------------	
+	#define MENSAJES 0
+	#define PID 1
+
+#define CPU 3
+#define FS 4
+#define TRUE 1
+#define FALSE 0
+#define OK 1
+#define FAIL 0
+#define BLOQUE 20
 
 void handshakeServer(int unSocket,int unServer, void * unBuffer)
 {	
@@ -42,51 +70,48 @@ void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
 
 
 }
-void * limpiarPagina(int tamanioPagina,void * punteroAPagina)
-{	int posicion=0;
-	while(posicion<tamanioPagina)
-	{	
-	*punteroAPagina=0;
-	&punteroAPagina++;
-	posicion ++;
-	}
 
-}
-int estaLibrePagina(int tamanioPagina,void * punteroAPagina)
-{	int posicion=0;
-
-	while(posicion<(tamanioPagina/4))
-	{	
-	if(*punteroAPagina==0)	
-		{&punteroAPagina++;
-		posicion++
-		}	
-	else return OCUPADO;	
-	}
-	return LIBRE;
-
-}
-int estaLibreMarco(int tamanioFrame, t_marco marco,int tamanioPagina)
+void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int tamPagina)
 {
-		unaPagina=0;
-		while(unaPagina<3)
-		{
-			if(estaLibrePagina(tamanioPagina,marco.numeroPagina[unaPagina]))
-			{
-				unaPagina++;
-			}
-			else{return OCUPADO	;}
-		}
-		return LIBRE;
+int unaPagina;
+int tamanioCodigoChain;
+t_chain * chainPrograma=malloc(tamPagina);
+int paginasRequeridas=list_size(paginasParaUsar)-stackRequeridas;
+tamanioCodigoChain=tamPagina-sizeof(unsigned int);
+for ( unaPagina = 0; unaPagina < paginasRequeridas; unaPagina++)
+{
+	if(unaPagina==0)
+	{ 	memcpy(chainPrograma->codigo,codigo,tamanioCodigoChain);} //si es la primera apunto al comienzo de lo que copie
+
+	else
+	{memcpy((void *)chainPrograma->codigo,&codigo+(tamanioCodigoChain*unaPagina),tamanioCodigoChain);} //si no es la primera tengo que desplazarme en funcion del tamaño de la pagina
+	if(unaPagina+1==paginasRequeridas)
+		{chainPrograma->chain=NULL;}
+	else{chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);}
+memcpy((void *)list_get(paginasParaUsar,unaPagina),chainPrograma,tamPagina);
+
 }
+
+for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
+{
+	memset((void *)chainPrograma->codigo,1,tamPagina-sizeof(unsigned int));
+	chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);
+	memcpy((void *)listget(paginasParaUsar,unaPagina),(void *)chainPrograma,tamPagina);
+}
+free(chainPrograma);
+}
+
+
+
+
 int calcularPaginas(int tamanioPagina,int tamanio)
 {
 	double cantidadPaginas;
 	int cantidadChains;
-	int CantidadReal;
-	cantidadPaginas=header->tamanio/tamPagina;
+	int cantidadReal;
+	cantidadPaginas=tamanio/tamanioPagina;
  	cantidadChains=ceil(cantidadPaginas);
- 	cantidadReal=ceil((header->tamanio+cantidadChains*sizeof(unsigned int))/tamPagina);
+ 	cantidadReal=ceil((tamanio+cantidadChains*sizeof(unsigned int))/tamanioPagina);
  		if((ceil(cantidadPaginas))<cantidadReal)
  			{ 	
 				cantidadPaginas=floor(cantidadPaginas ++);
@@ -98,39 +123,76 @@ int calcularPaginas(int tamanioPagina,int tamanio)
  			return cantidadPaginas;
  							
 }
-int buscarPaginasLibres(int cantidadPaginas, t_list * paginasParaUsar,int tamanioFrame, t_marco marco,int tamanioPagina)
-{	int resultado;
+int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar,  t_marco * asignadorSecuencial, t_marco * marcos,int MARCOS,unsigned int tamanioAdministrativas)
+{	int cantidadPaginas=0;
 	
-	
+	while(cantidadPaginas<paginasRequeridas || (void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
+	{	
+		if(((void *)asignadorSecuencial)==(asignadorSecuencial->numeroPagina[3]))
+		{	list_add(paginasParaUsar, (void *)asignadorSecuencial);
+			asignadorSecuencial=asignadorSecuencial+sizeof(int)+sizeof(void *); //no me pregunten solo soy una chica//es porque se recorre secuencialmente y el int me rompe las pelotas
+		}
+		else
+		{	
+			list_add(paginasParaUsar,(void *)asignadorSecuencial);
+			asignadorSecuencial=asignadorSecuencial+sizeof(void *);
+		}
+
+		cantidadPaginas++;
+
+	}
+	if((void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
+		//{usarElOtroAlgoritmo();}
+	{return FAIL;}
+	else{return OK;}
 }	
+
+int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
+{
+
+	int pid;
+	pid=infoProg->pid;
+	int marcosRecorridos;
+	while(marcosRecorridos<MARCOS)
+	{
+		if(bloquesAdministrativas->proceso.pid==pid)
+			{memcpy((void *)unPcb,&(bloquesAdministrativas->proceso),sizeof(t_pcb))	;return OK;}
+
+		else{bloquesAdministrativas=bloquesAdministrativas+sizeof(t_estructuraADM);}
+		marcosRecorridos++;
+	}
+	return FAIL;
+}
 /////////// LEEEEEEEMEEEEE ME OLVIDE DE HACER FREE DE LOS PAQUETES UNA VEZ QUE LOS MANDO A LA WEA/////
 
-char * enviarDinamico(int unaInterfaz,int tipoPaquete,int UnSocket,void * paquete, int tamanioPaquete, t_header * header)
-{ unsigned char unHash[MD5_DIGEST_LENGTH];
- 	 MD5_CTX mdContext;	
- 	 					header->seleccionador={unaInterfaz,tipoPaquete,tamanioPaquete};	
-						envio=send(unSocket, header, 3*sizeof(int),0); 
-						envio=send(unSocket,paquete,tamanioPaquete,0);
-						MD5_Init (&mdContext);
+void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete)
+{ //unsigned char unHash[MD5_DIGEST_LENGTH];
+	t_header * header;
+ 	// MD5_CTX mdContext;	
+ 	 					header->seleccionador.unaInterfaz=unaInterfaz;
+ 	 					header->seleccionador.tipoPaquete=tipoPaquete;
+ 	 					header->tamanio=tamanioPaquete;
+						send(unSocket, header, 3*sizeof(int),0); 
+						send(unSocket,paquete,tamanioPaquete,0);
+						/*MD5_Init (&mdContext);
 	 					MD5_Update (&mdContext, paquete, tamanioPaquete);
-	 					MD5_Final (unHash,&mdContext);
-						return unHash;	 
+	 					MD5_Final (unHash,&mdContext);*/
+	 					free(header);
+						
 }
-char * recibirDinamico(int unSocket, void * paquete)
-{	 unsigned char unHash[MD5_DIGEST_LENGTH];
- 	 MD5_CTX mdContext;		
- 	 int tamanioEstructura;			
-								unPaquete=recv(unSocket,tamanioEstructura,sizeof(int),0);
-								paquete=malloc(tamanioEstructura);
-								unPaquete=recv(unSocket,paquete,tamanioEstructura,0);
-	 							MD5_Init (&mdContext);
+void recibirDinamico(int unSocket, void * paquete, int tamanioEstructura)
+{	 //unsigned char unHash[MD5_DIGEST_LENGTH];
+ 	/// MD5_CTX mdContext;		
+ 	 		
+								recv(unSocket,paquete,tamanioEstructura,0);
+	 							/*MD5_Init (&mdContext);
 	 							MD5_Update (&mdContext, paquete, tamanioEstructura);
-	 							MD5_Final (unHash,&mdContext);
-								return unHash;	
+	 							MD5_Final (unHash,&mdContext);*/
+								
 
 }
 int strlenConBarraN(char * unString){
-	int cantidad=0
+	int cantidad=0;
 	while( *unString!= '\n'){cantidad++;unString=unString+sizeof(char);} //desplaza el puntero un char //TODO revisar si el string conserva las \n
 	return cantidad;
 }
@@ -139,6 +201,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 	FILE * punteroAlArchivo;
 	char * lineaDeCodigo;
 	char * copiaLineaDecodigo;
+	int dimensionPrograma;
 	int tamanioLinea=0;
 	t_list * programa;
 	int tamanioLista;
@@ -158,7 +221,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 						{
 						fscanf(punteroAlArchivo,"%s\n",lineaDeCodigo);
 						
-						list_add(programa,lineaDeCodigo);
+						list_add(programa,(void *)lineaDeCodigo);
 						
 					    }
 				//
@@ -181,7 +244,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 				}
 				estructuraPrograma->elPrograma=malloc(dimensionPrograma*sizeof(char)+sizeof(int));
 				
-				memcpy(estructuraPrograma->elPrograma,&programaOut.unPrograma,dimensionPrograma*sizeof(char));
+				memcpy((void *)estructuraPrograma->elPrograma,&(programaOut.unPrograma),dimensionPrograma*sizeof(char));
 				estructuraPrograma->tamanio=dimensionPrograma*sizeof(char)+sizeof(int);
 
 				return estructuraPrograma;	
