@@ -17,15 +17,16 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 // #include <openssl/md5.h>
-
 #define BACKLOG 5
 #define KERNEL 0
 #define MEMORIA 1
 	#define SOLICITUDMEMORIA 0
+	#define RESPUESTAOKMEMORIA 1
 #define CONSOLA 2
 	#define INICIARPROGRAMA 0
 	#define FINALIZARPROGRAMA 1
 	#define DESCONECTARCONSOLA 2
+	#define RESULTADOINICIARPROGRAMA 3
 #define CPU 3
 #define FS 4
 #define TRUE 1
@@ -33,7 +34,7 @@
 #define OK 1
 #define FAIL 0
 #define BLOQUE 20
-
+// VARIABLES GLOBALES
 int COMUNICACIONHABILITADA=1;
 int ACEPTACIONHABILITADA=1;
 int SOCKETMEMORIA;
@@ -42,8 +43,12 @@ int TAMPAGINA;
 int ULTIMOPID;
 int STACK_SIZE;
 int GRADO_MULTIPROG;
+int * COLAREADY;
+int * COLANEW;
+int CANTIDADNEWS;
 // SEMAFOROS
-pthread_mutex_t mutexColaReady;
+pthread_mutex_t mutexColaNew;
+pthread_mutex_t mutexPid;
 
 typedef struct { 
 				int unaInterfaz;
@@ -92,9 +97,10 @@ typedef struct {
 				t_exitCode exitCode;
 				} t_pcb;
 
-t_pcb * colaReady[GRADO_MULTIPROG];
-t_pcb ** colaNew;
-int CANTIDADNEWS;
+typedef struct {
+				int pid;
+				int resultado; // 0 NO HAY MEMORIA - 1 TODO PIOLA
+				} t_resultadoIniciarPrograma;
 
 
 void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete) { 
@@ -198,7 +204,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 
 int gradoMultiprogAlcanzado(){
 	int contador=0;
-	while((colaReady[contador]->pid)!=-1)
+	while(COLAREADY[contador]!=-1)
 		contador++;
 	if (contador<GRADO_MULTIPROG)
 		return FALSE;
@@ -207,8 +213,10 @@ int gradoMultiprogAlcanzado(){
 }
 
 void inicializarColaReadys(){
-	for (int i = 0; i < GRADO_MULTIPROG; ++i)
-		colaReady[i]->pid=-1;
+	COLAREADY = malloc(GRADO_MULTIPROG*sizeof(COLAREADY[0]));
+	int i=0;
+	for (i; i < GRADO_MULTIPROG; i++)
+		COLAREADY[i]=-1;
 }
 
 void comunicarse(t_dataParaComunicarse * dataDeConexion){
@@ -219,10 +227,11 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 	// BUFFER RECEPTOR
 	void * paquete;
 	// JOBS
-	t_pcb ** jobs;
+	int * jobs;
 	int cantidadJobs=0;
 	// HEADERS
 	t_header * header;
+	header = malloc(sizeof(t_header));
 	// CICLO PRINCIPAL
 	while(COMUNICACIONHABILITADA){
 		// RECIBO EL HEADER
@@ -252,7 +261,9 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						// GENERO EL PID
 						int pid;
 						pid = ULTIMOPID;
+						pthread_mutex_lock(&mutexPid);
 						ULTIMOPID++;
+						pthread_mutex_unlock(&mutexPid);
 						// RECUPERO EL PROGRAMA DEL PATH
 						t_programaSalida * programa;
 						programa= obtenerPrograma(path);
@@ -267,19 +278,11 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						solicitudMemoria->cantidadPaginasStack=cantPaginasStack;
 						solicitudMemoria->pid=pid;
 						enviarDinamico(KERNEL,SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria,sizeof(t_solicitudMemoria));
-						// CREO PCB
-						t_pcb *pcb;
-						pcb=malloc(sizeof(t_pcb));
-						pcb->pid=pid;
-						pcb->estado=NEW;
-						pcb->programCounter=0;
-						pcb->posicionStack=0;
 						if (cantidadJobs % BLOQUE == 0)
-							jobs = realloc ((cantidadJobs+BLOQUE) * sizeof(jobs[0]));
-						jobs[cantidadJobs]=pcb;
+							jobs = realloc (jobs, (cantidadJobs+BLOQUE) * sizeof(jobs[0]));
+						jobs[cantidadJobs]=pid;
 						cantidadJobs++;
 						//LIBERO MEMORIA
-						free(pcb);
 						free(path);
 						free(solicitudMemoria);
 					break;
@@ -303,27 +306,37 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						t_solicitudMemoria * respuestaSolicitud;
 						respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
 						respuestaSolicitud=paquete;
+						// PREPARO LA RESPUESTA A CONSOLA
+						t_resultadoIniciarPrograma * resultado;
+						resultado=malloc(sizeof(t_resultadoIniciarPrograma));
+						int pid = respuestaSolicitud->pid;
+						resultado->pid=pid;
 						// VERIFICO SI PUEDO PASAR A READY
-						if (!(gradoMultiprogAlcanzado()) && respuestaSolicitud->respuesta){
-
-
-
-
-							pthread_mutex_lock(&mutexColaReady);
+						if (!(gradoMultiprogAlcanzado()) && respuestaSolicitud->respuesta==OK){
+							// AGREGO EL PID A LA COLA DE NEWS
+							pthread_mutex_lock(&mutexColaNew);
 							if (CANTIDADNEWS % BLOQUE == 0)
-								colaNew = realloc ((cantidadNew+BLOQUE) * sizeof(colaNew[0]));
-
-							pthread_mutex_unlock(&mutexColaReady);	
-
+								COLANEW = realloc (COLANEW,(CANTIDADNEWS+BLOQUE) * sizeof(COLANEW[0]));
+							COLANEW[CANTIDADNEWS]=pid;
+							CANTIDADNEWS++;
+							pthread_mutex_unlock(&mutexColaNew);
+							resultado->resultado=1;
 						}
-							header->seleccionador.unaInterfaz=KERNEL;
-							header->seleccionador.tipoPaquete=EXCEPCIONMULTIPROG;
-							send(dataDeConexion->socket,header,sizeof(header),0);
-							break;
-						}
-						else if (respuestaSolicitud->respuesta==FAIL){
-
-						}
+						else if (respuestaSolicitud->respuesta==FAIL)
+							resultado->resultado=0;
+						// ELIMINO EL PID DE MI COLA DE JOBS
+						int i=0;
+						while(jobs[i]!=pid)
+							i++;
+						for (i; i < cantidadJobs; i++)
+							jobs[i]=jobs[i+1];
+						cantidadJobs--;
+						jobs=realloc(jobs,cantidadJobs*sizeof(jobs[0]));
+						// ENVIO RESPUESTA A CONSOLA
+						enviarDinamico(KERNEL,RESULTADOINICIARPROGRAMA,dataDeConexion->socket,resultado,sizeof(t_resultadoIniciarPrograma));
+						// LIBERO MEMORIA
+						free(respuestaSolicitud);
+						free(resultado);
         			break;
         		}
         	break;
@@ -331,6 +344,8 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 	}
 	// LIBERO MEMORIA
 	free(dataDeConexion);
+	free(jobs);
+	free(header);
 }
 
 void aceptar(t_dataParaComunicarse * dataParaAceptar){
@@ -395,7 +410,7 @@ getchar();
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
 // INICIO SEMAFOROS
-pthread_mutex_init(&mutexColaReady,NULL);
+pthread_mutex_init(&mutexColaNew,NULL);
 // INICIO COLA READYS
 inicializarColaReadys();
 // RETURN VALUES
@@ -457,5 +472,8 @@ dataParaAceptar->socket = socketEscuchador;
 pthread_t hiloAceptador;
 pthread_create(&hiloAceptador,NULL,(void *)aceptar,dataParaAceptar);
 pthread_join(hiloAceptador,NULL);
+//LIBERO MEMORIA
+free(COLAREADY);
+free(COLANEW);
 return 0;
 }
