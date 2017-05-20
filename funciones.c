@@ -96,7 +96,7 @@ for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
 {
 	memset((void *)chainPrograma->codigo,1,tamPagina-sizeof(unsigned int));
 	chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);
-	memcpy((void *)listget(paginasParaUsar,unaPagina),(void *)chainPrograma,tamPagina);
+	memcpy((void *)list_get(paginasParaUsar,unaPagina),(void *)chainPrograma,tamPagina);
 }
 free(chainPrograma);
 }

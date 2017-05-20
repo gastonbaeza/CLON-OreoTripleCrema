@@ -57,7 +57,7 @@ typedef struct {
 				int posicionStack;
 				int indiceCodigo;
 				int indiceEtiquetas;
-				t_exitCode exitCode;
+				int exitCode;
 				}t_pcb;
 
 typedef struct { 

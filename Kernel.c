@@ -1,4 +1,5 @@
-//#include "estructuras.h"
+#include "estructuras.h"
+#include "funciones.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -16,7 +17,6 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
-// #include <openssl/md5.h>
 #define BACKLOG 5
 #define KERNEL 0
 #define MEMORIA 1
@@ -28,179 +28,49 @@
 	#define DESCONECTARCONSOLA 2
 	#define RESULTADOINICIARPROGRAMA 3
 #define CPU 3
+	#define SOLICITUDPCB 0
+	#define PCB 1
 #define FS 4
 #define TRUE 1
 #define FALSE 0
 #define OK 1
 #define FAIL 0
 #define BLOQUE 20
+#define NEW 1
+#define READY 0
+#define EXEC 1
+#define BLOCK 0
+#define EXIT 20
 // VARIABLES GLOBALES
+char * ALGORITMO;
+int PLANIFICACIONHABILITADA=1;
 int COMUNICACIONHABILITADA=1;
 int ACEPTACIONHABILITADA=1;
 int SOCKETMEMORIA;
 int SOCKETFS;
 int TAMPAGINA;
-int ULTIMOPID;
+int QUANTUM;
+int QUANTUM_SLEEP;
+int ULTIMOPID=0;
 int STACK_SIZE;
 int GRADO_MULTIPROG;
 int * COLAREADY;
 int * COLANEW;
-int CANTIDADNEWS;
+int CANTIDADNEWS=0;
+int * COLAEXIT;
+int CANTIDADEXITS=0;
+int * SOCKETSCONSOLA;
+int CANTIDADSOCKETSCONSOLA=0;
 // SEMAFOROS
 pthread_mutex_t mutexColaNew;
+pthread_mutex_t mutexColaExit;
+pthread_mutex_t mutexColaReady;
 pthread_mutex_t mutexPid;
+pthread_mutex_t mutexPcbs;
+pthread_mutex_t mutexSocketsConsola;
 
-typedef struct { 
-				int unaInterfaz;
-				int tipoPaquete;
-				} t_seleccionador;
-
-typedef struct {
-				t_seleccionador seleccionador;
-				int tamanio;
-				} t_header;
-
-typedef struct { 
-				char * elPrograma; 
-				int tamanio; // bytes del programa
-				} t_programaSalida;
-
-typedef struct {
-				char ** unPrograma; // el programa en si
-				int  dimension; // cantidad de lineas
-				} t_programa;
-
-typedef struct {
-				char * codigo;
-				int pid;
-				int cantidadPaginasCodigo;
-				int cantidadPaginasStack;
-				int respuesta; //OK o FAIL
-				}t_solicitudMemoria;
-
-typedef struct {
-				int socket;
-				int interfaz;
-				} t_dataParaComunicarse;
-
-typedef struct {
-				int codigo;
-				char * descripcion;
-				} t_exitCode;
-
-typedef struct {
-				int pid;
-				int estado;
-				int programCounter;
-				int referenciaATabla;
-				int posicionStack;
-				t_exitCode exitCode;
-				} t_pcb;
-
-typedef struct {
-				int pid;
-				int resultado; // 0 NO HAY MEMORIA - 1 TODO PIOLA
-				} t_resultadoIniciarPrograma;
-
-
-void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete) { 
-	// unsigned char unHash[MD5_DIGEST_LENGTH];
- 	// MD5_CTX mdContext;
- 	t_header * header;
- 	header->seleccionador.unaInterfaz=unaInterfaz;
- 	header->seleccionador.tipoPaquete=tipoPaquete;	
-	send(unSocket, header, 3*sizeof(int),0); 
-	send(unSocket,paquete,tamanioPaquete,0);
-	// MD5_Init (&mdContext);
-	// MD5_Update (&mdContext, paquete, tamanioPaquete);
-	// MD5_Final (unHash,&mdContext);
-	// return unHash;	 
-}
-
-void recibirDinamico(int unSocket, void * paquete, int tamanioEstructura) {
-	// unsigned char unHash[MD5_DIGEST_LENGTH];
- 	// MD5_CTX mdContext;
-	recv(unSocket,paquete,tamanioEstructura,0);
-	// MD5_Init (&mdContext);
-	// MD5_Update (&mdContext, paquete, tamanioEstructura);
-	// MD5_Final (unHash,&mdContext);
-	// return unHash;
-}
-
-void handshakeServer(int unSocket,int unServer, void * unBuffer) {
-	recv(unSocket,unBuffer, sizeof(int),0);
-	void * otroBuffer=malloc(sizeof(int));
-	memcpy(otroBuffer,&unServer,sizeof(int));
-	send(unSocket,otroBuffer,sizeof(int),0);
-}
-
-void handshakeCliente(int unSocket, int unCliente, void * unBuffer) {
-	void * otroBuffer=malloc(sizeof(int));
-	memcpy(otroBuffer,&unCliente,sizeof(int));
-	send(unSocket,otroBuffer, sizeof(int),0);
-	recv(unSocket,unBuffer,sizeof(int),0);
-}
-
-int calcularPaginas(int tamanioPagina,int tamanio) {
-	double cantidadPaginas;
-	int cantidadChains;
-	int cantidadReal;
-	cantidadPaginas=tamanio/tamanioPagina;
- 	cantidadChains=ceil(cantidadPaginas);
- 	cantidadReal=ceil((tamanio+cantidadChains*sizeof(unsigned int))/tamanioPagina);
- 	if((ceil(cantidadPaginas))<cantidadReal) { 	
-		cantidadPaginas=floor(cantidadPaginas ++);
- 	}
- 	else
- 		cantidadPaginas= ceil(cantidadPaginas);					
- 	return cantidadPaginas;
- 							
-}
-int strlenConBarraN(char * unString){
-	int cantidad=0;
-	while( *unString!= '\n')
-		cantidad++;unString=unString+sizeof(char); //desplaza el puntero un char //TODO revisar si el string conserva las \n
-	return cantidad;
-}
-
-t_programaSalida * obtenerPrograma( char * unPath){
-	FILE * punteroAlArchivo;
-	char * lineaDeCodigo;
-	char * copiaLineaDecodigo;
-	int tamanioLinea=0,dimensionPrograma;
-	t_list * programa;
-	int tamanioLista;
-	t_programa  programaOut;
-	t_programaSalida * estructuraPrograma;
-	lineaDeCodigo=malloc(100*sizeof(char));
-	if((punteroAlArchivo=fopen(unPath,"r"))==NULL) {
-		fflush(stdout); 
-		printf("el archivo no existe" ); 
-	}
-	else {		
-		programa=list_create();
-		//semaforo
-		while(!feof(punteroAlArchivo)) {
-			fscanf(punteroAlArchivo,"%s\n",lineaDeCodigo);
-			list_add(programa,lineaDeCodigo);
-		}
-		tamanioLista=list_size(programa);
-		programaOut.dimension=tamanioLista;
-	    int posicion;
-	    for (posicion = 0; posicion < tamanioLista; posicion++) { //hay otra forma de maloquear una estructura.... es tan compleja e precisa como un jogo de ajedrez bien jugado https://www.youtube.com/watch?v=Ba8NfkYC5ss
-			copiaLineaDecodigo=list_get(programa,posicion);
-			tamanioLinea=strlenConBarraN(copiaLineaDecodigo)+tamanioLinea;
-	    }
-		dimensionPrograma=tamanioLinea; //para que la wea sea coherente, queda horrible que el tamanio de un programa sea "el tamanio de la linea"
-		programaOut.unPrograma=malloc(dimensionPrograma*sizeof(char));
-		for (posicion = 0; posicion < tamanioLista; posicion++)
-			programaOut.unPrograma[posicion]=list_get(programa,posicion);
-		estructuraPrograma->elPrograma=malloc(dimensionPrograma*sizeof(char)+sizeof(int));
-		memcpy(estructuraPrograma->elPrograma,&programaOut.unPrograma,dimensionPrograma*sizeof(char));
-		estructuraPrograma->tamanio=dimensionPrograma*sizeof(char)+sizeof(int);
-		return estructuraPrograma;	
-		}
-}
+t_pcb * PCBS;
+int CANTIDADPCBS=0;
 
 int gradoMultiprogAlcanzado(){
 	int contador=0;
@@ -219,7 +89,54 @@ void inicializarColaReadys(){
 		COLAREADY[i]=-1;
 }
 
-void comunicarse(t_dataParaComunicarse * dataDeConexion){
+int hayProcesosReady(){
+	int i=0;
+	for (i; i < GRADO_MULTIPROG; i++)
+		if (COLAREADY[i]!=-1)
+			i=1;
+	return i;
+}
+
+void getPcbAndRemovePid(int pid, t_pcb * pcb){
+	int i=0;
+	//BUSCO EL PCB
+	pcb=&PCBS[pid];
+	// LO SACO DE LA COLA DE READYS
+	for (i; i < GRADO_MULTIPROG; i++){
+		if (i+1==GRADO_MULTIPROG) {
+			pthread_mutex_lock(&mutexColaReady);
+			COLAREADY[i]=-1;
+			pthread_mutex_unlock(&mutexColaReady);
+		}
+		else {
+			pthread_mutex_lock(&mutexColaReady);
+			COLAREADY[i]=COLAREADY[i+1];
+			pthread_mutex_unlock(&mutexColaReady);
+		}
+	}
+}
+
+void planificar(dataParaComunicarse * dataDePlanificacion){
+	int pid;
+	t_pcb * pcb;
+	pcb=malloc(sizeof(t_pcb));
+	int cpuLibre = 1;
+	while(PLANIFICACIONHABILITADA){
+		if (ALGORITMO=="FIFO"){
+				if (hayProcesosReady() && cpuLibre){
+					pid = COLAREADY[0];
+					getPcbAndRemovePid(pid,pcb);
+					enviarDinamico(KERNEL,PCB,dataDePlanificacion->socket,pcb,sizeof(t_pcb));
+					cpuLibre=0;
+				}
+
+		}
+	}
+	// LIBERO MEMORIA
+	free(pcb);
+}
+
+void comunicarse(dataParaComunicarse * dataDeConexion){
 	// RETURN VALUES
 	int rv;
 	// NUMERO DE BYTES
@@ -229,15 +146,23 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 	// JOBS
 	int * jobs;
 	int cantidadJobs=0;
+	// FLAG DE ESTE HILO
+	int estaComunicacion=1;
 	// HEADERS
 	t_header * header;
 	header = malloc(sizeof(t_header));
+	// HILO PLANIFICADOR
+	pthread_t hiloPlanificacion;
 	// CICLO PRINCIPAL
-	while(COMUNICACIONHABILITADA){
-		// RECIBO EL HEADER
-		// WAIT
-		nbytes = recv(dataDeConexion->socket, header, sizeof(t_header), 0);
-		// SIGNAL
+	while(COMUNICACIONHABILITADA && estaComunicacion){
+		// RECIBO EL HEADER (SI ES CPU, DIRECTAMENTE LE MANDO PCBS)
+		if (dataDeConexion->interfaz==CPU)
+		{
+			header->seleccionador.unaInterfaz=CPU;
+			header->seleccionador.tipoPaquete=SOLICITUDPCB;
+		}
+		else
+			nbytes = recv(dataDeConexion->socket, header, sizeof(t_header), 0);
 		if (nbytes == 0){
 			// EL CLIENTE FINALIZÓ LA CONEXIÓN
 			printf("Socket: %i.\n", dataDeConexion->socket);
@@ -264,20 +189,45 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						pthread_mutex_lock(&mutexPid);
 						ULTIMOPID++;
 						pthread_mutex_unlock(&mutexPid);
+						// GUARDO SOCKET DE LA CONSOLA INDEXADO CON EL PID
+						pthread_mutex_lock(&mutexSocketsConsola);
+						if (CANTIDADSOCKETSCONSOLA%BLOQUE==0)
+							SOCKETSCONSOLA = realloc (SOCKETSCONSOLA,(CANTIDADSOCKETSCONSOLA+BLOQUE) * sizeof(SOCKETSCONSOLA[0]));
+						SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA]=dataDeConexion->socket;
+						CANTIDADSOCKETSCONSOLA++;
+						pthread_mutex_unlock(&mutexSocketsConsola);
 						// RECUPERO EL PROGRAMA DEL PATH
 						t_programaSalida * programa;
 						programa= obtenerPrograma(path);
 						// CALCULO LA CANTIDAD DE PAGINAS
 						int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
 						int cantPaginasStack = calcularPaginas(TAMPAGINA,STACK_SIZE);
+						// CREO EL PCB
+						t_pcb * pcb;
+						pcb=malloc(sizeof(t_pcb));
+						pcb->pid = pid;
+						pcb->estado = NEW;
+						pcb->programCounter=0;
+						pcb->posicionStack=0;
+						pcb->indiceCodigo=0;
+						pcb->indiceEtiquetas=0;
+						pcb->exitCode=1;
+						// LO AGREGO A LA TABLA
+						pthread_mutex_lock(&mutexPcbs);
+						if (CANTIDADPCBS%BLOQUE==0)
+							PCBS = realloc (PCBS,(CANTIDADPCBS+BLOQUE) * sizeof(PCBS[0]));
+						PCBS[CANTIDADPCBS]=*pcb;
+						CANTIDADPCBS++;
+						pthread_mutex_unlock(&mutexPcbs);
 						// SOLICITUD DE MEMORIA
 						t_solicitudMemoria * solicitudMemoria;
 						solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
-						solicitudMemoria->codigo=programa->elPrograma;
+						solicitudMemoria->codigo=*programa;
 						solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 						solicitudMemoria->cantidadPaginasStack=cantPaginasStack;
 						solicitudMemoria->pid=pid;
 						enviarDinamico(KERNEL,SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria,sizeof(t_solicitudMemoria));
+						// LO AGREGO A LA LISTA DE JOBS
 						if (cantidadJobs % BLOQUE == 0)
 							jobs = realloc (jobs, (cantidadJobs+BLOQUE) * sizeof(jobs[0]));
 						jobs[cantidadJobs]=pid;
@@ -285,6 +235,7 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						//LIBERO MEMORIA
 						free(path);
 						free(solicitudMemoria);
+						free(pcb);
 					break;
 					case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
 					break;
@@ -294,7 +245,10 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 		    break;
         	case CPU:
         		switch(header->seleccionador.tipoPaquete){
-        			case 0:
+        			case SOLICITUDPCB:
+						// INICIO DE HILO PLANIFICADOR
+						pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDeConexion);
+						estaComunicacion=0;
         			break;
         		}
         	break;
@@ -311,8 +265,8 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 						resultado=malloc(sizeof(t_resultadoIniciarPrograma));
 						int pid = respuestaSolicitud->pid;
 						resultado->pid=pid;
-						// VERIFICO SI PUEDO PASAR A READY
-						if (!(gradoMultiprogAlcanzado()) && respuestaSolicitud->respuesta==OK){
+						// VERIFICO SI PUEDO PASAR A NEW
+						if (respuestaSolicitud->respuesta==OK){
 							// AGREGO EL PID A LA COLA DE NEWS
 							pthread_mutex_lock(&mutexColaNew);
 							if (CANTIDADNEWS % BLOQUE == 0)
@@ -322,14 +276,30 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 							pthread_mutex_unlock(&mutexColaNew);
 							resultado->resultado=1;
 						}
-						else if (respuestaSolicitud->respuesta==FAIL)
-							resultado->resultado=0;
+						else if (respuestaSolicitud->respuesta==FAIL){
+						 	resultado->resultado=0;
+						 	// AGREGO EL PID A LA COLA DE EXIT
+							pthread_mutex_lock(&mutexColaExit);
+							if (CANTIDADEXITS % BLOQUE == 0)
+								COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
+							COLAEXIT[CANTIDADEXITS]=pid;
+							CANTIDADEXITS++;
+							pthread_mutex_unlock(&mutexColaExit);
+							pthread_mutex_lock(&mutexPcbs);
+							PCBS[pid].exitCode=-1;
+							pthread_mutex_unlock(&mutexPcbs);
+							resultado->resultado=1;
+						}
 						// ELIMINO EL PID DE MI COLA DE JOBS
 						int i=0;
 						while(jobs[i]!=pid)
 							i++;
-						for (i; i < cantidadJobs; i++)
-							jobs[i]=jobs[i+1];
+						for (i; i < cantidadJobs; i++){
+							if (i+1==cantidadJobs)
+								jobs[i]=-1;
+							else
+								jobs[i]=jobs[i+1];
+						}
 						cantidadJobs--;
 						jobs=realloc(jobs,cantidadJobs*sizeof(jobs[0]));
 						// ENVIO RESPUESTA A CONSOLA
@@ -348,12 +318,12 @@ void comunicarse(t_dataParaComunicarse * dataDeConexion){
 	free(header);
 }
 
-void aceptar(t_dataParaComunicarse * dataParaAceptar){
+void aceptar(dataParaComunicarse * dataParaAceptar){
 	// VARIABLES PARA LAS CONEXIONES ENTRANTES
 	int * interfaz;
 	interfaz = malloc(sizeof(int));
 	pthread_t hiloComunicador;
-	t_dataParaComunicarse * dataParaConexion;
+	dataParaComunicarse * dataParaConexion;
 	int socketNuevaConexion;
 	// RETURN VALUES
 	int rv;
@@ -371,7 +341,7 @@ void aceptar(t_dataParaComunicarse * dataParaAceptar){
 			// ME INFORMO SOBRE LA INTERFAZ QUE SE CONECTÓ
 			handshakeServer(socketNuevaConexion,KERNEL,interfaz);
 			// CONFIGURACION E INICIO DE HILO COMUNICADOR
-			dataParaConexion = malloc(sizeof(t_dataParaComunicarse));
+			dataParaConexion = malloc(sizeof(dataParaComunicarse));
 			dataParaConexion->interfaz=*interfaz; 
 			dataParaConexion->socket=socketNuevaConexion;
 			pthread_create(&hiloComunicador,NULL,(void *)comunicarse,dataParaConexion);
@@ -394,9 +364,9 @@ char *IP_MEMORIA= config_get_string_value(CFG ,"IP_MEMORIA");
 char *PUERTO_MEMORIA= config_get_string_value(CFG ,"PUERTO_MEMORIA");
 char *IP_FS= config_get_string_value(CFG ,"IP_FS");
 char *PUERTO_FS= config_get_string_value(CFG ,"PUERTO_FS");
-int QUANTUM= config_get_int_value(CFG ,"QUANTUM");
-int QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
-char *ALGORITMO= config_get_string_value(CFG ,"ALGORITMO");
+QUANTUM= config_get_int_value(CFG ,"QUANTUM");
+QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
+ALGORITMO= config_get_string_value(CFG ,"ALGORITMO");
 GRADO_MULTIPROG= config_get_int_value(CFG ,"GRADO_MULTIPROG");
 char* SEM_IDS= config_get_string_value(CFG ,"SEM_IDS");
 char* SEM_INIT= config_get_string_value(CFG ,"SEM_INIT");
@@ -411,6 +381,11 @@ getchar();
 */
 // INICIO SEMAFOROS
 pthread_mutex_init(&mutexColaNew,NULL);
+pthread_mutex_init(&mutexColaReady,NULL);
+pthread_mutex_init(&mutexColaExit,NULL);
+pthread_mutex_init(&mutexPid,NULL);
+pthread_mutex_init(&mutexPcbs,NULL);
+pthread_mutex_init(&mutexSocketsConsola,NULL);
 // INICIO COLA READYS
 inicializarColaReadys();
 // RETURN VALUES
@@ -465,15 +440,18 @@ freeaddrinfo(serverInfo);
 // SE LIBERA EL ARCHIVO DE CONFIGURACION
 config_destroy(CFG);
 // CONFIGURACION DE HILO ACEPTADOR
-t_dataParaComunicarse *dataParaAceptar;
-dataParaAceptar=malloc(sizeof(t_dataParaComunicarse));
+dataParaComunicarse *dataParaAceptar;
+dataParaAceptar=malloc(sizeof(dataParaComunicarse));
 dataParaAceptar->socket = socketEscuchador;
 // INICIO DE HILO ACEPTADOR
 pthread_t hiloAceptador;
 pthread_create(&hiloAceptador,NULL,(void *)aceptar,dataParaAceptar);
+// ESPERO FIN DE HILO ACEPTADOR
 pthread_join(hiloAceptador,NULL);
 //LIBERO MEMORIA
 free(COLAREADY);
 free(COLANEW);
+free(COLAEXIT);
+free(SOCKETSCONSOLA);
 return 0;
 }
