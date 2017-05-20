@@ -45,7 +45,7 @@ typedef struct {
 				} t_programaSalida;
 
 typedef struct { int socket;
-					
+				 int interfaz;				
 				} dataParaComunicarse;
 
 
@@ -114,6 +114,11 @@ typedef struct
 					t_marco * marcos;
 	
 				}t_shittyStructure;
+
+typedef struct {
+				int pid;
+				int resultado; // 0 NO HAY MEMORIA - 1 TODO PIOLA
+				} t_resultadoIniciarPrograma;
 
 //funcion que retorna ok/exception al kernel ante el pedido de memoria
 
