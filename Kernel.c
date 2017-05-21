@@ -68,6 +68,7 @@ pthread_mutex_t mutexColaReady;
 pthread_mutex_t mutexPid;
 pthread_mutex_t mutexPcbs;
 pthread_mutex_t mutexSocketsConsola;
+pthread_mutex_t mutexGradoMultiprog;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
@@ -112,6 +113,114 @@ void getPcbAndRemovePid(int pid, t_pcb * pcb){
 			pthread_mutex_lock(&mutexColaReady);
 			COLAREADY[i]=COLAREADY[i+1];
 			pthread_mutex_unlock(&mutexColaReady);
+		}
+	}
+}
+
+void consola(){
+	int consolaHabilitada=1;
+	int opcion,opcion2;
+	int pid;
+	printf("\nPresione enter para iniciar la consola.\n");
+	getchar();
+	while(consolaHabilitada){
+		system("clear");
+		printf("Seleccione una de las siguientes opciones ingresando el número correspondiente.\n");
+		printf("1.-Obtener el listado de procesos del sistema.\n");
+		printf("2.-Informacion de un proceso.\n");
+		printf("3.-Obtener tabla global de archivos.\n");
+		printf("4.-Modificar el grado de multiprogramación.\n");
+		printf("5.-Finalizar un proceso.\n");
+		printf("6.-Detener la planificación.\n");
+		scanf("%i",&opcion);
+		switch(opcion){
+			case 1:
+				system("clear");
+				printf("Seleccione una de las siguientes opciones ingresando el número correspondiente.\n");
+				printf("1.-Obtener listado completo de procesos.\n");
+				printf("2.-Obtener cola de new.\n");
+				printf("3.-Obtener cola de ready.\n");
+				printf("4.-Obtener cola de exit.\n");
+				printf("5.-Volver al menú principal.\n");
+				scanf("%i",&opcion2);
+				switch(opcion2){
+					case 1: // MOSTRAR TODOS LOS PROCESOS
+						system("clear");
+						printf("En desarrollo.\n");
+						printf("Presione enter para volver al menú principal.\n");
+						getchar();
+						getchar();
+					break;
+					case 2: // MOSTRAR COLA DE NEW
+						system("clear");
+						printf("En desarrollo.\n");
+						printf("Presione enter para volver al menú principal.\n");
+						getchar();
+						getchar();
+					break;
+					case 3: // MOSTRAR COLA DE READY
+						system("clear");
+						printf("En desarrollo.\n");
+						printf("Presione enter para volver al menú principal.\n");
+						getchar();
+						getchar();
+					break;
+					case 4: // MOSTRAR COLA DE EXIT
+						system("clear");
+						printf("En desarrollo.\n");
+						printf("Presione enter para volver al menú principal.\n");
+						getchar();
+						getchar();
+					break;
+					case 5:
+						system("clear");
+					break;
+				}
+			break;
+			case 2: // MOSTRAR INFO DE UN PROCESO
+				system("clear");
+				// printf("Ingrese el PID del proceso.\n");
+				// scanf("%i",&pid);
+				printf("En desarrollo.\n");
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
+			case 3: // MOSTRAR TABLA GLOBAL DE ARCHIVOS
+				system("clear");
+				printf("En desarrollo.\n");
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
+			case 4: // MODIFICAR GRADO DE MULTIPROGRAMACION
+				// printf("Grado de multiprogramación actual: %i.\n",GRADO_MULTIPROG );
+				// printf("Ingrese el nuevo.\n");
+				system("clear");
+				printf("En desarrollo.\n");
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+				// printf("Espere mientras se producen los cambios.\n");
+				// pthread_mutex_lock(&mutexGradoMultiprog);
+				// scanf("%i",&GRADO_MULTIPROG);
+				// pthread_mutex_lock(&mutexGradoMultiprog);
+				// printf("Grado de multiprogramación modificado correctamente: %i.\n", GRADO_MULTIPROG);
+			break;
+			case 5: // FINALIZAR UN PROCESO
+				system("clear");
+				printf("En desarrollo.\n");
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
+			case 6: // DETENER LA PLANIFICACION
+				system("clear");
+				printf("En desarrollo.\n");
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
 		}
 	}
 }
@@ -372,10 +481,12 @@ char* SEM_IDS= config_get_string_value(CFG ,"SEM_IDS");
 char* SEM_INIT= config_get_string_value(CFG ,"SEM_INIT");
 char* SHARED_VARS= config_get_string_value(CFG ,"SHARED_VARS");
 STACK_SIZE= config_get_int_value(CFG ,"STACK_SIZE");
+system("clear");
 printf("Configuración:\nPUERTO_PROG = %s,\nPUERTO_CPU = %s,\nIP_MEMORIA = %s,\nPUERTO_MEMORIA = %s,\nIP_FS = %s,\nPUERTO_FS = %s,\nQUANTUM = %i,\nQUANTUM_SLEEP = %i,\nALGORITMO = %s,\nGRADO_MULTIPROG = %i,\nSEM_IDS = %s,\nSEM_INIT = %s,\nSHARED_VARS = %s,\nSTACK_SIZE = %i.\n"
 		,PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,ALGORITMO,GRADO_MULTIPROG,SEM_IDS,SEM_INIT,SHARED_VARS,STACK_SIZE);
-printf("Presione enter para continuar.\n");
+printf("\nPresione enter para continuar.\n");
 getchar();
+system("clear");
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
@@ -386,6 +497,7 @@ pthread_mutex_init(&mutexColaExit,NULL);
 pthread_mutex_init(&mutexPid,NULL);
 pthread_mutex_init(&mutexPcbs,NULL);
 pthread_mutex_init(&mutexSocketsConsola,NULL);
+pthread_mutex_init(&mutexGradoMultiprog,NULL);
 // INICIO COLA READYS
 inicializarColaReadys();
 // RETURN VALUES
@@ -446,8 +558,11 @@ dataParaAceptar->socket = socketEscuchador;
 // INICIO DE HILO ACEPTADOR
 pthread_t hiloAceptador;
 pthread_create(&hiloAceptador,NULL,(void *)aceptar,dataParaAceptar);
-// ESPERO FIN DE HILO ACEPTADOR
-pthread_join(hiloAceptador,NULL);
+// INICIO DE HILO DE CONSOLA
+pthread_t hiloConsola;
+pthread_create(&hiloConsola,NULL,(void *)consola,NULL);
+// ESPERO FIN DE HILO CONSOLA
+pthread_join(hiloConsola,NULL);
 //LIBERO MEMORIA
 free(COLAREADY);
 free(COLANEW);
