@@ -30,6 +30,8 @@
 #define CPU 3
 	#define SOLICITUDPCB 0
 	#define PCB 1
+	#define ESCRIBIR 2
+	#define FINALIZACIONPROCESO 3
 #define FS 4
 #define TRUE 1
 #define FALSE 0
@@ -44,6 +46,7 @@
 // VARIABLES GLOBALES
 char * ALGORITMO;
 int PLANIFICACIONHABILITADA=1;
+int PLANIFICACIONPAUSADA=0;
 int COMUNICACIONHABILITADA=1;
 int ACEPTACIONHABILITADA=1;
 int SOCKETMEMORIA;
@@ -57,7 +60,11 @@ int GRADO_MULTIPROG;
 int * COLAREADY;
 int * COLANEW;
 int CANTIDADNEWS=0;
+int * COLAEXEC;
+int CANTIDADEXECS=0;
 int * COLAEXIT;
+int CANTIDADBLOCKS=0;
+int * COLABLOCK;
 int CANTIDADEXITS=0;
 int * SOCKETSCONSOLA;
 int CANTIDADSOCKETSCONSOLA=0;
@@ -65,10 +72,13 @@ int CANTIDADSOCKETSCONSOLA=0;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
 pthread_mutex_t mutexColaReady;
+pthread_mutex_t mutexColaExec;
+pthread_mutex_t mutexColaBlock;
 pthread_mutex_t mutexPid;
 pthread_mutex_t mutexPcbs;
 pthread_mutex_t mutexSocketsConsola;
 pthread_mutex_t mutexGradoMultiprog;
+pthread_mutex_t mutexPausaPlanificacion;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
@@ -117,10 +127,39 @@ void getPcbAndRemovePid(int pid, t_pcb * pcb){
 	}
 }
 
+void rellenarColaReady(){
+	int i=0,cantVacios=0;
+	for (; i < GRADO_MULTIPROG; i++)
+		if (COLAREADY[i]==-1)
+			cantVacios++;
+	int primerReadyLibre;
+	primerReadyLibre=GRADO_MULTIPROG-cantVacios;
+	for (i=0; i<cantVacios; i++){
+		pthread_mutex_lock(&mutexColaReady);
+		COLAREADY[primerReadyLibre+i]=COLANEW[i];
+		pthread_mutex_unlock(&mutexColaReady);
+		pthread_mutex_lock(&mutexColaNew);
+		CANTIDADNEWS--;
+		COLANEW++;
+		COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(COLANEW[0]));
+		pthread_mutex_unlock(&mutexColaNew);
+	}
+}
+
+void cambiarEstado(int pid, int estado){
+	int i=0;
+	while(PCBS[i].pid!=pid)
+		i++;
+	pthread_mutex_lock(&mutexPcbs);
+	PCBS[i].estado=estado;
+	pthread_mutex_unlock(&mutexPcbs);
+}
+
 void consola(){
 	int consolaHabilitada=1;
 	int opcion,opcion2;
 	int pid;
+	int i;
 	printf("\nPresione enter para iniciar la consola.\n");
 	getchar();
 	while(consolaHabilitada){
@@ -131,7 +170,10 @@ void consola(){
 		printf("3.-Obtener tabla global de archivos.\n");
 		printf("4.-Modificar el grado de multiprogramación.\n");
 		printf("5.-Finalizar un proceso.\n");
-		printf("6.-Detener la planificación.\n");
+		if (PLANIFICACIONPAUSADA)
+			printf("6.-Reanudar la planificación.\n");
+		else
+			printf("6.-Detener la planificación.\n");
 		scanf("%i",&opcion);
 		switch(opcion){
 			case 1:
@@ -140,48 +182,155 @@ void consola(){
 				printf("1.-Obtener listado completo de procesos.\n");
 				printf("2.-Obtener cola de new.\n");
 				printf("3.-Obtener cola de ready.\n");
-				printf("4.-Obtener cola de exit.\n");
-				printf("5.-Volver al menú principal.\n");
+				printf("4.-Obtener cola de exec.\n");
+				printf("5.-Obtener cola de block.\n");
+				printf("6.-Obtener cola de exit.\n");
+				printf("7.-Volver al menú principal.\n");
 				scanf("%i",&opcion2);
 				switch(opcion2){
 					case 1: // MOSTRAR TODOS LOS PROCESOS
 						system("clear");
-						printf("En desarrollo.\n");
+						if (CANTIDADNEWS==0)
+							printf("Cola new vacía.\n");
+						else{
+							printf("Cola new:\n");
+							for (i = 0; i < CANTIDADNEWS; i++)
+								printf("\t%i\n",COLANEW[i]);
+						}
+						i=0;
+						while(COLAREADY[i]!=-1)
+							i++;
+						if (i==0)
+							printf("Cola ready vacía.\n");
+						else{
+							printf("Cola ready:\n");
+							i=0;
+							while(COLAREADY[i]!=-1){
+								printf("\t%i\n",COLAREADY[i]);
+								i++;
+							}
+						}
+						if (CANTIDADEXECS==0)
+							printf("Cola exec vacía.\n");
+						else{
+							printf("Cola exec:\n");
+							for (i = 0; i < CANTIDADEXECS; i++)
+								printf("\t%i\n",COLAEXEC[i]);
+						}
+						if (CANTIDADBLOCKS==0)
+							printf("Cola block vacía.\n");
+						else{
+							printf("Cola block:\n");
+							for (i = 0; i < CANTIDADBLOCKS; i++)
+								printf("\t%i\n",COLAEXEC[i]);
+						}
+						if (CANTIDADEXITS==0)
+							printf("Cola exit vacía.\n");
+						else{
+							printf("Cola exit:\n");
+							for (i = 0; i < CANTIDADEXITS; i++)
+								printf("\t%i\n",COLAEXEC[i]);
+						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
 						getchar();
 					break;
 					case 2: // MOSTRAR COLA DE NEW
 						system("clear");
-						printf("En desarrollo.\n");
+						if (CANTIDADNEWS==0)
+							printf("Cola new vacía.\n");
+						else{
+							printf("Cola new:\n");
+							for (i = 0; i < CANTIDADNEWS; i++)
+								printf("\t%i\n",COLANEW[i]);
+						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
 						getchar();
 					break;
 					case 3: // MOSTRAR COLA DE READY
 						system("clear");
-						printf("En desarrollo.\n");
+						i=0;
+						while(COLAREADY[i]!=-1)
+							i++;
+						if (i==0)
+							printf("Cola ready vacía.\n");
+						else{
+							printf("Cola ready:\n");
+							i=0;
+							while(COLAREADY[i]!=-1){
+								printf("\t%i\n",COLAREADY[i]);
+								i++;
+							}
+						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
 						getchar();
 					break;
-					case 4: // MOSTRAR COLA DE EXIT
+					case 4: // MOSTRAR COLA DE EXEC
 						system("clear");
-						printf("En desarrollo.\n");
+						if (CANTIDADEXECS==0)
+							printf("Cola exec vacía.\n");
+						else{
+							printf("Cola exec:\n");
+							for (i = 0; i < CANTIDADEXECS; i++)
+								printf("\t%i\n",COLAEXEC[i]);
+						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
 						getchar();
 					break;
-					case 5:
+					case 5: // MOSTRAR COLA DE BLOCK
+						system("clear");
+						if (CANTIDADBLOCKS==0)
+							printf("Cola block vacía.\n");
+						else{
+							printf("Cola block:\n");
+							for (i = 0; i < CANTIDADBLOCKS; i++)
+								printf("\t%i\n",COLAEXEC[i]);
+						}
+						printf("Presione enter para volver al menú principal.\n");
+						getchar();
+						getchar();
+					break;
+					case 6: // MOSTRAR COLA DE EXIT
+						system("clear");
+						if (CANTIDADEXITS==0)
+							printf("Cola exit vacía.\n");
+						else{
+							printf("Cola exit:\n");
+							for (i = 0; i < CANTIDADEXITS; i++)
+								printf("\t%i\n",COLAEXEC[i]);
+						}
+						printf("Presione enter para volver al menú principal.\n");
+						getchar();
+						getchar();
+					break;
+					case 7:
 						system("clear");
 					break;
 				}
 			break;
 			case 2: // MOSTRAR INFO DE UN PROCESO
 				system("clear");
-				// printf("Ingrese el PID del proceso.\n");
-				// scanf("%i",&pid);
-				printf("En desarrollo.\n");
+				printf("Ingrese el PID del proceso.\n");
+				scanf("%i",&pid);
+				system("clear");
+				i=0;
+				while(i<CANTIDADPCBS && PCBS[i].pid!=pid)
+					i++;
+				if (i==CANTIDADPCBS)
+					printf("No existe el proceso %i.\n", pid);
+				else{
+					printf("Proceso %i:\n", pid);
+					printf("\tEstado: %i\n", PCBS[i].estado);
+					printf("\tPC: %i\n", PCBS[i].programCounter);
+					printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
+					printf("\tPosicion stack: %i\n", PCBS[i].posicionStack);
+					printf("\tIndice Codigo: %i\n", PCBS[i].indiceCodigo);
+					printf("\tIndice Etiquetas: %i\n", PCBS[i].indiceEtiquetas);
+					printf("\tExit Code: %i\n", PCBS[i].exitCode);
+				}
 				printf("Presione enter para volver al menú principal.\n");
 				getchar();
 				getchar();
@@ -194,18 +343,16 @@ void consola(){
 				getchar();
 			break;
 			case 4: // MODIFICAR GRADO DE MULTIPROGRAMACION
-				// printf("Grado de multiprogramación actual: %i.\n",GRADO_MULTIPROG );
-				// printf("Ingrese el nuevo.\n");
 				system("clear");
-				printf("En desarrollo.\n");
+				printf("Grado de multiprogramación actual: %i.\n",GRADO_MULTIPROG );
+				printf("Ingrese el nuevo.\n");
+				pthread_mutex_lock(&mutexGradoMultiprog);
+				scanf("%i",&GRADO_MULTIPROG);
+				pthread_mutex_unlock(&mutexGradoMultiprog);
+				printf("Grado de multiprogramación modificado correctamente: %i.\n", GRADO_MULTIPROG);
 				printf("Presione enter para volver al menú principal.\n");
 				getchar();
 				getchar();
-				// printf("Espere mientras se producen los cambios.\n");
-				// pthread_mutex_lock(&mutexGradoMultiprog);
-				// scanf("%i",&GRADO_MULTIPROG);
-				// pthread_mutex_lock(&mutexGradoMultiprog);
-				// printf("Grado de multiprogramación modificado correctamente: %i.\n", GRADO_MULTIPROG);
 			break;
 			case 5: // FINALIZAR UN PROCESO
 				system("clear");
@@ -214,9 +361,16 @@ void consola(){
 				getchar();
 				getchar();
 			break;
-			case 6: // DETENER LA PLANIFICACION
+			case 6: // DETENER/REANUDAR LA PLANIFICACION
 				system("clear");
-				printf("En desarrollo.\n");
+				pthread_mutex_lock(&mutexPausaPlanificacion);
+				if (PLANIFICACIONPAUSADA){
+					PLANIFICACIONPAUSADA=0;
+				}
+				else
+					PLANIFICACIONPAUSADA=1;
+				pthread_mutex_unlock(&mutexPausaPlanificacion);
+				printf("Cambios realizados.\n");
 				printf("Presione enter para volver al menú principal.\n");
 				getchar();
 				getchar();
@@ -230,19 +384,75 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_pcb * pcb;
 	pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
+	t_header * header;
+	header=malloc(sizeof(t_header));
 	while(PLANIFICACIONHABILITADA){
-		if (ALGORITMO=="FIFO"){
-				if (hayProcesosReady() && cpuLibre){
+		while(PLANIFICACIONPAUSADA){} // SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
+		rellenarColaReady();
+		if (cpuLibre)
+		{
+			if (hayProcesosReady()){
+					// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 					pid = COLAREADY[0];
+					// LO SACO DE DICHA COLA Y OBTENGO SU PCB
 					getPcbAndRemovePid(pid,pcb);
+					// LO PONGO EN LA COLA DE EJECUTANDO
+					pthread_mutex_lock(&mutexColaExec);
+					if (CANTIDADEXECS % BLOQUE == 0)
+						COLAEXEC = realloc (COLAEXEC,(CANTIDADEXECS+BLOQUE) * sizeof(COLAEXEC[0]));
+					COLAEXEC[CANTIDADEXECS]=pid;
+					CANTIDADEXECS++;
+					pthread_mutex_unlock(&mutexColaExec);
+					// CAMBIO ESTADO A EJECUTANDO
+					cambiarEstado(pid,EXEC);
+					// LE MANDO EL PCB AL CPU
 					enviarDinamico(KERNEL,PCB,dataDePlanificacion->socket,pcb,sizeof(t_pcb));
 					cpuLibre=0;
-				}
-
+			}
+		}
+		else{
+			recv(dataDePlanificacion->socket, header, sizeof(t_header), 0);
+			switch(header->seleccionador.tipoPaquete){
+				case FINALIZACIONPROCESO: //FINALIZACION CORRECTA
+					// RECIBO EL PCB
+					recibirDinamico(dataDePlanificacion->socket,pcb,sizeof(header->tamanio));
+					pcb->exitCode=0;
+					// LO AGREGO A LA COLA EXIT
+					pthread_mutex_lock(&mutexColaExit);
+					if (CANTIDADEXITS % BLOQUE == 0)
+						COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
+					COLAEXIT[CANTIDADEXITS]=pid;
+					CANTIDADEXITS++;
+					pthread_mutex_unlock(&mutexColaExit);
+					cambiarEstado(pid,EXIT);
+					// BUSCO LA POSICION EN LA COLA DE EXEC
+					int index=0;
+					while(COLAEXEC[index]!=pid)
+						index++;
+					// LO SACO DE LA COLA DE EXEC
+					for (index; index < CANTIDADEXECS; index++){
+						pthread_mutex_lock(&mutexColaExec);
+						if (index+1==CANTIDADEXECS)
+							COLAEXEC[index]=-1;
+						else
+							COLAEXEC[index]=COLAEXEC[index+1];
+						pthread_mutex_unlock(&mutexColaExec);
+					}
+					pthread_mutex_lock(&mutexColaExec);
+					CANTIDADEXECS--;
+					COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
+					pthread_mutex_unlock(&mutexColaExec);
+				break;
+				case ESCRIBIR:
+				break;
+			}
+		cpuLibre=1;
 		}
 	}
 	// LIBERO MEMORIA
 	free(pcb);
+	free(dataDePlanificacion);
+	free(header);
 }
 
 void comunicarse(dataParaComunicarse * dataDeConexion){
@@ -262,6 +472,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	header = malloc(sizeof(t_header));
 	// HILO PLANIFICADOR
 	pthread_t hiloPlanificacion;
+	// DATA PARA PLANIFICACION EN CASO DE NECESITARSE
+    dataParaComunicarse * dataDePlanificacion;
 	// CICLO PRINCIPAL
 	while(COMUNICACIONHABILITADA && estaComunicacion){
 		// RECIBO EL HEADER (SI ES CPU, DIRECTAMENTE LE MANDO PCBS)
@@ -356,6 +568,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
         		switch(header->seleccionador.tipoPaquete){
         			case SOLICITUDPCB:
 						// INICIO DE HILO PLANIFICADOR
+        				dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
+        				dataDePlanificacion=dataDeConexion;
 						pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDeConexion);
 						estaComunicacion=0;
         			break;
@@ -397,6 +611,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 							pthread_mutex_lock(&mutexPcbs);
 							PCBS[pid].exitCode=-1;
 							pthread_mutex_unlock(&mutexPcbs);
+							cambiarEstado(pid,EXIT);
 							resultado->resultado=1;
 						}
 						// ELIMINO EL PID DE MI COLA DE JOBS
@@ -498,6 +713,9 @@ pthread_mutex_init(&mutexPid,NULL);
 pthread_mutex_init(&mutexPcbs,NULL);
 pthread_mutex_init(&mutexSocketsConsola,NULL);
 pthread_mutex_init(&mutexGradoMultiprog,NULL);
+pthread_mutex_init(&mutexColaExec,NULL);
+pthread_mutex_init(&mutexColaBlock,NULL);
+pthread_mutex_init(&mutexPausaPlanificacion,NULL);
 // INICIO COLA READYS
 inicializarColaReadys();
 // RETURN VALUES
