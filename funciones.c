@@ -46,6 +46,8 @@
 #define FALSE 0
 #define OK 1
 #define FAIL 0
+#define LIBRE 1
+#define OCUAPADO 0
 #define BLOQUE 20
 
 void handshakeServer(int unSocket,int unServer, void * unBuffer)
@@ -70,35 +72,40 @@ void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
 
 
 }
-
-void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int tamPagina)
+int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS)
+{
+int encontradas=0;
+int unBloque=0;
+while(encontradas<unaCantidad)
+	{
+		if(bloquesAdmin[unBloque].estado==LIBRE)
+		{
+			encontradas++;
+		}
+		unBloque++;
+		if(unBloque == MARCOS)
+			{return FAIL;}
+	}	
+return OK;
+	
+}
+void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int marco_size)
 {
 int unaPagina;
-int tamanioCodigoChain;
-t_chain * chainPrograma=malloc(tamPagina);
+int desplazamiento=0
 int paginasRequeridas=list_size(paginasParaUsar)-stackRequeridas;
-tamanioCodigoChain=tamPagina-sizeof(unsigned int);
 for ( unaPagina = 0; unaPagina < paginasRequeridas; unaPagina++)
 {
-	if(unaPagina==0)
-	{ 	memcpy(chainPrograma->codigo,codigo,tamanioCodigoChain);} //si es la primera apunto al comienzo de lo que copie
-
-	else
-	{memcpy((void *)chainPrograma->codigo,&codigo+(tamanioCodigoChain*unaPagina),tamanioCodigoChain);} //si no es la primera tengo que desplazarme en funcion del tamaño de la pagina
-	if(unaPagina+1==paginasRequeridas)
-		{chainPrograma->chain=NULL;}
-	else{chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);}
-memcpy((void *)list_get(paginasParaUsar,unaPagina),chainPrograma,tamPagina);
-
+memcpy((void *)list_get(paginasParaUsar,unaPagina),codigo+desplazamiento,marco_size);
+desplazamiento+=marco_size;
 }
 
 for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
 {
-	memset((void *)chainPrograma->codigo,1,tamPagina-sizeof(unsigned int));
-	chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);
-	memcpy((void *)list_get(paginasParaUsar,unaPagina),(void *)chainPrograma,tamPagina);
+	char * stack=calloc(marco_size,marco_size);
+	memcpy((void *)list_get(paginasParaUsar,unaPagina),stack,marco_size);
 }
-free(chainPrograma);
+
 }
 
 
@@ -123,28 +130,21 @@ int calcularPaginas(int tamanioPagina,int tamanio)
  			return cantidadPaginas;
  							
 }
-int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar,  t_marco * asignadorSecuencial, t_marco * marcos,int MARCOS,unsigned int tamanioAdministrativas)
+int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS)
 {	int cantidadPaginas=0;
-	
-	while(cantidadPaginas<paginasRequeridas || (void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
-	{	
-		if(((void *)asignadorSecuencial)==(asignadorSecuencial->numeroPagina[3]))
-		{	list_add(paginasParaUsar, (void *)asignadorSecuencial);
-			asignadorSecuencial=asignadorSecuencial+sizeof(int)+sizeof(void *); //no me pregunten solo soy una chica//es porque se recorre secuencialmente y el int me rompe las pelotas
-		}
-		else
-		{	
-			list_add(paginasParaUsar,(void *)asignadorSecuencial);
-			asignadorSecuencial=asignadorSecuencial+sizeof(void *);
-		}
-
-		cantidadPaginas++;
-
-	}
-	if((void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
-		//{usarElOtroAlgoritmo();}
-	{return FAIL;}
-	else{return OK;}
+	 time_t tiempo;
+   srand((unsigned) time(&tiempo));
+   int unFrame;
+   while(cantidadPaginas<paginasRequeridas)
+   {
+   unFrame=rand() % MARCOS;
+   if(bloquesAdmin[unFrame].estado==LIBRE)		
+   	{
+   		list_add(paginasParaUSar,(void *)marcos[unFrame])
+   		bloquesAdmin[unFrame].estado==OCUPADO;
+   		cantidadPaginas++;
+   	}
+   }
 }	
 
 int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
