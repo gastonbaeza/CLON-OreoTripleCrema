@@ -12,7 +12,6 @@
 #include <commons/txt.h>
 #include <commons/collections/list.h>
 #include <errno.h>
-#define clear() printf("\033[H\033[J")
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
@@ -31,18 +30,18 @@
 	#define SOLICITUDPCB 0
 	#define PCB 1
 	#define ESCRIBIR 2
-	#define FINALIZACIONPROCESO 3
+	#define PIDFINALIZARPROCESO 3
 #define FS 4
 #define TRUE 1
 #define FALSE 0
 #define OK 1
 #define FAIL 0
-#define BLOQUE 20
-#define NEW 1
-#define READY 0
-#define EXEC 1
-#define BLOCK 0
-#define EXIT 20
+#define BLOQUE 5
+#define NEW 0
+#define READY 1
+#define EXEC 2
+#define BLOCK 3
+#define EXIT 4
 // VARIABLES GLOBALES
 char * ALGORITMO;
 int PLANIFICACIONHABILITADA=1;
@@ -136,11 +135,11 @@ void rellenarColaReady(){
 	primerReadyLibre=GRADO_MULTIPROG-cantVacios;
 	for (i=0; i<cantVacios; i++){
 		pthread_mutex_lock(&mutexColaReady);
-		COLAREADY[primerReadyLibre+i]=COLANEW[i];
+		COLAREADY[primerReadyLibre+i]=COLANEW[0];
 		pthread_mutex_unlock(&mutexColaReady);
 		pthread_mutex_lock(&mutexColaNew);
 		CANTIDADNEWS--;
-		COLANEW++;
+		COLANEW+=sizeof(int);
 		COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(COLANEW[0]));
 		pthread_mutex_unlock(&mutexColaNew);
 	}
@@ -153,6 +152,106 @@ void cambiarEstado(int pid, int estado){
 	pthread_mutex_lock(&mutexPcbs);
 	PCBS[i].estado=estado;
 	pthread_mutex_unlock(&mutexPcbs);
+}
+
+int finalizarPid(int pid){
+	int i=0, index=0;
+	while(i<CANTIDADPCBS && PCBS[i].pid!=pid)
+		i++;
+	if (i==CANTIDADPCBS)
+		return 0;
+	switch(PCBS[i].estado){
+		case NEW:
+			// BUSCO LA POSICION EN LA COLA DE NEW
+			while(COLANEW[index]!=pid)
+				index++;
+			// LO SACO DE LA COLA DE NEW
+			for (; index < CANTIDADNEWS; index++){
+				pthread_mutex_lock(&mutexColaNew);
+				if (index+1==CANTIDADNEWS)
+					COLANEW[index]=-1;
+				else
+					COLANEW[index]=COLANEW[index+1];
+				pthread_mutex_unlock(&mutexColaNew);
+			}
+			pthread_mutex_lock(&mutexColaNew);
+			CANTIDADNEWS--;
+			COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(COLANEW[0]));
+			pthread_mutex_unlock(&mutexColaNew);
+		break;
+		case READY:
+			// LO SACO DE LA COLA DE READYS
+			for (i=0; i < GRADO_MULTIPROG; i++){
+				if (i+1==GRADO_MULTIPROG) {
+					pthread_mutex_lock(&mutexColaReady);
+					COLAREADY[i]=-1;
+					pthread_mutex_unlock(&mutexColaReady);
+				}
+				else {
+					pthread_mutex_lock(&mutexColaReady);
+					COLAREADY[i]=COLAREADY[i+1];
+					pthread_mutex_unlock(&mutexColaReady);
+				}
+			}
+		break;
+		case EXEC:
+			// BUSCO LA POSICION EN LA COLA DE EXEC
+			while(COLAEXEC[index]!=pid)
+				index++;
+			// LO SACO DE LA COLA DE EXEC
+			for (; index < CANTIDADEXECS; index++){
+				pthread_mutex_lock(&mutexColaExec);
+				if (index+1==CANTIDADEXECS)
+					COLAEXEC[index]=-1;
+				else
+					COLAEXEC[index]=COLAEXEC[index+1];
+				pthread_mutex_unlock(&mutexColaExec);
+			}
+			pthread_mutex_lock(&mutexColaExec);
+			CANTIDADEXECS--;
+			COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
+			pthread_mutex_unlock(&mutexColaExec);
+		break;
+		case BLOCK:
+			// BUSCO LA POSICION EN LA COLA DE BLOCK
+			while(COLABLOCK[index]!=pid)
+				index++;
+			// LO SACO DE LA COLA DE BLOCK
+			for (; index < CANTIDADBLOCKS; index++){
+				pthread_mutex_lock(&mutexColaBlock);
+				if (index+1==CANTIDADBLOCKS)
+					COLABLOCK[index]=-1;
+				else
+					COLABLOCK[index]=COLABLOCK[index+1];
+				pthread_mutex_unlock(&mutexColaBlock);
+			}
+			pthread_mutex_lock(&mutexColaBlock);
+			CANTIDADBLOCKS--;
+			COLABLOCK=realloc(COLABLOCK,CANTIDADBLOCKS*sizeof(COLABLOCK[0]));
+			pthread_mutex_unlock(&mutexColaBlock);
+		break;
+	}
+	// ACTUALIZO EL PCB
+	pthread_mutex_lock(&mutexPcbs);
+	PCBS[i].exitCode=-6;
+	PCBS[i].estado=EXIT;
+	pthread_mutex_unlock(&mutexPcbs);
+	// LO AGREGO A LA COLA DE EXIT
+	pthread_mutex_lock(&mutexColaExit);
+	if (CANTIDADEXITS % BLOQUE == 0)
+		COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
+	COLAEXIT[CANTIDADEXITS]=pid;
+	CANTIDADEXITS++;
+	pthread_mutex_unlock(&mutexColaExit);
+	return 1;
+}
+
+int estaExec(int pid){
+	int i=0;
+	for (; i < CANTIDADEXECS; i++)
+		if (COLAEXEC[i]==pid)
+			return 1;
+	return 0;
 }
 
 void consola(){
@@ -356,7 +455,13 @@ void consola(){
 			break;
 			case 5: // FINALIZAR UN PROCESO
 				system("clear");
-				printf("En desarrollo.\n");
+				printf("Ingrese PID del proceso a finalizar.\n");
+				scanf("%i", &pid);
+				system("clear");
+				if (finalizarPid(pid))
+					printf("El proceso fue finalizado correctamente.\n");
+				else
+					printf("El proceso no existe o ya finalizó.\n");
 				printf("Presione enter para volver al menú principal.\n");
 				getchar();
 				getchar();
@@ -388,6 +493,9 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	header=malloc(sizeof(t_header));
 	while(PLANIFICACIONHABILITADA){
 		while(PLANIFICACIONPAUSADA){} // SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
+		// VERIFICO QUE SIGA EN LA COLA DE EXEC
+		if (!estaExec(pid))
+			cpuLibre=1;
 		rellenarColaReady();
 		if (cpuLibre)
 		{
@@ -413,7 +521,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 		else{
 			recv(dataDePlanificacion->socket, header, sizeof(t_header), 0);
 			switch(header->seleccionador.tipoPaquete){
-				case FINALIZACIONPROCESO: //FINALIZACION CORRECTA
+				case PIDFINALIZARPROCESO: //FINALIZACION CORRECTA
 					// RECIBO EL PCB
 					recibirDinamico(dataDePlanificacion->socket,pcb,sizeof(header->tamanio));
 					pcb->exitCode=0;
@@ -457,6 +565,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 
 void comunicarse(dataParaComunicarse * dataDeConexion){
 	// RETURN VALUES
+	int pid;
 	int rv;
 	// NUMERO DE BYTES
 	int nbytes;
@@ -505,7 +614,6 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 						path = malloc (header->tamanio);
 						memcpy(path,paquete,header->tamanio);
 						// GENERO EL PID
-						int pid;
 						pid = ULTIMOPID;
 						pthread_mutex_lock(&mutexPid);
 						ULTIMOPID++;
@@ -559,6 +667,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 						free(pcb);
 					break;
 					case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
+						
 					break;
 					case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
 					break;
@@ -784,6 +893,8 @@ pthread_join(hiloConsola,NULL);
 //LIBERO MEMORIA
 free(COLAREADY);
 free(COLANEW);
+free(COLAEXEC);
+free(COLABLOCK);
 free(COLAEXIT);
 free(SOCKETSCONSOLA);
 return 0;
