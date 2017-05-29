@@ -22,6 +22,8 @@
 #include <commons/config.h>
 #define clear() printf("\033[H\033[J")
 #define BACKLOG 5
+#define LIBRE 0
+#define OCUPADO 1
 #define KERNEL 0
 	#define ARRAYPIDS 5
 	#define PIDFINALIZACION 2
@@ -59,7 +61,7 @@
 t_estructuraADM * bloquesAdmin;
 int tamPagina;
 t_list * paginasLiberadas;
-t_marco * asignadorSecuencial;
+t_marco * asignador;
 int hayQueCambiarDeAlgoritmo=0;
 unsigned int tamanioAdministrativas;
 char * mensajeError="la instruccion solicitada no existe, gracias vuelvas prontos";
@@ -150,33 +152,29 @@ unData=malloc(sizeof(dataParaComunicarse));
 unData->socket = listenningSocket;
 
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
-void * contigua=malloc(MARCOS*MARCO_SIZE);
-bloquesAdmin=calloc(MARCOS*sizeof(t_estructuraADM),MARCOS*sizeof(t_estructuraADM));
-memcpy(contigua,bloquesAdmin,MARCOS*sizeof(t_estructuraADM)); //defini 500 bloques por las dudas, parece que cada adm es para un proceso aunque puedo equivocarme y que sea por cada marco
-tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
-contigua=realloc(contigua,tamanioAdministrativas);
- marcos=malloc(MARCOS-tamanioAdministrativas);
-int unMarco=0;
-for(unMarco;unMarco<(MARCOS-tamanioAdministrativas); unMarco++) //asignar su numero de marco a cada region de memoria
-	{ 	int unaPagina=0;
-		while(unaPagina<3)
-		{if(unaPagina==0){
-		marcos[unMarco].marco=unMarco;
-	 	marcos[unMarco].numeroPagina[unaPagina]=&contigua+tamanioAdministrativas;
-		
-						}
-		else
-		{ 
-		marcos[unMarco].numeroPagina[unaPagina]= &marcos[unMarco].numeroPagina[unaPagina-1]+ ((MARCO_SIZE/4));
-		}
 
-		marcos[unMarco].numeroPagina[unaPagina]=calloc(MARCO_SIZE/4,MARCO_SIZE/4);// pone un cero cada 2 bytes o algo asi seguro rompe esto jaja
-		unaPagina++;
-		}
-
+bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM));
+ tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
+int unaAdmin;
+for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de admin con pid-1 libre y num de pag y el hash
+{
+bloquesAdmin[unaAdmin].estado=LIBRE;
+bloquesAdmin[unaAdmin].pid=-1;
+bloquesAdmin[unaAdmin].frame=unaAdmin;
+bloquesAdmin[unaAdmin].hashPagina=miFuncionDeHash(bloquesAdmin[unaAdmin].pid,bloquesAdmin[unaAdmin].frame);
+	
+}
+bloquesAdmin=realloc(bloquesAdmin,((tamanioAdministrativas*t_estructuraADM)+(MARCOS*MARCO_SIZE)));
+marcos=bloquesAdmin+tamanioAdministrativas;
+int unMarco=1;
+void * memoria=calloc(MARCOS*MARCO_SIZE,MARCOS*MARCO_SIZE); // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
+for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
+	{ 
+		marcos[unMarco].numeroPagina[unaPagina]=memoria+(unMarco*MARCO_SIZE);
+		unMarco++;
 	}
 	
-	asignadorSecuencial=&marcos[0];
+	asignador=&marcos[0];
 ////////////////////////////////INICIAMOS HILOS DE COMINICACION/////////////////////////////////////////////
 
 
@@ -215,22 +213,22 @@ while(1) {
 							t_solicitudMemoria * solicitudMemoria;
 							solicitudMemoria=malloc(header->tamanio);
  							memcpy(solicitudMemoria,paquete,header->tamanio);
- 							if(((void *)asignadorSecuencial== marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3] )&& list_is_empty(paginasLiberadas)) 
- 							// y ahora olvidemos nuestros problemas con un gran platon de helado de vainilla, *no me juzguen por este if*
- 							{ solicitudMemoria->respuesta=FAIL;
- 								enviarDinamico(KERNEL,RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria, header->tamanio);}
+ 							paginasRequeridas=solicitudMemoria->cantidadPaginasCodigo;
+ 							stackRequeridas=solicitudMemoria->cantidadPaginasStack;
+ 							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
+ 							{ 
+ 							solicitudMemoria->respuesta=FAIL;
+ 							enviarDinamico(KERNEL,RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria, header->tamanio);
+ 							}
 
  							else
  							{ //mandarOK memoria
+ 							solicitudMemoria->respuesta=OK;
  							// codigo del programa
- 							recibirDinamico(unData,paquete);
-							
-							solicitudMemoria=malloc(header->tamanio);
- 							memcpy(solicitudMemoria,paquete,header->tamanio);
+ 							enviarDinamico(KERNEL,RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria, header->tamanio);
  							char * codigo=malloc(solicitudMemoria->codigo.tamanio);
  							memcpy(codigo,solicitudMemoria->codigo.elPrograma,solicitudMemoria->codigo.tamanio);
- 							paginasRequeridas=solicitudMemoria->cantidadPaginasCodigo;
- 							stackRequeridas=solicitudMemoria->cantidadPaginasStack;
+ 							
  							//se cuantas paginas usa, tengo que partir el codigo en funcion de la cantidad de paginas, hacer un for con la cantidad de paginas, y buscar pagina, eso y agregar el chain.
  								
  							
@@ -238,10 +236,11 @@ while(1) {
  							
  							list_create(paginasParaUsar);
  							/*Deje el algoritmo extra sin codear en buscar paginas*/
- 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar, asignadorSecuencial,marcos, MARCOS,tamanioAdministrativas);
- 							cargarPaginas(paginasParaUsar,stackRequeridas, codigo,tamPagina);
+ 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS);
+ 							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
  							free(codigo);
  							free(solicitudMemoria);
+ 							free(paginasParaUsar);
  							//enviarDinamico notificacion de que se asigno genialmente
 
  							 }	
@@ -340,7 +339,7 @@ while(1){
 		memcpy(dataNuevo,unData,sizeof(dataParaComunicarse));
 		handshakeServer(socketNuevaConexion,MEMORIA,unBuffer);
 		if((int *)unBuffer==KERNEL)
-			{	tamPagina=MARCO_SIZE/4;
+			{	tamPagina=MARCO_SIZE;
 				memcpy(unBuffer,&tamPagina, sizeof(int));
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
 				socketKernel=socketNuevaConexion;	
@@ -408,3 +407,4 @@ for(;;) {
 	    }
 	}
 }*/
+

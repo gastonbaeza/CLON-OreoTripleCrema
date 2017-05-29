@@ -107,13 +107,7 @@ typedef struct
 				int indiceStack;	
 
 				}t_actualizacion;
-typedef struct 
-				{
-					int socket;
-					t_marco * asignadorSecuencial;
-					t_marco * marcos;
-	
-				}t_shittyStructure;
+
 
 typedef struct {
 				int pid;
