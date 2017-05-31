@@ -252,50 +252,21 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 }
 
 
-void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int * tamaniosParciales,int cantidadSubestructuras)
+void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 { 
-	t_seleccionador * seleccionador=malloc(3*sizeof(int));
-	int * header;
-	int cantidadParcial;
-	int offset=0;
-	int  * buffer;
- 	 					seleccionador->unaInterfaz=unaInterfaz;
- 	 					seleccionador->tipoPaquete=tipoPaquete;
- 	 					
- 	
- 	 					seleccionador->cantidadSubestructuras=cantidadSubestructuras;
-
- 	 					header=malloc(cantidadSubestructuras*sizeof(int));
-
- 	 					for (cantidadParcial= 0; cantidadParcial < cantidadSubestructuras; cantidadParcial++)
- 	 					{
- 	 						header[cantidadParcial]=tamaniosParciales[cantidadParcial];
- 	 						
- 	 					}
- 	 					send(unSocket, seleccionador, 3*sizeof(int),0); 
- 	 					recv(unSocket,buffer, sizeof(int),0);
-						send(unSocket,header,cantidadSubestructuras*sizeof(int),0);
-						
-						for (cantidadParcial = 0; cantidadParcial < cantidadSubestructuras; cantidadParcial++)
-						{	
-							send(unSocket,paquete+offset,tamaniosParciales[cantidadParcial],0);
-							recv(unSocket,buffer, sizeof(int),0);
-							offset+=tamaniosParciales[cantidadParcial];
-						}
-						
+	switch(tipoPaquete){
+		case SOLICITUDMEMORIA:
+			serial_solicitudMemoria(paquete,unSocket);
+		break;
+	}
 						
 }
-void recibirDinamico(int interfaz, int tipoPaquete,int unSocket, void * paquete, int * header, int cantidadSubestructuras)
-{	int unaSubestructura;	
-	int offset=0;
-	int  * buffer;
-	
-	for (unaSubestructura = 0; unaSubestructura < cantidadSubestructuras; unaSubestructura++)
-	{
-		while(0>(recv(unSocket,paquete+offset,header[unaSubestructura],0)));
-		send(unSocket,buffer, sizeof(int),0);
-		offset+=header[unaSubestructura];						
-
+void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
+{	
+	switch(tipoPaquete){
+		case SOLICITUDMEMORIA:
+			dserial_solicitudMemoria(paquete,unSocket);
+		break;
 	}
 }
 int strlenConBarraN(char * unString){
