@@ -6,47 +6,56 @@
 typedef struct {
 				int codigo;
 				char * descripcion;
-				} t_exitCode;
+				}__attribute__((packed))
+				 t_exitCode;
 
 typedef struct {
 				int ocupado; // 1=ocupado ; 0=libre
 				int bytes;
-				} hashMemoria;
+				}__attribute__((packed))
+				  hashMemoria;
 
 typedef struct 
 				{char * codigo;
 				 void * chain;		
 					
-				}t_chain;
+				}__attribute__((packed))
+				 t_chain;
 typedef struct { 
 				int marco;
 				void * numeroPagina[3];
-				}t_marco;
+				}__attribute__((packed))
+				 t_marco;
 
 typedef struct {
 				char * path;
 				int vecesAbierto;
-				} t_tablaGlobalArchivos;
+				}__attribute__((packed))
+				  t_tablaGlobalArchivos;
 
 typedef struct {
 				int descriptor;
 				int flag;
 				int posicionTablaglobal;
-				} t_tablaArchivosDeProcesos;
+				}__attribute__((packed))
+				  t_tablaArchivosDeProcesos;
 
 typedef struct {
 				char ** unPrograma; // el programa en si
 				int  dimension; // cantidad de lineas
-				} t_programa;
+				}__attribute__((packed))
+				  t_programa;
 
 typedef struct { 
 				char * elPrograma; 
 				int tamanio; // bytes del programa
-				} t_programaSalida;
+				}__attribute__((packed))
+				  t_programaSalida;
 
 typedef struct { int socket;
 				 int interfaz;				
-				} dataParaComunicarse;
+				}__attribute__((packed))
+				  dataParaComunicarse;
 
 
 typedef struct {
@@ -58,61 +67,72 @@ typedef struct {
 				int indiceCodigo;
 				int indiceEtiquetas;
 				int exitCode;
-				}t_pcb;
+				}__attribute__((packed))
+				 t_pcb;
 
 typedef struct { 
 				void * primerPagina;
 				t_pcb proceso;
-				}t_estructuraADM;
+				}__attribute__((packed))
+				 t_estructuraADM;
 typedef struct {
 				char * archivo;// este archivo en realidad es un path
 				char flag;
-				}t_solicitudFS;
+				}__attribute__((packed))
+				 t_solicitudFS;
 
 typedef struct { 
 				int unaInterfaz;
 				int tipoPaquete;
-				} t_seleccionador;
+				int cantidadSubestructuras;
+
+				}__attribute__((packed))
+				  t_seleccionador;
 typedef struct 
 				{
 				int pid;
-				}t_solicitudInfoProg;
+				}__attribute__((packed))
+				 t_solicitudInfoProg;
 
-typedef struct {
-				t_seleccionador seleccionador;
-				int tamanio;
-				} t_header;
+
 
 typedef struct {
 				char * excepcion;
-				}t_excepcion;
+				}__attribute__((packed))
+				 t_excepcion;
 
 typedef struct {
-				t_programaSalida  codigo;
+				
+				int tamanioCodigo;
+				char * codigo;
 				int cantidadPaginasCodigo;
 				int cantidadPaginasStack;
 				int pid;
 				int respuesta; 
 
-				}t_solicitudMemoria;
+				}__attribute__((packed))
+				 t_solicitudMemoria;
 
 typedef struct {
 				char * linea;
 				int tamanioLinea;
-				}t_linea;
+				}__attribute__((packed))
+				 t_linea;
 typedef struct 
 				{
 				int pid;
 				int programCounter;
 				int indiceStack;	
 
-				}t_actualizacion;
+				}__attribute__((packed))
+				 t_actualizacion;
 
 
 typedef struct {
 				int pid;
 				int resultado; // 0 NO HAY MEMORIA - 1 TODO PIOLA
-				} t_resultadoIniciarPrograma;
+				}__attribute__((packed))
+				  t_resultadoIniciarPrograma;
 
 //funcion que retorna ok/exception al kernel ante el pedido de memoria
 

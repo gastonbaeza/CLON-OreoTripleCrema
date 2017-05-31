@@ -46,8 +46,6 @@
 #define FALSE 0
 #define OK 1
 #define FAIL 0
-#define LIBRE 1
-#define OCUAPADO 0
 #define BLOQUE 20
 
 void handshakeServer(int unSocket,int unServer, void * unBuffer)
@@ -72,40 +70,35 @@ void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
 
 
 }
-int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS)
-{
-int encontradas=0;
-int unBloque=0;
-while(encontradas<unaCantidad)
-	{
-		if(bloquesAdmin[unBloque].estado==LIBRE)
-		{
-			encontradas++;
-		}
-		unBloque++;
-		if(unBloque == MARCOS)
-			{return FAIL;}
-	}	
-return OK;
-	
-}
-void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int marco_size)
+
+void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int tamPagina)
 {
 int unaPagina;
-int desplazamiento=0
+int tamanioCodigoChain;
+t_chain * chainPrograma=malloc(tamPagina);
 int paginasRequeridas=list_size(paginasParaUsar)-stackRequeridas;
+tamanioCodigoChain=tamPagina-sizeof(unsigned int);
 for ( unaPagina = 0; unaPagina < paginasRequeridas; unaPagina++)
 {
-memcpy((void *)list_get(paginasParaUsar,unaPagina),codigo+desplazamiento,marco_size);
-desplazamiento+=marco_size;
+	if(unaPagina==0)
+	{ 	memcpy(chainPrograma->codigo,codigo,tamanioCodigoChain);} //si es la primera apunto al comienzo de lo que copie
+
+	else
+	{memcpy((void *)chainPrograma->codigo,&codigo+(tamanioCodigoChain*unaPagina),tamanioCodigoChain);} //si no es la primera tengo que desplazarme en funcion del tamaño de la pagina
+	if(unaPagina+1==paginasRequeridas)
+		{chainPrograma->chain=NULL;}
+	else{chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);}
+memcpy((void *)list_get(paginasParaUsar,unaPagina),chainPrograma,tamPagina);
+
 }
 
 for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
 {
-	char * stack=calloc(marco_size,marco_size);
-	memcpy((void *)list_get(paginasParaUsar,unaPagina),stack,marco_size);
+	memset((void *)chainPrograma->codigo,1,tamPagina-sizeof(unsigned int));
+	chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);
+	memcpy((void *)list_get(paginasParaUsar,unaPagina),(void *)chainPrograma,tamPagina);
 }
-
+free(chainPrograma);
 }
 
 
@@ -130,21 +123,28 @@ int calcularPaginas(int tamanioPagina,int tamanio)
  			return cantidadPaginas;
  							
 }
-int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS)
+int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar,  t_marco * asignadorSecuencial, t_marco * marcos,int MARCOS,unsigned int tamanioAdministrativas)
 {	int cantidadPaginas=0;
-	 time_t tiempo;
-   srand((unsigned) time(&tiempo));
-   int unFrame;
-   while(cantidadPaginas<paginasRequeridas)
-   {
-   unFrame=rand() % MARCOS;
-   if(bloquesAdmin[unFrame].estado==LIBRE)		
-   	{
-   		list_add(paginasParaUSar,(void *)marcos[unFrame])
-   		bloquesAdmin[unFrame].estado==OCUPADO;
-   		cantidadPaginas++;
-   	}
-   }
+	
+	while(cantidadPaginas<paginasRequeridas || (void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
+	{	
+		if(((void *)asignadorSecuencial)==(asignadorSecuencial->numeroPagina[3]))
+		{	list_add(paginasParaUsar, (void *)asignadorSecuencial);
+			asignadorSecuencial=asignadorSecuencial+sizeof(int)+sizeof(void *); //no me pregunten solo soy una chica//es porque se recorre secuencialmente y el int me rompe las pelotas
+		}
+		else
+		{	
+			list_add(paginasParaUsar,(void *)asignadorSecuencial);
+			asignadorSecuencial=asignadorSecuencial+sizeof(void *);
+		}
+
+		cantidadPaginas++;
+
+	}
+	if((void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
+		//{usarElOtroAlgoritmo();}
+	{return FAIL;}
+	else{return OK;}
 }	
 
 int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
@@ -165,24 +165,138 @@ int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estruct
 }
 /////////// LEEEEEEEMEEEEE ME OLVIDE DE HACER FREE DE LOS PAQUETES UNA VEZ QUE LOS MANDO A LA WEA/////
 
-void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int tamanioPaquete)
+void dserial_string(char * unString,int tamanio,int unSocket)
+{
+	int  unChar;
+	int * buffer1=malloc(sizeof(int));
+	int b=1;
+	
+	memcpy(buffer1,&b,sizeof(int));
+
+	while(0>recv(unSocket,&tamanio,sizeof(int),0));
+	send(unSocket,buffer1, sizeof(int),0);
+	for (unChar= 0; unChar <tamanio; unChar++)
+	{
+		while(0>=recv(unSocket, &unString[unChar],sizeof(char),0));
+		send(unSocket,buffer1, sizeof(int),0);
+	}
+
+
+
+}
+void serial_string(char * unString,int tamanio,int unSocket)
+{	int  unChar;
+	
+	int * buffer=malloc(sizeof(int));getchar();
+	//printf("%s\n",unString); //esto era para ver si rompia cuando accedia al puntero y SI ROMPE.
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+
+	send(unSocket,&tamanio,sizeof(int),0);
+
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	for (unChar= 0; unChar < tamanio; unChar++)
+	{
+		send(unSocket, &unString[unChar],sizeof(char),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
+}
+void serial_solicitudMemoria(t_solicitudMemoria * solicitud,int  unSocket)
+	{	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+
+	send(unSocket,&(solicitud->tamanioCodigo),sizeof(int),0);
+
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	
+	
+	serial_string(solicitud->codigo,solicitud->tamanioCodigo,unSocket);
+	
+
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(solicitud->cantidadPaginasCodigo),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(solicitud->cantidadPaginasStack),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(solicitud->pid),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(solicitud->respuesta),sizeof(int),0);
+
+	
+
+	
+}
+void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
+{
+	char * code=malloc(sizeof(char)*100);
+	int * buffer=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer,&b,sizeof(int));
+
+	while(0>=recv(unSocket,&(solicitud->tamanioCodigo),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	solicitud->codigo=malloc(solicitud->tamanioCodigo*sizeof(char));
+	dserial_string(solicitud->codigo,solicitud->tamanioCodigo,unSocket);
+	send(unSocket,buffer, sizeof(int),0);
+
+	while(0>=recv(unSocket,&(solicitud->cantidadPaginasCodigo),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>=recv(unSocket,&(solicitud->cantidadPaginasStack),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>=recv(unSocket,&(solicitud->pid),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>=recv(unSocket,&(solicitud->respuesta),sizeof(int),0));
+		
+	
+}
+
+
+void enviarDinamico(int unaInterfaz,int tipoPaquete,int unSocket,void * paquete, int * tamaniosParciales,int cantidadSubestructuras)
 { 
-	t_header * header;
+	t_seleccionador * seleccionador=malloc(3*sizeof(int));
+	int * header;
+	int cantidadParcial;
+	int offset=0;
+	int  * buffer;
+ 	 					seleccionador->unaInterfaz=unaInterfaz;
+ 	 					seleccionador->tipoPaquete=tipoPaquete;
+ 	 					
  	
- 	 					header->seleccionador.unaInterfaz=unaInterfaz;
- 	 					header->seleccionador.tipoPaquete=tipoPaquete;
- 	 					header->tamanio=tamanioPaquete;
-						send(unSocket, header, 3*sizeof(int),0); 
-						send(unSocket,paquete,tamanioPaquete,0);
+ 	 					seleccionador->cantidadSubestructuras=cantidadSubestructuras;
+
+ 	 					header=malloc(cantidadSubestructuras*sizeof(int));
+
+ 	 					for (cantidadParcial= 0; cantidadParcial < cantidadSubestructuras; cantidadParcial++)
+ 	 					{
+ 	 						header[cantidadParcial]=tamaniosParciales[cantidadParcial];
+ 	 						
+ 	 					}
+ 	 					send(unSocket, seleccionador, 3*sizeof(int),0); 
+ 	 					recv(unSocket,buffer, sizeof(int),0);
+						send(unSocket,header,cantidadSubestructuras*sizeof(int),0);
+						
+						for (cantidadParcial = 0; cantidadParcial < cantidadSubestructuras; cantidadParcial++)
+						{	
+							send(unSocket,paquete+offset,tamaniosParciales[cantidadParcial],0);
+							recv(unSocket,buffer, sizeof(int),0);
+							offset+=tamaniosParciales[cantidadParcial];
+						}
 						
 						
 }
-void recibirDinamico(int unSocket, void * paquete, int tamanioEstructura)
-{	 
- 	 		
-								recv(unSocket,paquete,tamanioEstructura,0);
-	 							
+void recibirDinamico(int interfaz, int tipoPaquete,int unSocket, void * paquete, int * header, int cantidadSubestructuras)
+{	int unaSubestructura;	
+	int offset=0;
+	int  * buffer;
+	
+	for (unaSubestructura = 0; unaSubestructura < cantidadSubestructuras; unaSubestructura++)
+	{
+		while(0>(recv(unSocket,paquete+offset,header[unaSubestructura],0)));
+		send(unSocket,buffer, sizeof(int),0);
+		offset+=header[unaSubestructura];						
 
+	}
 }
 int strlenConBarraN(char * unString){
 	int cantidad=0;
