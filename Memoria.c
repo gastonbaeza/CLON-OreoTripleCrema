@@ -195,8 +195,7 @@ printf("%i \n", unData);
 
 void * paquete;
 int recibir;
-t_header * header=malloc(sizeof(t_header));
-t_solicitudMemoria * solicitudMemoria;
+t_seleccionador * seleccionador;
 t_list * paginasParaUsar;
 t_solicitudInfoProg * solicitudInfo;
 t_pcb * unPcb;
@@ -204,15 +203,14 @@ t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
 while(1) {
-	recibir=recv(unData,header, sizeof(t_header),0);
-	paquete=malloc(header->tamanio);
-	if(header->seleccionador.unaInterfaz==MEMORIA){
-	switch (header->seleccionador.tipoPaquete){
+	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
+	
+	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 							recibirDinamico(unData,paquete);
-							t_solicitudMemoria * solicitudMemoria;
-							solicitudMemoria=malloc(header->tamanio);
- 							memcpy(solicitudMemoria,paquete,header->tamanio);
+							
+							t_solicitudMemoria * solicitudMemoria=(t_solicitudMemoria *)paquete; //esto lo vi en stack overflow no me peguen
+ 							
  							paginasRequeridas=solicitudMemoria->cantidadPaginasCodigo;
  							stackRequeridas=solicitudMemoria->cantidadPaginasStack;
  							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
@@ -234,7 +232,7 @@ while(1) {
  							
  							
  							
- 							list_create(paginasParaUsar);
+ 							paginasParaUsar=list_create();
  							/*Deje el algoritmo extra sin codear en buscar paginas*/
  							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS);
  							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
@@ -279,7 +277,7 @@ while(1) {
  		break;
  				}
 }//switch
-}//if
+
 }//while	
 
 
@@ -287,7 +285,9 @@ while(1) {
 
 
 void consolaMemoria()
-{
+{	int pid;
+	
+	
 	int cancelarThread=0;
 	while(cancelarThread==0)
 	{
@@ -296,20 +296,48 @@ void consolaMemoria()
 	switch(*instruccionConsola){
 
 case RETARDO: 
-							
-							
+						float retardo;
+						fflush(stdout);printf("%s", "ingrese retardo (en milisegundos)");
+						scanf("%d",&retardo);	
+						retardo=retardo*0.001;
 		break;
-	case DUMP:
-							
+	case DUMP:		fflush(stdout);printf("%s", "seleccione objeto de dump"); //preguntar si en disco quiere decir en filesystem o en disco posta
+					switch()
+					{
+						case CACHE:generarDumpCache(memoriaCache,ENTRADAS_CACHE);
+						break;
+						case MEMORIA:generarDumpMemoria(asignador,MARCOS);
+						break;
+						case TABLA:generarDumpAdministrativas(bloquesAdmin, MARCOS);	
+						break;
+						case PID:		
+										scanf("%d",&pid);
+										generarDumpProceso(pid)
+						break;
+						default: pagaraprata();
+					}
 							
 							
 	
 		break;
 	case FLUSH:
-							
+					memset(memoria,0,ENTRADAS_CACHE);		
 	
 		break;
-	case SIZE:
+	case SIZE:			
+			switch()
+			{
+				case MEMORIA:	int cantidadBloquesOcupados, cantidadBloquesLibres;
+								fflush(stdout);printf("cantidadDePaginas %i", MARCOS);
+								cantidadBloquesLibre=cantidadBloquesLibres();
+								fflush(stdout);printf("cantidadBloquesLibres%i", cantidadBloquesLibres);
+								cantidadBloquesOcupados=cantidadBloquesOcupados();
+								fflush(stdout);printf("cantidadBloquesOcupados%i", cantidadBloquesOcupados);
+				break;
+				case PID:
+				break;
+				default: pagaraprata();
+			}	
 							
 		break;
 
@@ -349,62 +377,4 @@ while(1){
 	}
 }
 }
-
-/*
-
-fflush(stdout);
-listen(listenningSocket, BACKLOG);
-struct sockaddr_in addr;
-FD_ZERO(&fdParaConectar);
-FD_SET(listenningSocket, &fdParaConectar);
-
-fdMayor = listenningSocket;
-for(;;) {
-	fdParaLeer = fdParaConectar;
-	resultadoSelect=select(fdMayor+1, &fdParaLeer, NULL, NULL, NULL);
-	if ( resultadoSelect== -1){
-		perror("Error en el select.\n");
-		exit(1);
-	}
-	for(unSocket = 0; unSocket <= fdMayor; unSocket++) { // Busca en las conexiones alguna que mande un request
-	    if (FD_ISSET(unSocket, &fdParaLeer)) {  //si hay alguna con request...
-	    	if (unSocket == listenningSocket) { // se manejan las nuevas conexiones a partir de los SETS
-	    		addrlen = sizeof(addr);
-	    		if ((socketNuevaConexion = accept(listenningSocket, (struct sockaddr *)&addr,&addrlen)) == -1) perror("accept");
-	    		else {
-	    			dataParaComunicarse dataParaThread;
-	    			dataParaThread.socket=socketNuevaConexion;
-					FD_SET(dataParaThread.socket, fdParaConectar);
-					printf("Hay una nueva conexion de %s en el socket %i.\n", inet_ntoa(address.sin_addr), dataParaThread.socket);
-					send(dataParaThread.socket, bienvenida, 100*sizeof(char), 0);
-					recv(dataParaThread.socket, unaInterfaz, sizeof(int),0);
-					dataParaThread.unaInterfaz = unaInterfaz;
-	    			pthread_t hilo;
-	    			pthread_create(&hilo,NULL,(void *)comunicarse,&dataParaThread); //pasar por parametro
-	    			if (socketNuevaConexion > fdMayor) fdMayor = socketNuevaConexion;
-	    			}
-	    	}
-	    	else { // tramito los request del cliente
-	    		if ((nbytes = recv(unSocket, package, 100*sizeof(char), 0)) <= 0) {
-	    			if (nbytes == 0) printf("El cliente %i se ha desconectado.\n", unSocket);
-	    			else perror("Error en el recv.\n"); 
-	    			fflush(stdout); 
-	    			printf("Hubo algun tipo de error.\n");
-	    			close(unSocket);
-	    			FD_CLR(unSocket, &fdParaConectar); // lo saco de los pendientes de conexion
-				}
-	    		else { // tenemos datos de algún cliente
-	    			printf("%s\n",package );
-	    			for(otroSocket = 0; otroSocket <= fdMayor; otroSocket++) { // ESTO HAY QUE CAMBIARLO PARA LOS PROTOCOLOS; SINO ES UN ECHO MULTICLIENTE
-	    				if (FD_ISSET(otroSocket, &fdParaConectar)) {
-							if (otroSocket != listenningSocket && otroSocket != unSocket) {
-	    						if (send(otroSocket, package, 100*sizeof(char), 0) == -1) perror("Error en el send.");
-							}
-	    				}
-	    			}
-	    		}
-	    	}
-	    }
-	}
-}*/
 
