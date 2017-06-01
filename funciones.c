@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <commons/config.h>
+#include <time.h>
 
 #define OK 1
 #define FAIL 0
@@ -46,12 +47,28 @@
 #define FALSE 0
 #define OK 1
 #define FAIL 0
+#define LIBRE 1
+#define OCUAPADO 0
 #define BLOQUE 20
+
+
+char * horaYFechaActual () {
+    time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
+    struct tm *fechaYHora = localtime(&tiempo);
+
+    char output[128];
+
+    strftime(output, 128, "%dia/%mes/%año %Hora: %Minutos:%Segundos", fechaYHora); 
+     //string-format-time = formato de tiempo a asignarse a la cadena
+
+    
+    return output;
+}
 
 void handshakeServer(int unSocket,int unServer, void * unBuffer)
 {	
 	
-	recv(unSocket,unBuffer, sizeof(int),0);
+	while(0>recv(unSocket,unBuffer,sizeof(int),0));
 	
 	void * otroBuffer=malloc(sizeof(int));
 	memcpy(otroBuffer,&unServer,sizeof(int));
@@ -66,39 +83,92 @@ void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
 	void * otroBuffer=malloc(sizeof(int));
 	memcpy(otroBuffer,&unCliente,sizeof(int));
 	send(unSocket,otroBuffer, sizeof(int),0);
-	recv(unSocket,unBuffer,sizeof(int),0);
+	while(0>recv(unSocket,unBuffer,sizeof(int),0));
 
 
 }
+void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
+{
+	t_list * procesosActivos;
+	procesosActivos=list_create();
+	buscarProcesosActivos(procesosActivos,bloquesAdmin,MARCOS);
+	int unaAdmin;
+	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
+	{fflush(stdout);printf("%s","tabla de paginas");
+		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].frame);
+		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].pid);
+		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].hashPagina);
+		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].estado);
 
-void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int tamPagina)
+	}
+	int cantidadProcesos=size_length(procesosActivos)
+	int unProceso;int proceso;
+	for (int unProceso = 0; unProceso < cantidadProcesos; unProceso++)
+	{	proceso=list_get(procesosActivos,unProceso);
+		fflush(stdout);printf("procesos activos: %i",proceso);
+	}
+}
+void buscarProcesosActivos(t_list * procesosActivos, t_estructuraADM * bloquesAdmin, int MARCOS)
+{
+	int unaAdmin;
+	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
+	{
+		if(bloquesAdmin[unaAdmin].pid!=-1)
+			{ list_add(procesosActivos,(void*)bloquesAdmin[unaAdmin].pid)}
+
+	}
+
+
+}
+int cantidadBLoquesLibres(int MARCOS, t_estructuraADM * bloquesAdmin)
+{	int cantidadBloques=0;
+	int unaAdmin;
+	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
+	{
+		if(bloquesAdmin[unaAdmin].estado==LIBRE){cantidadBloques++;}	
+	}
+	return cantidadBloques;
+}
+int cantidadBLoquesOcupados(int MARCOS, t_estructuraADM * bloquesAdmin)
+{	int cantidadBloques=0;
+	return MARCOS -cantidadBloquesLibres;
+}
+
+
+int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS)
+{
+int encontradas=0;
+int unBloque=0;
+while(encontradas<unaCantidad)
+	{
+		if(bloquesAdmin[unBloque].estado==LIBRE)
+		{
+			encontradas++;
+		}
+		unBloque++;
+		if(unBloque == MARCOS)
+			{return FAIL;}
+	}	
+return OK;
+	
+}
+void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int marco_size)
 {
 int unaPagina;
-int tamanioCodigoChain;
-t_chain * chainPrograma=malloc(tamPagina);
+int desplazamiento=0
 int paginasRequeridas=list_size(paginasParaUsar)-stackRequeridas;
-tamanioCodigoChain=tamPagina-sizeof(unsigned int);
 for ( unaPagina = 0; unaPagina < paginasRequeridas; unaPagina++)
 {
-	if(unaPagina==0)
-	{ 	memcpy(chainPrograma->codigo,codigo,tamanioCodigoChain);} //si es la primera apunto al comienzo de lo que copie
-
-	else
-	{memcpy((void *)chainPrograma->codigo,&codigo+(tamanioCodigoChain*unaPagina),tamanioCodigoChain);} //si no es la primera tengo que desplazarme en funcion del tamaño de la pagina
-	if(unaPagina+1==paginasRequeridas)
-		{chainPrograma->chain=NULL;}
-	else{chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);}
-memcpy((void *)list_get(paginasParaUsar,unaPagina),chainPrograma,tamPagina);
-
+memcpy((void *)list_get(paginasParaUsar,unaPagina),codigo+desplazamiento,marco_size);
+desplazamiento+=marco_size;
 }
 
 for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
 {
-	memset((void *)chainPrograma->codigo,1,tamPagina-sizeof(unsigned int));
-	chainPrograma->chain=list_get(paginasParaUsar,unaPagina+1);
-	memcpy((void *)list_get(paginasParaUsar,unaPagina),(void *)chainPrograma,tamPagina);
+	char * stack=calloc(marco_size,marco_size);
+	memcpy((void *)list_get(paginasParaUsar,unaPagina),stack,marco_size);
 }
-free(chainPrograma);
+
 }
 
 
@@ -123,28 +193,21 @@ int calcularPaginas(int tamanioPagina,int tamanio)
  			return cantidadPaginas;
  							
 }
-int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar,  t_marco * asignadorSecuencial, t_marco * marcos,int MARCOS,unsigned int tamanioAdministrativas)
+int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS)
 {	int cantidadPaginas=0;
-	
-	while(cantidadPaginas<paginasRequeridas || (void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
-	{	
-		if(((void *)asignadorSecuencial)==(asignadorSecuencial->numeroPagina[3]))
-		{	list_add(paginasParaUsar, (void *)asignadorSecuencial);
-			asignadorSecuencial=asignadorSecuencial+sizeof(int)+sizeof(void *); //no me pregunten solo soy una chica//es porque se recorre secuencialmente y el int me rompe las pelotas
-		}
-		else
-		{	
-			list_add(paginasParaUsar,(void *)asignadorSecuencial);
-			asignadorSecuencial=asignadorSecuencial+sizeof(void *);
-		}
-
-		cantidadPaginas++;
-
-	}
-	if((void *)asignadorSecuencial!= marcos[MARCOS-tamanioAdministrativas-1].numeroPagina[3])
-		//{usarElOtroAlgoritmo();}
-	{return FAIL;}
-	else{return OK;}
+	 time_t tiempo;
+   srand((unsigned) time(&tiempo));
+   int unFrame;
+   while(cantidadPaginas<paginasRequeridas)
+   {
+   unFrame=rand() % MARCOS;
+   if(bloquesAdmin[unFrame].estado==LIBRE)		
+   	{
+   		list_add(paginasParaUSar,(void *)marcos[unFrame])
+   		bloquesAdmin[unFrame].estado==OCUPADO;
+   		cantidadPaginas++;
+   	}
+   }
 }	
 
 int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
@@ -164,9 +227,8 @@ int buscarAdministrativa(t_solicitudInfoProg * infoProg,t_pcb * unPcb, t_estruct
 	return FAIL;
 }
 /////////// LEEEEEEEMEEEEE ME OLVIDE DE HACER FREE DE LOS PAQUETES UNA VEZ QUE LOS MANDO A LA WEA/////
-
-void dserial_string(char * unString,int tamanio,int unSocket)
-{
+void dserial_string(char * unString,int unSocket)
+{	int tamanio;
 	int  unChar;
 	int * buffer1=malloc(sizeof(int));
 	int b=1;
@@ -181,7 +243,7 @@ void dserial_string(char * unString,int tamanio,int unSocket)
 		send(unSocket,buffer1, sizeof(int),0);
 	}
 
-
+free(buffer1);
 
 }
 void serial_string(char * unString,int tamanio,int unSocket)
@@ -200,6 +262,107 @@ void serial_string(char * unString,int tamanio,int unSocket)
 		send(unSocket, &unString[unChar],sizeof(char),0);
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
 	}
+	free(buffer);
+}
+void dserial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
+{
+	int  unChar;
+	int * buffer1=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer1,&b,sizeof(int));
+
+	while(0>recv(unSocket, tablaProcesos->descriptor,sizeof(int),0));
+	send(unSocket,buffer1, sizeof(int),0);
+	while(0>recv(unSocket, tablaProcesos->flag,sizeof(int),0));
+	send(unSocket,buffer1, sizeof(int),0);
+	while(0>recv(unSocket, tablaProcesos->posicionTablaGlobal,sizeof(int),0));free(buffer1);
+}
+void dserial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
+{	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	while(0>recv(unSocket,tablaGlobalArchivos->vecesAbierto,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	dserial_string(tablaGlobalArchivos->path,tablaGlobalArchivos->tamanioPath,unSocket); free(buffer);
+}
+
+void serial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
+{	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	send(unSocket,tablaGlobalArchivos->vecesAbierto,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	serial_string(tablaGlobalArchivos->path,tablaGlobalArchivos->tamanioPath,unSocket); free(buffer);
+}
+void serial_pcb(t_pcb * pcb, int unSocket)
+{	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	send(unSocket,pcb->pid,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->programCounter,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->estado,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->referenciaATabla,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->paginasCodigo,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->posicionStack,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->indiceCodigo,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->indiceEtiquetas,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,pcb->exitCode,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));free(buffer);
+}
+
+void dserial_pcb(t_pcb* pcb, int unSocket)
+{	
+	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	while(0>recv(unSocket,pcb->pid,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->programCounter,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->estado,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->referenciaATabla,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->paginasCodigo,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->posicionStack,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->indiceCodigo,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->indiceEtiquetas,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,pcb->exitCode,sizeof(int),0));
+        send(unSocket,buffer, sizeof(int),0);free(buffer);
+}
+void dserial_programaSalida(t_programaSalida * programaSalida, int unSocket)
+{	
+	dserial_string(programaSalida->elPrograma,unSocket);}
+
+void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
+{
+	
+	serial_string(programaSalida->elPrograma,programaSalida->tamanio,unSocket); 
+}
+void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
+{
+	int  unChar;
+	int * buffer1=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer1,&b,sizeof(int));
+	send(unSocket, tablaProcesos->descriptor,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket, tablaProcesos->flag,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket, tablaProcesos->posicionTablaGlobal,sizeof(int),0);
+free(buffer1);
 }
 void serial_solicitudMemoria(t_solicitudMemoria * solicitud,int  unSocket)
 	{	int * buffer=malloc(sizeof(int));
@@ -222,11 +385,12 @@ void serial_solicitudMemoria(t_solicitudMemoria * solicitud,int  unSocket)
 	send(unSocket,&(solicitud->pid),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(solicitud->respuesta),sizeof(int),0);
-
+free(buffer);
 	
 
 	
 }
+
 void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 {
 	char * code=malloc(sizeof(char)*100);
@@ -248,16 +412,27 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>=recv(unSocket,&(solicitud->respuesta),sizeof(int),0));
 		
-	
+	free(buffer);
 }
-
 
 void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 { 
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
-			serial_solicitudMemoria(paquete,unSocket);
+			serial_solicitudMemoria((t_solicitudMemoria *)paquete,unSocket);
 		break;
+
+		case PROGRAMASALIDA:	//este tambien sirve cuando queremos mandar un string con su tamaño
+					serial_programaSalida((t_programaSalida * )paquete,unSocket);			
+		break;
+
+		case PCB:	
+					serial_pcb((t_pcb *)paquete,unSocket);
+		break;
+
+		default : fflush(stdout); prinf("%s\n","el paquete que quiere enviar es de un formato desconocido"); pagaraprata();
+
+		
 	}
 						
 }
@@ -267,6 +442,17 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case SOLICITUDMEMORIA:
 			dserial_solicitudMemoria(paquete,unSocket);
 		break;
+		case PROGRAMASALIDA:	//este tambien sirve cuando queremos mandar un string con su tamaño
+					dserial_programaSalida((t_programaSalida * )paquete,unSocket);			
+		break;
+
+		case PCB:	
+					dserial_pcb((t_pcb *)paquete,unSocket);
+		break;
+
+		default : fflush(stdout); prinf("%s\n","el paquete que quiere enviar es de un formato desconocido"); pagaraprata();
+
+		
 	}
 }
 int strlenConBarraN(char * unString){
@@ -331,114 +517,54 @@ t_programaSalida * obtenerPrograma( char * unPath){
 			}
 							      }
 
+void pagaraprata()
+{
 
-/*
-case KERNEL:
-			switch (tipoPaquete){
-			case MENSAJE:// recibe mensajes para mandar por eco a otro cliente
-								return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case PATH: // fijarse si hay memoria para ejectutar el proceso, espera un tam pagina, si hay espacio, lo manda a cpu, sino manda una excepcion a consola
-	 					
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case TAMPAGINA: // dice el tam de paagina al comienzo de la memoria
-	 							return recibirDinamico(unSocket,paquete);
+fflush(stdout);printf("%s\n","+''#########++''++'+####+'+++++'####++''++''####+'++'+#########'+++++'#####+++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++:`````` `.#++++++````#+++++++ ````+''+++++``` #+'+# `       ++++++'+``` #++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++:`````` ```+'+++,````++++++'` `````+'++++,```.#+++#````  ``  '++++',````##+++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@+````##++#`````:@+++#``` +````@+++# ````:@++# ``` . ` `.#+''#`````:@+++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@````+@+'#``````@#++'.```@:```@#++#``````@#+@ ```,@``` `@#'+@```` `@#++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@``` '@+''``````@#'+`````@:`  #@++;`.``` @#+#````.@.``` @@++'.`````@#++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@````'@#+. :````#@+#`````#@+@@@@++.`:.```@@'#`````@,`` `@@++.`:```.@@++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@#````@@##``+````'@##`````@@+@@@@+# `+````;#'#```` @````'@@+#``+``` ;@++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,`````` `` @@#@.:@````.@+@`````;``` :++#`:@ ```.@+#```` `  `+@@@'#`:#``` .@++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,`````````;@@+'.## ````@#@`````;````:++'`+@```` @#@``````` ` +@#++.+@ ````@#+++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````````'#@@#.`:'  `` @#@`````+.```:@#.`;;```` @#@````````` ,#++.`;;`````@#+++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@@@@@@## ``````` '@#`````@;```'@@```` ````'@@ ````@```` @##`` `` ```'@'++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@#####+#```` ````.@+,````@;```+@#` ```.```,@@ ``` @,``` @##`` ``````,@+++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@++++++'`#@@# ````###`.` #:`  @@;`+@#@```` @@`````@,``` @@'`+@@@ ````@#'+");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@++++++.`@@@@` `` @@#  ``.` `:@@.`@@@@```  @@`````@,``` @@.`@@@@```` @#'+");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@+++'+#` @@#+,``` #@+#````` `@@@``#@#+,````#@`````@,``` @@  @@#+,````#@++");                                                                                            
+fflush(stdout);printf("%s\n","++':````@@+'+'+#`.@@+';.``.;@+++. ` :@@@@`,@@+''```.;#`` `.@;`   +# .@@++;```.;#++");                                                                                            
+fflush(stdout);printf("%s\n","++++'#@@@@++++++'#@@++''@@##@+++#@@@#@@#+'#@@++++@@@@@##@@@@#+@@@@@##@@++'+@@@@@#+");                                                                                            
+fflush(stdout);printf("%s\n","+++'+#####++++''+###+'++######''++#@@##+'++##++++#####++#####+##@###+##++++#####+'");                                                                                            
+fflush(stdout);printf("%s\n","++++++'+++'+++++++++++++'+++++++'+++++++++'+'+''++++++''+++++++++''+++'+++''++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++++++++++++++''+++'+++++++++'+'++'+++++'++++++++++++++++++'++'+++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++'++++'+++++++++++++'++++++++++++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++++++++''++++++++++++++++++++++++++++''''+++++++++++++'+++'+++++'+++++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+++++++++++'++#+++++++++'++++++++#+++++++++++++++++++++++++++++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++````` ``.#'+;      ``,#'+++'+:```,+'++,`      ` .++'+#..` +'++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` ``   #+;`````` ` .+++++#```` #+'+,``````````+++'#````:+++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+ ```.;.```.#;``    ` ``+++++#`````@#'+.````````` @#++'```` @#+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+`````@;``  @;````++ ` `;@++++`````'@++';'`````';;@@++``````@#+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@'.`` @'`` `'@````:@#++,`````:@++++#`````@@@@@+#``````##+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@;````@;````;@````,@#+#    ```@#'+++`````@@#+#+#`;.```,@+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@;``` @;````'@ `` +@#'#.:```` @#+'++`````@@+'+':`@`````#+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+ ````:`````@'````,. ``+@@#+;`#:````#@++++.````@@++++``@ ````@#++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++ ````.````;@;``` `````;@@++.`@#````;@++++`````@@+++# `@,````##++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++``` ` `` ;@@;````````` ##+#``@@`````#++++`````@@++++.;@;````+@++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@@@@@@@;````,, ` `,#+#````.``` @#+++.````@@+++;.```````.@+'++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@@@@##;````;@ ```,@#'`````````##+++.````@@+'+````` ``` @#'++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@+++++;````'@ ```,@@.`;'':````'@+++.````@@++#``;''`````@#'++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@ `` :@@  @@@#`````@+++.````@@++#.;@@@:````+@+++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@ ```.@@`,@@#@```  @#++.````@@++;`+@@#+````,@+++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@```  @'`'@#'+`````##++`````@@++``@@#'@``  `@#++++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++++++++++#@@@@@+++++##@@@@@@##@@@@+#@#+++#@@@@@++++@@@@@+++#@@#'++#@@@@#++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++#@@@#++++'++#@@@@###@@@#+###++++###@#++'+#@@@#++++##+++'##@@@#++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'++++++++++++++++++++++++++++++'++++++++++++++++++++++++++++++++++'+++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 
-	 					break;
-	 		case PIDFinalizacion:
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case PIDINFO:		return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case PAGINAS: // creo que es igual que tampag, porque cpu pide a memoria, memoria pide al kernel y le dice, che quiero usar esto de heap para este proceso, puedo? ma vale perro/ quien te juna memoria
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case FLAGS:		
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case NOTIFICACION: //notificacion de fs a pedido de kernel
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-
-	 		case EXCEPCION: // fs y de memoria
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case SYSCALL: // devuelve el codigo de la syscall para saber como atenderla
-	 							return recibirDinamico(unSocket,paquete);
-
-	 					break;
-	 		case FD:  //ESTO TIENE QUE ENVIAR A CONSOLA ERO NO ACA, EN EL KERNEL ups mayus*
-	 							return recibirDinamico(unSocket,paquete);
-	 					break;
-	 		case RESPUESTAOKMEMORIA:
-	 							return recibirDinamico(unSocket,paquete);
-	 		break;
-	 		case LIBERARMEMORIA:
-	 							return recibirDinamico(unSocket,paquete);
-
-	 		break;	}
- 							
- 
-case MEMORIA: //pagprogstack va en memoria o en kernel?
-		switch (tipoPaquete){
-		case SOLICITUDMEMORIA: // [Identificador del Programa] [Páginas requeridas]// paginas necesarias para guardar el programa y el stack
-							return recibirDinamico(unSocket,paquete);
- 					break;
- 		case CODIGO: // codigo del programa
- 							return recibirDinamico(unSocket,paquete);
- 					break;
- 		case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
-							return recibirDinamico(unSocket,paquete);					
- 					break;
- 		case ESCRIBIRMEMORIA:
- 							return recibirDinamico(unSocket,paquete);
- 					break;
- 		case LIBERARMEMORIA:
- 							return recibirDinamico(unSocket,paquete);
- 									
- 					break;
-
-			 }
-			 
-case CONSOLA:
-			switch (tipoPaquete){
- 		case MENSAJECONSOLA:// recibe mensajes para imprimirlos por pantalla
- 							return recibirDinamico(unSocket,paquete);
- 					break;
- 		
-					}
-
-
-	
-case CPU:
-		switch (tipoPaquete){
-		
- 		case PCB: // recibe el PCB de un programa para ejecutarlo
- 							return recibirDinamico(unSocket,paquete);
- 					break;	
- 		case INFOPROG:
- 							return recibirDinamico(unSocket,paquete);
- 		break;			
-				}
-		
-case FS:	
- 		switch (tipoPaquete){
- 			case INTERACTUARARCHIVO: //validar leer crear borrar:// peticion del kernel para leer el archivo
- 							return recibirDinamico(unSocket,paquete);
- 					break;
- 			case OBTENERDATOS: //: [Path, Offset, Size, Buffer]
- 							return recibirDinamico(unSocket,paquete);
- 			break;
- 			case GUARDARDATOS: // [Path, Offset, Size, Buffer]
- 							return recibirDinamico(unSocket,paquete);
- 		 		}
- 	
- 
- 	
- 
- 					}
 
 
 }
-*/
