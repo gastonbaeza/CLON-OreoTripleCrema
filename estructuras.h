@@ -19,6 +19,7 @@ typedef struct {
 typedef struct {
 				char * path;
 				int vecesAbierto;
+				int tamanioPath;
 				}__attribute__((packed))
 				  t_tablaGlobalArchivos;
 
@@ -62,10 +63,11 @@ typedef struct {
 				 t_pcb;
 
 typedef struct { 
-				void * primerPagina;
-				t_pcb proceso;
-				}__attribute__((packed))
-				 t_estructuraADM;
+				int frame;
+				int pid;
+				int hashPagina;
+				int estado;
+				}t_estructuraADM;
 
 typedef struct { 
 				int unaInterfaz;
