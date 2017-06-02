@@ -42,7 +42,7 @@
 	#define MENSAJES 0
 	#define PID 1
 	#define PCB 11
-	#define PATH 10
+	#define PATH 3
 
 #define CPU 3
 #define FS 4
@@ -237,15 +237,16 @@ void dserial_string(char * unString,int unSocket)
 	int  unChar;
 	int * buffer1=malloc(sizeof(int));
 	int b=1;
-	
 	memcpy(buffer1,&b,sizeof(int));
 
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
+	unString=realloc(unString,tamanio);
 	send(unSocket,buffer1, sizeof(int),0);
 	for (unChar= 0; unChar <tamanio; unChar++)
 	{
 		while(0>=recv(unSocket, &unString[unChar],sizeof(char),0));
 		send(unSocket,buffer1, sizeof(int),0);
+
 	}
 
 free(buffer1);
@@ -253,7 +254,6 @@ free(buffer1);
 }
 void serial_string(char * unString,int tamanio,int unSocket)
 {	int  unChar;
-	
 	int * buffer=malloc(sizeof(int));
 	//printf("%s\n",unString); //esto era para ver si rompia cuando accedia al puntero y SI ROMPE.
 	int a=1;
