@@ -41,7 +41,8 @@
 	//------------------------------	
 	#define MENSAJES 0
 	#define PID 1
-	#define PCB 10
+	#define PCB 11
+	#define PATH 10
 
 #define CPU 3
 #define FS 4
@@ -67,7 +68,9 @@ void horaYFechaActual (char horaActual[19]) {
 void handshakeServer(int unSocket,int unServer, void * unBuffer)
 {	
 	
-	while(0>=recv(unSocket,unBuffer,sizeof(int),0));
+	// while(0>=recv(unSocket,unBuffer,sizeof(int),0));
+
+	recv(unSocket,unBuffer,sizeof(int),0);
 	
 	void * otroBuffer=malloc(sizeof(int));
 	memcpy(otroBuffer,&unServer,sizeof(int));
@@ -82,7 +85,9 @@ void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
 	void * otroBuffer=malloc(sizeof(int));
 	memcpy(otroBuffer,&unCliente,sizeof(int));
 	send(unSocket,otroBuffer, sizeof(int),0);
-	while(0>=recv(unSocket,unBuffer,sizeof(int),0));
+	// while(0>=recv(unSocket,unBuffer,sizeof(int),0));
+
+	recv(unSocket,unBuffer,sizeof(int),0);
 
 
 }
@@ -351,6 +356,15 @@ void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 	
 	serial_string(programaSalida->elPrograma,programaSalida->tamanio,unSocket); 
 }
+void dserial_path(t_path * path, int unSocket)
+{	
+	dserial_string(path->path,unSocket);}
+
+void serial_path(t_path * path, int unSocket)
+{
+	
+	serial_string(path->path,path->tamanio,unSocket); 
+}
 void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
 {
 	int  unChar;
@@ -425,6 +439,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_programaSalida((t_programaSalida * )paquete,unSocket);			
 		break;
 
+		case PATH:	
+			serial_path((t_path * )paquete,unSocket);			
+		break;
+
 		case PCB:	
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
@@ -445,6 +463,10 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case PROGRAMASALIDA:	//este tambien sirve cuando queremos mandar un string con su tamaño
 					dserial_programaSalida((t_programaSalida * )paquete,unSocket);			
+		break;
+
+		case PATH:	
+					dserial_path((t_path * )paquete,unSocket);			
 		break;
 
 		case PCB:	

@@ -26,7 +26,7 @@ typedef struct {
 typedef struct {
 				int descriptor;
 				int flag;
-				int posicionTablaglobal;
+				int posicionTablaGlobal;
 				}__attribute__((packed))
 				  t_tablaArchivosDeProcesos;
 
@@ -40,7 +40,13 @@ typedef struct {
 				char * elPrograma; 
 				int tamanio; // bytes del programa
 				}__attribute__((packed))
-				  t_programaSalida;
+				t_programaSalida;
+
+typedef struct { 
+				int tamanio; // bytes del programa
+				char * path; 
+				}__attribute__((packed))
+				t_path;
 
 typedef struct { 
 				int socket;
@@ -72,7 +78,6 @@ typedef struct {
 typedef struct { 
 				int unaInterfaz;
 				int tipoPaquete;
-				int cantidadSubestructuras;
 
 				}__attribute__((packed))
 				  t_seleccionador;
