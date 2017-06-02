@@ -30,7 +30,7 @@
 	#define PATH 3
 	#define PIDINFO 4
 	#define RESPUESTAOKMEMORIA 1
-#define MEMORIA 1
+
 	#define SOLICITUDMEMORIA 0
 	#define SOLICITUDINFOPROG 1
 	#define ESCRIBIRMEMORIA 2
@@ -58,6 +58,14 @@
 #define OK 1
 #define FAIL 0
 #define BLOQUE 20
+
+#define CACHE 0
+#define MEMORIA 1 
+#define TABLA 2
+#define PID 3
+#define PCB 3
+
+
 t_estructuraADM * bloquesAdmin;
 int tamPagina;
 t_list * paginasLiberadas;
@@ -75,7 +83,9 @@ int ENTRADAS_CACHE;
 int CACHE_X_PROC;
 char *REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
+void * memoria;
 t_marco * marcos;
+t_marco * memoriaCache;
 int socketKernel;
 
 /* LEER CONFIGURACION
@@ -153,25 +163,35 @@ unData->socket = listenningSocket;
 
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
 
-bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM));
+bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM)+MARCOS*sizeof(t_marco));
  tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
+
 int unaAdmin;
 for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de admin con pid-1 libre y num de pag y el hash
 {
 bloquesAdmin[unaAdmin].estado=LIBRE;
 bloquesAdmin[unaAdmin].pid=-1;
 bloquesAdmin[unaAdmin].frame=unaAdmin;
-bloquesAdmin[unaAdmin].hashPagina=miFuncionDeHash(bloquesAdmin[unaAdmin].pid,bloquesAdmin[unaAdmin].frame);
+//bloquesAdmin[unaAdmin].hashPagina=miFuncionDeHash(bloquesAdmin[unaAdmin].pid,bloquesAdmin[unaAdmin].frame);
 	
 }
-bloquesAdmin=realloc(bloquesAdmin,((tamanioAdministrativas*t_estructuraADM)+(MARCOS*MARCO_SIZE)));
-marcos=bloquesAdmin+tamanioAdministrativas;
-int unMarco=1;
-void * memoria=calloc(MARCOS*MARCO_SIZE,MARCOS*MARCO_SIZE); // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
+ 
+marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
+int unMarco=0;
+
+void * memoria=calloc(MARCOS*MARCO_SIZE,MARCOS*MARCO_SIZE);
+void * cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
+memoriaCache=(t_marco*)cache;
+ // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
-		marcos[unMarco].numeroPagina[unaPagina]=memoria+(unMarco*MARCO_SIZE);
-		unMarco++;
+		marcos[unMarco].numeroPagina=memoria+(unMarco*MARCO_SIZE);
+		
+	}
+
+for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
+	{
+		memoriaCache[unMarco].numeroPagina=cache+(unMarco*MARCO_SIZE);
 	}
 	
 	asignador=&marcos[0];
@@ -180,10 +200,10 @@ for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada regio
 
 
 pthread_create(&hiloAceptador,NULL,(void *)aceptar,unData);
-pthread_t hiloConsolaMemoria;
-pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
+//pthread_t hiloConsolaMemoria;
+//pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
 pthread_join(hiloAceptador,NULL);
-pthread_join(hiloConsolaMemoria,NULL);
+//pthread_join(hiloConsolaMemoria,NULL);
 }
 
 
@@ -197,17 +217,18 @@ void * paquete;
 int recibir;
 t_seleccionador * seleccionador;
 t_list * paginasParaUsar;
-t_solicitudInfoProg * solicitudInfo;
+
 t_pcb * unPcb;
 t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
+
 while(1) {
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
 	
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
-							recibirDinamico(unData,paquete);
+							recibirDinamico(SOLICITUDMEMORIA,unData,paquete);
 							
 							t_solicitudMemoria * solicitudMemoria=(t_solicitudMemoria *)paquete; //esto lo vi en stack overflow no me peguen
  							
@@ -216,29 +237,24 @@ while(1) {
  							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
  							{ 
  							solicitudMemoria->respuesta=FAIL;
- 							enviarDinamico(KERNEL,RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria, header->tamanio);
+ 							enviarDinamico(RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria);
  							}
 
  							else
  							{ //mandarOK memoria
  							solicitudMemoria->respuesta=OK;
  							// codigo del programa
- 							enviarDinamico(KERNEL,RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria, header->tamanio);
- 							char * codigo=malloc(solicitudMemoria->codigo.tamanio);
- 							memcpy(codigo,solicitudMemoria->codigo.elPrograma,solicitudMemoria->codigo.tamanio);
- 							
- 							//se cuantas paginas usa, tengo que partir el codigo en funcion de la cantidad de paginas, hacer un for con la cantidad de paginas, y buscar pagina, eso y agregar el chain.
- 								
- 							
- 							
- 							
+ 							enviarDinamico(RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria);
+ 							char * codigo=malloc(solicitudMemoria->tamanioCodigo);
+ 							memcpy(codigo,solicitudMemoria->codigo,solicitudMemoria->tamanioCodigo);
  							paginasParaUsar=list_create();
  							/*Deje el algoritmo extra sin codear en buscar paginas*/
- 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS);
+ 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos);
  							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
  							free(codigo);
  							free(solicitudMemoria);
  							free(paginasParaUsar);
+ 							free(paquete);
  							//enviarDinamico notificacion de que se asigno genialmente
 
  							 }	
@@ -251,28 +267,27 @@ while(1) {
  		 
  					
  		case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
-							 recibirDinamico(unData,paquete);		
+							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
 							 
-							 unPcb=malloc(sizeof(t_pcb));
-							 solicitudInfo= malloc(sizeof(header->tamanio));
-							 memcpy(solicitudInfo,paquete,header->tamanio);
-							 buscarAdministrativa(solicitudInfo, unPcb,bloquesAdmin,MARCOS);	
-							 enviarDinamico(KERNEL,PIDINFO,socketKernel,(void *)unPcb,sizeof(t_pcb));
+							 unPcb=(t_pcb *)paquete;
+							 
+							 buscarAdministrativa(unPcb->pid, unPcb,bloquesAdmin,MARCOS);	
+							 enviarDinamico(PIDINFO,socketKernel,(void *)unPcb);
 							 free(paquete);
-							 free(solicitudInfo);		
+							 free(unPcb);
+							 	
  					break;
  		case ESCRIBIRMEMORIA:
- 							recibirDinamico(unData,paquete);
+ 							
  					break;
  		case LIBERARMEMORIA:
- 							 recibirDinamico(unData,paquete);
- 									
+ 							 
  					break;
  		case ACTUALIZARPCB:
- 								recibirDinamico(unData,paquete);
- 								
- 								actualizacion=malloc(header->tamanio);
- 								memcpy(actualizacion,paquete,header->tamanio);
+ 								recibirDinamico(PCB,unData,paquete);
+ 								unPcb=(t_pcb *)paquete;
+ 								free(paquete);
+								free(unPcb);
 
  		break;
  				}
@@ -284,27 +299,28 @@ while(1) {
 
 
 
-void consolaMemoria()
+/*void consolaMemoria()
 {	int pid;
-	
+	int retardo;
 	
 	int cancelarThread=0;
 	while(cancelarThread==0)
 	{
 	int * instruccionConsola;
+	int bloquesOcupados, bloquesLibre;
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 
 case RETARDO: 
-						float retardo;
+						
 						fflush(stdout);printf("%s", "ingrese retardo (en milisegundos)");
 						scanf("%d",&retardo);	
-						retardo=retardo*0.001;
+						retardo=(int)(retardo*0.001);
 		break;
-	case DUMP:		fflush(stdout);printf("%s", "seleccione objeto de dump"); //preguntar si en disco quiere decir en filesystem o en disco posta
-					switch()
+	case DUMP:		fflush(stdout);printf("%s", "seleccione objeto de dump"); scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
+					switch(*instruccionConsola)
 					{
-						case CACHE:generarDumpCache(memoriaCache,ENTRADAS_CACHE);
+						case CACHE:generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
 						break;
 						case MEMORIA:generarDumpMemoria(asignador,MARCOS);
 						break;
@@ -312,7 +328,7 @@ case RETARDO:
 						break;
 						case PID:		
 										scanf("%d",&pid);
-										generarDumpProceso(pid)
+										generarDumpProceso(pid);
 						break;
 						default: pagaraprata();
 					}
@@ -324,15 +340,15 @@ case RETARDO:
 					memset(memoria,0,ENTRADAS_CACHE);		
 	
 		break;
-	case SIZE:			
-			switch()
+	case SIZE:			fflush(stdout);printf("%s", "seleccione objeto de size"); scanf("%d",instruccionConsola);
+			switch(*instruccionConsola)
 			{
-				case MEMORIA:	int cantidadBloquesOcupados, cantidadBloquesLibres;
+				case MEMORIA:	
 								fflush(stdout);printf("cantidadDePaginas %i", MARCOS);
-								cantidadBloquesLibre=cantidadBloquesLibres();
-								fflush(stdout);printf("cantidadBloquesLibres%i", cantidadBloquesLibres);
-								cantidadBloquesOcupados=cantidadBloquesOcupados();
-								fflush(stdout);printf("cantidadBloquesOcupados%i", cantidadBloquesOcupados);
+								bloquesLibre=cantidadBloquesLibres(MARCOS,bloquesAdmin);
+								fflush(stdout);printf("cantidadBloquesLibres%i", bloquesLibre);
+								bloquesOcupados=cantidadBloquesOcupados(MARCOS,bloquesAdmin);
+								fflush(stdout);printf("cantidadBloquesOcupados%i", bloquesOcupados);
 				break;
 				case PID:
 				break;
@@ -347,7 +363,7 @@ case RETARDO:
 	printf("%s",mensajeFinalizacionHilo);
 }
 }
-
+*/
 
 
 
