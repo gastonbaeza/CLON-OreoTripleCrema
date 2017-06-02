@@ -597,27 +597,14 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 		// RECIBO EL SELECCIONADOR (SI ES CPU, DIRECTAMENTE LE MANDO PCBS)
 		seleccionador=malloc(sizeof(t_seleccionador));
 		if (dataDeConexion->interfaz==CPU)
-		{
-			seleccionador->unaInterfaz=CPU;
 			seleccionador->tipoPaquete=SOLICITUDPCB;
-		}
 		else
-			nbytes = recv(dataDeConexion->socket, seleccionador, sizeof(t_seleccionador), 0);
-		if (nbytes == 0){
-			// EL CLIENTE FINALIZÓ LA CONEXIÓN
-			printf("Socket: %i.\n", dataDeConexion->socket);
-            printf("El cliente finalizó la conexión.\n");
-        	break;
-        }
-        else if (nbytes<0){
-        	printf("Socket: %i.\n", dataDeConexion->socket);
-         	perror("Error en el recv.\n");
-           	break;
-        }
+			while(0>=recv(dataDeConexion->socket, seleccionador, sizeof(t_seleccionador), 0));
         switch(seleccionador->tipoPaquete){
-				case INICIARPROGRAMA:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
+				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
 					// RECIBO EL PATH
 					path = malloc (sizeof(t_path));
+					path->path=malloc(1);
 					recibirDinamico(PATH, dataDeConexion->socket, path);
 					// GENERO EL PID
 					pid = ULTIMOPID;
@@ -635,8 +622,11 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					t_programaSalida * programa;
 					programa= obtenerPrograma(path->path);
 					// CALCULO LA CANTIDAD DE PAGINAS
+					printf("asd\n");
 					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
+					printf("asd\n");
 					int cantPaginasStack = calcularPaginas(TAMPAGINA,STACK_SIZE);
+					printf("asd\n");
 					// CREO EL PCB
 					t_pcb * pcb;
 					pcb=malloc(sizeof(t_pcb));

@@ -23,7 +23,8 @@
 #define KERNEL 0
 	#define ARRAYPIDS 5
 	#define PIDFINALIZACION 2
-	#define PATH 3
+	#define PATH 10
+	#define RESULTADOINICIARPROGRAMA 6
 #define MEMORIA 1
 	#define SOLICITUDMEMORIA 0
 	#define SOLICITUDINFOPROG 1
@@ -36,7 +37,7 @@
 	#define DESCONECTARCONSOLA 2
 	#define LIMPIARMENSAJES 3
 	//------------------------------	
-	#define MENSAJES 0
+	#define MENSAJE 0
 	#define PIDNUEVO 1
 
 #define CPU 3
@@ -55,49 +56,63 @@ char * mensajeFinalizacionHilo="el hilo no esta, el hilo se fue, el hilo se esca
 
 
 
-void recibir(int socket){
+void recibir(dataParaComunicarse * dataConexion){
+	int socket = dataConexion->socket;
+	free(dataConexion);
 void * paquete;
 int recibir;
-t_header * header=malloc(sizeof(t_header));
-char * unMensaje;
+t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+t_mensaje * unMensaje;
 int * unPid;
+t_resultadoIniciarPrograma * resultado;
 while(1) {
-	recibir=recv(socket,header, sizeof(t_header),0);
-	paquete=malloc(header->tamanio);
-switch (header->seleccionador.tipoPaquete){
-		case MENSAJES:
-						recibirDinamico(socket, paquete, header->tamanio);
-						unMensaje=malloc(header->tamanio);
-						printf("%s",unMensaje);
+	recibir=recv(socket,seleccionador, sizeof(t_seleccionador),0);
+switch (seleccionador->tipoPaquete){
+		case MENSAJE:	
+						unMensaje=malloc(sizeof(t_mensaje));
+						unMensaje->mensaje=malloc(1);
+						recibirDinamico(MENSAJE, socket, unMensaje);
+						printf("%s",unMensaje->mensaje);
 		break;
 
-		case PIDNUEVO:
-					recibirDinamico(socket, paquete, header->tamanio);
-					 unPid=malloc(sizeof(int));
-					memcpy(unPid,paquete,sizeof(int));
-					pthread_mutex_lock(&semaforoProcesos);
-					list_add(procesos,(void *)unPid);
-					pthread_mutex_unlock(&semaforoProcesos);
+		case RESULTADOINICIARPROGRAMA:
+					recibirDinamico(RESULTADOINICIARPROGRAMA,socket, paquete);
+					 resultado=malloc(sizeof(t_resultadoIniciarPrograma));
+					memcpy(resultado,paquete,sizeof(t_resultadoIniciarPrograma));
+					if (resultado->resultado){
+						pthread_mutex_lock(&semaforoProcesos);
+						list_add(procesos,(void *)(resultado->pid));
+						pthread_mutex_unlock(&semaforoProcesos);
+					}
 		break;
 
 
 }}}
 
-void enviar(int socket){
+void enviar(dataParaComunicarse * dataConexion){
+	int socket = dataConexion->socket;
+	free(dataConexion);
 int cancelarThread=0;
 int PIDS[list_size(procesos)];
 int unPid;
 int * PID;
-char path_ansisop[100];
-while(cancelarThread==0)
-	{int * instruccionConsola;
+PID=malloc(sizeof(int));
+t_path * path_ansisop;
+while(cancelarThread==0){
+	printf("Ingrese una instruccion\n");
+	int * instruccionConsola=malloc(sizeof(int));
 	scanf("%d",instruccionConsola);
-switch(*instruccionConsola){
+	switch(*instruccionConsola){
 	case INICIARPROGRAMA: //Recibe el path del ansisop y lo envia al kernel
-							
-							printf ("path: ");
-							fgets(path_ansisop, 100, stdin); //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
-							enviarDinamico(KERNEL,PATH,socket,(void *)path_ansisop,100* sizeof(char));
+							path_ansisop=malloc(sizeof(t_path));
+							path_ansisop->path=malloc(200*sizeof(char));
+							path_ansisop->tamanio=200;
+							printf ("path: \n");
+							scanf("%s",path_ansisop->path); //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
+							enviarDinamico(PATH,socket,path_ansisop);
+							printf("asd\n");
+							free(path_ansisop->path);
+							free(path_ansisop);
 		break;
 	case FINALIZARPROGRAMA:
 							//Recibe el pid del proceso a matar y lo envia al kernel
@@ -128,18 +143,18 @@ switch(*instruccionConsola){
 							clear();
 		break;
 
-	default:	printf("%s",mensajeError);//error no se declara
+	default:	printf("%s\n",mensajeError);//error no se declara
 	
 	}
-	printf("%s",mensajeFinalizacionHilo);
 }
+	printf("%s\n",mensajeFinalizacionHilo);
 }
 int main(){
 
 	//////////////////////////////////////// LEER CONFIGURACION
 
 	t_config *CFG;
-	list_create(procesos);
+	procesos=list_create();
 	CFG = config_create("consolaCFG.txt");
 	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
 	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
@@ -159,21 +174,22 @@ int main(){
 	hints.ai_socktype = SOCK_STREAM;
 
 	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
-
 	int serverSocket;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 
 
-	connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen);
+	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
+
+	handshakeCliente(serverSocket,CONSOLA,NULL);
 
 	freeaddrinfo(serverInfo);
-
+	dataParaComunicarse * dataConexion=malloc(sizeof(dataParaComunicarse));
+	dataConexion->socket=serverSocket;
 	config_destroy(CFG);
-
 	pthread_t hiloEnviar, hiloRecibir;
-	pthread_create(&hiloEnviar, NULL, (void *) enviar, &serverSocket);
-	pthread_create(&hiloRecibir, NULL, (void *) recibir, &serverSocket);
+	pthread_create(&hiloEnviar, NULL, (void *) enviar, dataConexion);
 	pthread_join(hiloEnviar,NULL); // cuando el hilo enviar termina (el usuario pone quit por ej) se termina el proceso consola
+	pthread_create(&hiloRecibir, NULL, (void *) recibir, dataConexion);
 	pthread_join(hiloRecibir,NULL);//tiene que ser 2 argumentos
 
 	

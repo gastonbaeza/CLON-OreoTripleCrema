@@ -39,10 +39,10 @@
 	#define DESCONECTARCONSOLA 2
 	#define LIMPIARMENSAJES 3
 	//------------------------------	
-	#define MENSAJES 0
+	#define MENSAJE 7
 	#define PID 1
 	#define PCB 11
-	#define PATH 3
+	#define PATH 10
 
 #define CPU 3
 #define FS 4
@@ -365,6 +365,15 @@ void serial_path(t_path * path, int unSocket)
 	
 	serial_string(path->path,path->tamanio,unSocket); 
 }
+void dserial_mensaje(t_mensaje * mensaje, int unSocket)
+{	
+	dserial_string(mensaje->mensaje,unSocket);}
+
+void serial_mensaje(t_mensaje * mensaje, int unSocket)
+{
+	
+	serial_string(mensaje->mensaje,mensaje->tamanio,unSocket); 
+}
 void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
 {
 	int  unChar;
@@ -429,7 +438,14 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 }
 
 void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
-{ 
+{ 	
+	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+	seleccionador->tipoPaquete=tipoPaquete;
+	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
 			serial_solicitudMemoria((t_solicitudMemoria *)paquete,unSocket);
@@ -443,6 +459,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_path((t_path * )paquete,unSocket);			
 		break;
 
+		case MENSAJE:	
+			serial_mensaje((t_mensaje * )paquete,unSocket);			
+		break;
+
 		case PCB:	
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
@@ -453,10 +473,16 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 
 		
 	}
+	free(buffer);
+	free(seleccionador);
 						
 }
 void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 {	
+	int * buffer=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer,&b,sizeof(int));
+	send(unSocket,buffer, sizeof(int),0);
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
 			dserial_solicitudMemoria(paquete,unSocket);
@@ -469,6 +495,10 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 					dserial_path((t_path * )paquete,unSocket);			
 		break;
 
+		case MENSAJE:	
+					dserial_mensaje((t_mensaje * )paquete,unSocket);			
+		break;
+
 		case PCB:	
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
@@ -479,6 +509,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 
 		
 	}
+	free(buffer);
 }
 int strlenConBarraN(char * unString){
 	int cantidad=0;

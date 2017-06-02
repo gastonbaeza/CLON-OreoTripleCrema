@@ -49,6 +49,12 @@ typedef struct {
 				t_path;
 
 typedef struct { 
+				int tamanio; // bytes del programa
+				char * mensaje; 
+				}__attribute__((packed))
+				t_mensaje;
+
+typedef struct { 
 				int socket;
 				int interfaz;				
 				}__attribute__((packed))
