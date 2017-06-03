@@ -826,24 +826,21 @@ if ((rv = connect(socketMemoria,memoria->ai_addr,memoria->ai_addrlen)) == -1)
 	perror("No se pudo conectar con memoria.\n");
 else if (rv == 0)
 	printf("Se conectó con memoria correctamente.\n");
-handshakeCliente(socketMemoria,KERNEL,NULL);
+int * conQuienMeConecto=malloc(sizeof(int));
+handshakeCliente(socketMemoria,KERNEL,(void*)conQuienMeConecto);
+fflush(stdout); printf("%i\n", *conQuienMeConecto );
 SOCKETMEMORIA=socketMemoria;
 // RECIBO EL TAMAÑO DE PAGINA
 int nbytes;
 int * tamPagina;
-if ((nbytes = recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0)) == 0){
-	// SE CERRÓ LA CONEXION
-    printf("Finalizó la conexión con memoria.\n");
-}
-else if (nbytes<0){
-   	perror("Error en el recv de tamaño de pagina.\n");
-}
+while( 0>recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0));
+	fflush(stdout); printf("%i\n",*tamPagina);
 TAMPAGINA=*tamPagina;
 freeaddrinfo(memoria);
 // CONEXION CON FILESYSTEM (NO ES NECESARIO HACER HANDSHAKE, KERNEL ES EL ÚNICO QUE SE CONECTA A FS)
 struct addrinfo *fs;
 getaddrinfo(IP_FS,PUERTO_FS,&hints,&fs);
-int socketFS;
+int socketFS=socket(fs->ai_family, fs->ai_socktype, fs->ai_protocol);
 if ((rv = connect(socketFS,fs->ai_addr,fs->ai_addrlen)) == -1) 
 	perror("No se pudo conectar con filesystem.\n");
 else if (rv == 0)

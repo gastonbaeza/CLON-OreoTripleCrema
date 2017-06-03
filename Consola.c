@@ -174,11 +174,11 @@ int main(){
 	hints.ai_socktype = SOCK_STREAM;
 
 	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
-	int serverSocket;
+	int  serverSocket;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 
 
-	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
+	if(-1==connect(*serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
 
 	handshakeCliente(serverSocket,CONSOLA,NULL);
 

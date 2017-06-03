@@ -95,7 +95,7 @@ void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 {
 	t_list * procesosActivos;
 	procesosActivos=list_create();
-	// buscarProcesosActivos(procesosActivos,bloquesAdmin,MARCOS);
+	buscarProcesosActivos(procesosActivos,bloquesAdmin,MARCOS);
 	int unaAdmin;
 	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
 	{fflush(stdout);printf("%s","tabla de paginas");
@@ -114,19 +114,17 @@ void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 		// fflush(stdout);printf("procesos activos: %i",proceso);
 	}
 }
-// void buscarProcesosActivos(t_list * procesosActivos, t_estructuraADM * bloquesAdmin, int MARCOS)
-// {
-// 	int unaAdmin;
-// 	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
-// 	{
-// 		if(bloquesAdmin[unaAdmin].pid!=-1)
-// 			{ list_add(procesosActivos,(void*)bloquesAdmin[unaAdmin].pid);}
+void buscarProcesosActivos(t_list * procesosActivos, t_estructuraADM * bloquesAdmin, int MARCOS)
+ {
+ 	int unaAdmin;
+ 	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
+ 	{
+		if(bloquesAdmin[unaAdmin].pid!=-1)
+			{ list_add(procesosActivos,(void*)bloquesAdmin[unaAdmin].pid);}
 
-// 	}
-
-
-// }
-int cantidadBLoquesLibres(int MARCOS, t_estructuraADM * bloquesAdmin)
+	}
+}
+int cantidadBloquesLibres(int MARCOS, t_estructuraADM * bloquesAdmin)
 {	int cantidadBloques=0;
 	int unaAdmin;
 	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
@@ -135,10 +133,11 @@ int cantidadBLoquesLibres(int MARCOS, t_estructuraADM * bloquesAdmin)
 	}
 	return cantidadBloques;
 }
-// int cantidadBLoquesOcupados(int MARCOS, t_estructuraADM * bloquesAdmin)
-// {	int cantidadBloques=0;
-// 	return MARCOS-cantidadBloquesLibres;
-// }
+
+int cantidadBloquesOcupados(int MARCOS, t_estructuraADM * bloquesAdmin)
+ {	int cantidadBloques=MARCOS-cantidadBloquesLibres(MARCOS,bloquesAdmin);
+ 	return cantidadBloques;
+}
 
 
 int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS)
@@ -185,37 +184,31 @@ int calcularPaginas(int tamanioPagina,int tamanio)
 	double cantidadPaginas;
 	int cantidadChains;
 	int cantidadReal;
-	cantidadPaginas=tamanio/tamanioPagina;
- 	cantidadChains=ceil(cantidadPaginas);
- 	cantidadReal=ceil((tamanio+cantidadChains*sizeof(unsigned int))/tamanioPagina);
- 		if((ceil(cantidadPaginas))<cantidadReal)
- 			{ 	
-				cantidadPaginas=floor(cantidadPaginas ++);
- 			}
- 			else
- 			{
- 				cantidadPaginas= ceil(cantidadPaginas);					
- 			}
- 			return cantidadPaginas;
+	cantidadPaginas=ceil(tamanio/tamanioPagina);
+ 	 return cantidadPaginas;
  							
 }
-// int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS)
-// {	int cantidadPaginas=0;
-// 	 time_t tiempo;
-//    srand((unsigned) time(&tiempo));
-//    int unFrame;
-//    while(cantidadPaginas<paginasRequeridas)
-//    {
-//    unFrame=rand() % MARCOS;
-//    if(bloquesAdmin[unFrame].estado==LIBRE)		
-//    	{
-//    		list_add(paginasParaUSar,(void *)marcos[unFrame]);
-//    		bloquesAdmin[unFrame].estado==OCUPADO;
-//    		cantidadPaginas++;
-//    	}
-//    }
-// }	
+ 							
 
+int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos)
+ {	int cantidadPaginas=0;
+ 	int paginasRecorridas=0;
+ 	 time_t tiempo;
+    srand((unsigned) time(&tiempo));
+    int unFrame;
+    while(cantidadPaginas<paginasRequeridas && paginasRecorridas<MARCOS)
+    {
+    unFrame=rand() % MARCOS;
+
+    if(bloquesAdmin[unFrame].estado==LIBRE)		
+    	{
+    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina);
+    		bloquesAdmin[unFrame].estado==OCUPADO;
+    		cantidadPaginas++;
+    	}
+    	paginasRecorridas++;
+    } return OK;
+ }	
 int buscarAdministrativa(int pid,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
 {
 
@@ -511,116 +504,98 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 	}
 	free(buffer);
 }
-int strlenConBarraN(char * unString){
-	int cantidad=0;
-	while( *unString!= '\n'){cantidad++;unString=unString+sizeof(char);} //desplaza el puntero un char //TODO revisar si el string conserva las \n
-	return cantidad;
-}
+
 
 t_programaSalida * obtenerPrograma( char * unPath){
 	FILE * punteroAlArchivo;
 	char * lineaDeCodigo;
-	char * copiaLineaDecodigo;
-	int dimensionPrograma;
-	int tamanioLinea=0;
-	t_list * programa;
-	int tamanioLista;
-	t_programa  programaOut;
-	t_programaSalida * estructuraPrograma;
-	lineaDeCodigo=malloc(100*sizeof(char));
-	if((punteroAlArchivo=fopen(unPath,"r"))==NULL)
-		{
-			fflush(stdout); 
-			printf("el archivo no existe" ); 
-		}
 	
-	else{		
-				programa=list_create();
-				//semaforo
-				while(!feof(punteroAlArchivo))
-						{
-						fscanf(punteroAlArchivo,"%s\n",lineaDeCodigo);
-						
-						list_add(programa,(void *)lineaDeCodigo);
-						
-					    }
-				//
-			    tamanioLista=list_size(programa);
-			    programaOut.dimension=tamanioLista;
-
-			    int posicion;
-			    for (posicion = 0; posicion < tamanioLista; posicion++)  //hay otra forma de maloquear una estructura.... es tan compleja e precisa como un jogo de ajedrez bien jugado https://www.youtube.com/watch?v=Ba8NfkYC5ss
-			    {
-			    	copiaLineaDecodigo=list_get(programa,posicion);
-			    	tamanioLinea=strlenConBarraN(copiaLineaDecodigo)+tamanioLinea;
-
-			    }
-			    dimensionPrograma=tamanioLinea; //para que la wea sea coherente, queda horrible que el tamanio de un programa sea "el tamanio de la linea"
-			    programaOut.unPrograma=malloc(dimensionPrograma*sizeof(char));
-				for (posicion = 0; posicion < tamanioLista; posicion++)
-				{	
-					programaOut.unPrograma[posicion]=list_get(programa,posicion); 
-					
-				}
-				estructuraPrograma->elPrograma=malloc(dimensionPrograma*sizeof(char)+sizeof(int));
+	
+	int tamanioLinea=0;
+	int lineaLeida=0;
+	int offset=0;
+	t_programaSalida * estructuraPrograma=(t_programaSalida*)maloc(sizeof(t_programaSalida));
+	lineaDeCodigo=malloc(100*sizeof(char));
+	estructuraPrograma->elPrograma=malloc(100);
+				int tamanioPrograma=100;
 				
-				memcpy((void *)estructuraPrograma->elPrograma,&(programaOut.unPrograma),dimensionPrograma*sizeof(char));
-				estructuraPrograma->tamanio=dimensionPrograma*sizeof(char)+sizeof(int);
+				char * programaAyuda;
+				
+				while(!feof(punteroAlArchivo)&& fgets (lineaDeCodigo, 100, punteroAlArchivo)!=NULL)
+						{ 
+						tamanioLinea=strlen(lineaDeCodigo);
 
-				return estructuraPrograma;	
+						if(tamanioLinea>(tamanioPrograma-offset))
+						{	programaAyuda=malloc(tamanioPrograma);
 
+							strcpy(programaAyuda,estructuraPrograma->elPrograma);
+							estructuraPrograma->elPrograma=malloc(tamanioLinea+tamanioPrograma);
+							tamanioPrograma+=tamanioLinea;
+						}
+						else
+						{
+						memcpy(estructuraPrograma->elPrograma+offset,lineaDeCodigo,tamanioLinea); 
+						offset=tamanioLinea;
 
-			}
-							      }
-
-// void pagaraprata(void)
-// {
-
-// fflush(stdout);printf("%s\n","+''#########++''++'+####+'+++++'####++''++''####+'++'+#########'+++++'#####+++++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++:`````` `.#++++++````#+++++++ ````+''+++++``` #+'+# `       ++++++'+``` #++++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++:`````` ```+'+++,````++++++'` `````+'++++,```.#+++#````  ``  '++++',````##+++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@+````##++#`````:@+++#``` +````@+++# ````:@++# ``` . ` `.#+''#`````:@+++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@````+@+'#``````@#++'.```@:```@#++#``````@#+@ ```,@``` `@#'+@```` `@#++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@``` '@+''``````@#'+`````@:`  #@++;`.``` @#+#````.@.``` @@++'.`````@#++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@````'@#+. :````#@+#`````#@+@@@@++.`:.```@@'#`````@,`` `@@++.`:```.@@++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@#````@@##``+````'@##`````@@+@@@@+# `+````;#'#```` @````'@@+#``+``` ;@++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,`````` `` @@#@.:@````.@+@`````;``` :++#`:@ ```.@+#```` `  `+@@@'#`:#``` .@++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,`````````;@@+'.## ````@#@`````;````:++'`+@```` @#@``````` ` +@#++.+@ ````@#+++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````````'#@@#.`:'  `` @#@`````+.```:@#.`;;```` @#@````````` ,#++.`;;`````@#+++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@@@@@@## ``````` '@#`````@;```'@@```` ````'@@ ````@```` @##`` `` ```'@'++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@#####+#```` ````.@+,````@;```+@#` ```.```,@@ ``` @,``` @##`` ``````,@+++");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@++++++'`#@@# ````###`.` #:`  @@;`+@#@```` @@`````@,``` @@'`+@@@ ````@#'+");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@++++++.`@@@@` `` @@#  ``.` `:@@.`@@@@```  @@`````@,``` @@.`@@@@```` @#'+");                                                                                            
-// fflush(stdout);printf("%s\n","+++,````@@+++'+#` @@#+,``` #@+#````` `@@@``#@#+,````#@`````@,``` @@  @@#+,````#@++");                                                                                            
-// fflush(stdout);printf("%s\n","++':````@@+'+'+#`.@@+';.``.;@+++. ` :@@@@`,@@+''```.;#`` `.@;`   +# .@@++;```.;#++");                                                                                            
-// fflush(stdout);printf("%s\n","++++'#@@@@++++++'#@@++''@@##@+++#@@@#@@#+'#@@++++@@@@@##@@@@#+@@@@@##@@++'+@@@@@#+");                                                                                            
-// fflush(stdout);printf("%s\n","+++'+#####++++''+###+'++######''++#@@##+'++##++++#####++#####+##@###+##++++#####+'");                                                                                            
-// fflush(stdout);printf("%s\n","++++++'+++'+++++++++++++'+++++++'+++++++++'+'+''++++++''+++++++++''+++'+++''++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++++++++++++++++''+++'+++++++++'+'++'+++++'++++++++++++++++++'++'+++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++'++++'+++++++++++++'++++++++++++++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++++++++''++++++++++++++++++++++++++++''''+++++++++++++'+++'+++++'+++++++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++'+++++++++++'++#+++++++++'++++++++#+++++++++++++++++++++++++++++++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++````` ``.#'+;      ``,#'+++'+:```,+'++,`      ` .++'+#..` +'++++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++```` ``   #+;`````` ` .+++++#```` #+'+,``````````+++'#````:+++++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++'+ ```.;.```.#;``    ` ``+++++#`````@#'+.````````` @#++'```` @#+++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++'+`````@;``  @;````++ ` `;@++++`````'@++';'`````';;@@++``````@#+++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++`````@'.`` @'`` `'@````:@#++,`````:@++++#`````@@@@@+#``````##+++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++`````@;````@;````;@````,@#+#    ```@#'+++`````@@#+#+#`;.```,@+++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++`````@;``` @;````'@ `` +@#'#.:```` @#+'++`````@@+'+':`@`````#+++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++'+ ````:`````@'````,. ``+@@#+;`#:````#@++++.````@@++++``@ ````@#++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++ ````.````;@;``` `````;@@++.`@#````;@++++`````@@+++# `@,````##++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++``` ` `` ;@@;````````` ##+#``@@`````#++++`````@@++++.;@;````+@++++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++`````@@@@@@@;````,, ` `,#+#````.``` @#+++.````@@+++;.```````.@+'++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++```` @@@@@##;````;@ ```,@#'`````````##+++.````@@+'+````` ``` @#'++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++```` @@+++++;````'@ ```,@@.`;'':````'@+++.````@@++#``;''`````@#'++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@ `` :@@  @@@#`````@+++.````@@++#.;@@@:````+@+++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@ ```.@@`,@@#@```  @#++.````@@++;`+@@#+````,@+++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@```  @'`'@#'+`````##++`````@@++``@@#'@``  `@#++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","+++++++++++#@@@@@+++++##@@@@@@##@@@@+#@#+++#@@@@@++++@@@@@+++#@@#'++#@@@@#++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++++#@@@#++++'++#@@@@###@@@#+###++++###@#++'+#@@@#++++##+++'##@@@#++++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++'++++++++++++++++++++++++++++++'++++++++++++++++++++++++++++++++++'+++++++");                                                                                            
-// fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+						}
+						
+						}
+						fflush(stdout);printf("%s\n",estructuraPrograma->elPrograma);
+						fclose(punteroAlArchivo);
+						free(lineaDeCodigo);
+						free(programaAyuda);
+						return estructuraPrograma;
+		}
 
 
+void pagaraprata()
+{
 
-// }
+fflush(stdout);printf("%s\n","+''#########++''++'+####+'+++++'####++''++''####+'++'+#########'+++++'#####+++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++:`````` `.#++++++````#+++++++ ````+''+++++``` #+'+# `       ++++++'+``` #++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++:`````` ```+'+++,````++++++'` `````+'++++,```.#+++#````  ``  '++++',````##+++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@+````##++#`````:@+++#``` +````@+++# ````:@++# ``` . ` `.#+''#`````:@+++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@````+@+'#``````@#++'.```@:```@#++#``````@#+@ ```,@``` `@#'+@```` `@#++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@``` '@+''``````@#'+`````@:`  #@++;`.``` @#+#````.@.``` @@++'.`````@#++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@````'@#+. :````#@+#`````#@+@@@@++.`:.```@@'#`````@,`` `@@++.`:```.@@++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@#````@@##``+````'@##`````@@+@@@@+# `+````;#'#```` @````'@@+#``+``` ;@++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,`````` `` @@#@.:@````.@+@`````;``` :++#`:@ ```.@+#```` `  `+@@@'#`:#``` .@++++");                                                                                            
+fflush(stdout);printf("%s\n","+++,`````````;@@+'.## ````@#@`````;````:++'`+@```` @#@``````` ` +@#++.+@ ````@#+++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````````'#@@#.`:'  `` @#@`````+.```:@#.`;;```` @#@````````` ,#++.`;;`````@#+++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@@@@@@## ``````` '@#`````@;```'@@```` ````'@@ ````@```` @##`` `` ```'@'++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@#####+#```` ````.@+,````@;```+@#` ```.```,@@ ``` @,``` @##`` ``````,@+++");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@++++++'`#@@# ````###`.` #:`  @@;`+@#@```` @@`````@,``` @@'`+@@@ ````@#'+");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@++++++.`@@@@` `` @@#  ``.` `:@@.`@@@@```  @@`````@,``` @@.`@@@@```` @#'+");                                                                                            
+fflush(stdout);printf("%s\n","+++,````@@+++'+#` @@#+,``` #@+#````` `@@@``#@#+,````#@`````@,``` @@  @@#+,````#@++");                                                                                            
+fflush(stdout);printf("%s\n","++':````@@+'+'+#`.@@+';.``.;@+++. ` :@@@@`,@@+''```.;#`` `.@;`   +# .@@++;```.;#++");                                                                                            
+fflush(stdout);printf("%s\n","++++'#@@@@++++++'#@@++''@@##@+++#@@@#@@#+'#@@++++@@@@@##@@@@#+@@@@@##@@++'+@@@@@#+");                                                                                            
+fflush(stdout);printf("%s\n","+++'+#####++++''+###+'++######''++#@@##+'++##++++#####++#####+##@###+##++++#####+'");                                                                                            
+fflush(stdout);printf("%s\n","++++++'+++'+++++++++++++'+++++++'+++++++++'+'+''++++++''+++++++++''+++'+++''++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++++++++++++++''+++'+++++++++'+'++'+++++'++++++++++++++++++'++'+++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++'++++'+++++++++++++'++++++++++++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++++++++''++++++++++++++++++++++++++++''''+++++++++++++'+++'+++++'+++++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+++++++++++'++#+++++++++'++++++++#+++++++++++++++++++++++++++++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++````` ``.#'+;      ``,#'+++'+:```,+'++,`      ` .++'+#..` +'++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` ``   #+;`````` ` .+++++#```` #+'+,``````````+++'#````:+++++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+ ```.;.```.#;``    ` ``+++++#`````@#'+.````````` @#++'```` @#+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+`````@;``  @;````++ ` `;@++++`````'@++';'`````';;@@++``````@#+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@'.`` @'`` `'@````:@#++,`````:@++++#`````@@@@@+#``````##+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@;````@;````;@````,@#+#    ```@#'+++`````@@#+#+#`;.```,@+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@;``` @;````'@ `` +@#'#.:```` @#+'++`````@@+'+':`@`````#+++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'+ ````:`````@'````,. ``+@@#+;`#:````#@++++.````@@++++``@ ````@#++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++ ````.````;@;``` `````;@@++.`@#````;@++++`````@@+++# `@,````##++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++``` ` `` ;@@;````````` ##+#``@@`````#++++`````@@++++.;@;````+@++++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++`````@@@@@@@;````,, ` `,#+#````.``` @#+++.````@@+++;.```````.@+'++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@@@@##;````;@ ```,@#'`````````##+++.````@@+'+````` ``` @#'++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@+++++;````'@ ```,@@.`;'':````'@+++.````@@++#``;''`````@#'++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@ `` :@@  @@@#`````@+++.````@@++#.;@@@:````+@+++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@ ```.@@`,@@#@```  @#++.````@@++;`+@@#+````,@+++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++```` @@++++';````'@```  @'`'@#'+`````##++`````@@++``@@#'@``  `@#++++++++");                                                                                            
+fflush(stdout);printf("%s\n","+++++++++++#@@@@@+++++##@@@@@@##@@@@+#@#+++#@@@@@++++@@@@@+++#@@#'++#@@@@#++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++#@@@#++++'++#@@@@###@@@#+###++++###@#++'+#@@@#++++##+++'##@@@#++++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++'++++++++++++++++++++++++++++++'++++++++++++++++++++++++++++++++++'+++++++");                                                                                            
+fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+
+
+
+}

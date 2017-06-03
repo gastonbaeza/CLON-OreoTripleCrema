@@ -11,8 +11,8 @@ typedef struct {
 				  hashMemoria;
 
 typedef struct { 
-				int marco;
-				void * numeroPagina[3];
+				
+				void * numeroPagina;
 				}__attribute__((packed))
 				 t_marco;
 
