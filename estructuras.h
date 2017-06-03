@@ -11,8 +11,8 @@ typedef struct {
 				  hashMemoria;
 
 typedef struct { 
-				
-				void * numeroPagina;
+				int marco;
+				void * numeroPagina[3];
 				}__attribute__((packed))
 				 t_marco;
 
@@ -47,6 +47,12 @@ typedef struct {
 				char * path; 
 				}__attribute__((packed))
 				t_path;
+
+typedef struct { 
+				int tamanio; // bytes del programa
+				char * mensaje; 
+				}__attribute__((packed))
+				t_mensaje;
 
 typedef struct { 
 				int socket;
