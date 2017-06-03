@@ -105,12 +105,12 @@ while(cancelarThread==0){
 	switch(*instruccionConsola){
 	case INICIARPROGRAMA: //Recibe el path del ansisop y lo envia al kernel
 							path_ansisop=malloc(sizeof(t_path));
-							path_ansisop->path=malloc(200*sizeof(char));
-							path_ansisop->tamanio=200;
+							path_ansisop->path=malloc(150*sizeof(char));
 							printf ("path: \n");
 							scanf("%s",path_ansisop->path); //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
+							path_ansisop->tamanio=strlen(path_ansisop->path)+1;
+							path_ansisop->path=realloc(path_ansisop->path,(path_ansisop->tamanio)*sizeof(char));
 							enviarDinamico(PATH,socket,path_ansisop);
-							printf("asd\n");
 							free(path_ansisop->path);
 							free(path_ansisop);
 		break;
@@ -119,7 +119,7 @@ while(cancelarThread==0){
 							
 							printf ("PID: ");
 							scanf("%d", PID);
-							enviarDinamico(KERNEL,PIDFINALIZACION,socket,(void *)PID,sizeof(int));
+							enviarDinamico(FINALIZARPROGRAMA,socket,PID);
 	
 		break;
 	case DESCONECTARCONSOLA:
@@ -177,10 +177,9 @@ int main(){
 	int  serverSocket;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 
-
-	if(-1==connect(*serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
-
+	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
 	handshakeCliente(serverSocket,CONSOLA,NULL);
+
 
 	freeaddrinfo(serverInfo);
 	dataParaComunicarse * dataConexion=malloc(sizeof(dataParaComunicarse));

@@ -11,6 +11,7 @@
 #include <commons/config.h>
 #include <commons/txt.h>
 #include <commons/collections/list.h>
+#include <parser/metadata_program.h>
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/select.h>
@@ -434,7 +435,7 @@ void consola(){
 					printf("\tPC: %i\n", PCBS[i].programCounter);
 					printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
 					printf("\tPosicion stack: %i\n", PCBS[i].posicionStack);
-					printf("\tIndice Codigo: %i\n", PCBS[i].indiceCodigo);
+					printf("\tIndice Codigo: en desarrollo.\n");
 					printf("\tIndice Etiquetas: %i\n", PCBS[i].indiceEtiquetas);
 					printf("\tExit Code: %i\n", PCBS[i].exitCode);
 				}
@@ -576,6 +577,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 void comunicarse(dataParaComunicarse * dataDeConexion){
 	t_solicitudMemoria * respuestaSolicitud;
 	t_path * path;
+	int PidAFinalizar;
+	t_metadata_program * metadata;
 	// RETURN VALUES
 	int pid;
 	int rv;
@@ -604,8 +607,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
 					// RECIBO EL PATH
 					path = malloc (sizeof(t_path));
-					path->path=malloc(1);
+					path->path=malloc(150*sizeof(char));
 					recibirDinamico(PATH, dataDeConexion->socket, path);
+					path->path=realloc(path->path,(path->tamanio+1)*sizeof(char));
 					// GENERO EL PID
 					pid = ULTIMOPID;
 					pthread_mutex_lock(&mutexPid);
@@ -622,19 +626,19 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					t_programaSalida * programa;
 					programa= obtenerPrograma(path->path);
 					// CALCULO LA CANTIDAD DE PAGINAS
-					printf("asd\n");
 					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
-					printf("asd\n");
 					int cantPaginasStack = calcularPaginas(TAMPAGINA,STACK_SIZE);
-					printf("asd\n");
+					// GENERO LA METADATA DEL SCRIPT
+					metadata=metadata_desde_literal(programa->elPrograma);
 					// CREO EL PCB
 					t_pcb * pcb;
 					pcb=malloc(sizeof(t_pcb));
 					pcb->pid = pid;
 					pcb->estado = NEW;
 					pcb->programCounter=0;
+					pcb->paginasCodigo=cantPaginasCodigo;
 					pcb->posicionStack=0;
-					pcb->indiceCodigo=0;
+					memcpy(pcb->indiceCodigo,metadata->instrucciones_serializado,metadata->instrucciones_size*sizeof(t_intructions));
 					pcb->indiceEtiquetas=0;
 					pcb->exitCode=1;
 					// LO AGREGO A LA TABLA
@@ -652,6 +656,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					solicitudMemoria->cantidadPaginasStack=cantPaginasStack;
 					solicitudMemoria->pid=pid;
 					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
+					printf("%s\n", programa->elPrograma);
 					// LO AGREGO A LA LISTA DE JOBS
 					if (cantidadJobs % BLOQUE == 0)
 						jobs = realloc (jobs, (cantidadJobs+BLOQUE) * sizeof(jobs[0]));
@@ -663,6 +668,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					free(pcb);
 				break;
 				case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
+					recibirDinamico(FINALIZARPROGRAMA,dataDeConexion->socket,&PidAFinalizar);
+					finalizarPid(PidAFinalizar);
 				break;
 				case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
 				break;
@@ -821,21 +828,19 @@ hints.ai_socktype = SOCK_STREAM;
 // CONEXION CON MEMORIA
 struct addrinfo *memoria;
 getaddrinfo(IP_MEMORIA,PUERTO_MEMORIA,&hints,&memoria);
-int socketMemoria;
+int socketMemoria=socket(memoria->ai_family,memoria->ai_socktype,memoria->ai_protocol);
 if ((rv = connect(socketMemoria,memoria->ai_addr,memoria->ai_addrlen)) == -1) 
 	perror("No se pudo conectar con memoria.\n");
-else if (rv == 0)
+else if (rv == 0){
 	printf("Se conectó con memoria correctamente.\n");
-int * conQuienMeConecto=malloc(sizeof(int));
-handshakeCliente(socketMemoria,KERNEL,(void*)conQuienMeConecto);
-fflush(stdout); printf("%i\n", *conQuienMeConecto );
+	handshakeCliente(socketMemoria,KERNEL,NULL);}
 SOCKETMEMORIA=socketMemoria;
 // RECIBO EL TAMAÑO DE PAGINA
 int nbytes;
 int * tamPagina;
-while( 0>recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0));
-	fflush(stdout); printf("%i\n",*tamPagina);
-TAMPAGINA=*tamPagina;
+// while( 0>recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0));
+recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0);
+TAMPAGINA=/**tamPagina*/10;
 freeaddrinfo(memoria);
 // CONEXION CON FILESYSTEM (NO ES NECESARIO HACER HANDSHAKE, KERNEL ES EL ÚNICO QUE SE CONECTA A FS)
 struct addrinfo *fs;
@@ -854,7 +859,8 @@ if ((rv =getaddrinfo(NULL, PUERTO_PROG, &hints, &serverInfo)) != 0)
 int socketEscuchador;
 socketEscuchador = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 if(bind(socketEscuchador,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1) 
-	perror("Error en el bind.\n");
+	{perror("Error en el bind.\n");
+		return 1;}
 freeaddrinfo(serverInfo);
 // SE LIBERA EL ARCHIVO DE CONFIGURACION
 config_destroy(CFG);

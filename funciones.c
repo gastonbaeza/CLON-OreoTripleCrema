@@ -182,9 +182,8 @@ for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
 int calcularPaginas(int tamanioPagina,int tamanio)
 {
 	double cantidadPaginas;
-	int cantidadChains;
 	int cantidadReal;
-	cantidadPaginas=ceil(tamanio/tamanioPagina);
+	cantidadPaginas=(tamanio+tamanioPagina-1)/tamanioPagina;
  	 return cantidadPaginas;
  							
 }
@@ -225,13 +224,20 @@ int buscarAdministrativa(int pid,t_pcb * unPcb, t_estructuraADM * bloquesAdminis
 	return FAIL;
 }
 /////////// LEEEEEEEMEEEEE ME OLVIDE DE HACER FREE DE LOS PAQUETES UNA VEZ QUE LOS MANDO A LA WEA/////
-void dserial_string(char * unString,int unSocket)
+void serial_int(int* numero,int unSocket)
+{
+	send(unSocket,&(numero),sizeof(int),0);
+}
+void dserial_int(int* numero,int unSocket)
+{
+	while(0>=recv(unSocket,&(numero),sizeof(int),0));
+}
+int dserial_string(char * unString,int unSocket)
 {	int tamanio;
 	int  unChar;
 	int * buffer1=malloc(sizeof(int));
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
-
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
 	unString=realloc(unString,tamanio);
 	send(unSocket,buffer1, sizeof(int),0);
@@ -241,14 +247,12 @@ void dserial_string(char * unString,int unSocket)
 		send(unSocket,buffer1, sizeof(int),0);
 
 	}
-
 free(buffer1);
-
+return tamanio;
 }
 void serial_string(char * unString,int tamanio,int unSocket)
 {	int  unChar;
 	int * buffer=malloc(sizeof(int));
-	//printf("%s\n",unString); //esto era para ver si rompia cuando accedia al puntero y SI ROMPE.
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
 
@@ -342,7 +346,7 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 }
 void dserial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 {	
-	dserial_string(programaSalida->elPrograma,unSocket);}
+	programaSalida->tamanio=dserial_string(programaSalida->elPrograma,unSocket);}
 
 void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 {
@@ -351,7 +355,7 @@ void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 }
 void dserial_path(t_path * path, int unSocket)
 {	
-	dserial_string(path->path,unSocket);}
+	path->tamanio=dserial_string(path->path,unSocket);}
 
 void serial_path(t_path * path, int unSocket)
 {
@@ -360,7 +364,7 @@ void serial_path(t_path * path, int unSocket)
 }
 void dserial_mensaje(t_mensaje * mensaje, int unSocket)
 {	
-	dserial_string(mensaje->mensaje,unSocket);}
+	mensaje->tamanio=dserial_string(mensaje->mensaje,unSocket);}
 
 void serial_mensaje(t_mensaje * mensaje, int unSocket)
 {
@@ -452,6 +456,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_path((t_path * )paquete,unSocket);			
 		break;
 
+		case FINALIZARPROGRAMA:
+			serial_int((int*)paquete,unSocket);
+		break;
+
 		case MENSAJE:	
 			serial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
@@ -476,6 +484,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 	int b=1;
 	memcpy(buffer,&b,sizeof(int));
 	send(unSocket,buffer, sizeof(int),0);
+	t_path * path;
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
 			dserial_solicitudMemoria(paquete,unSocket);
@@ -485,7 +494,11 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 
 		case PATH:	
-					dserial_path((t_path * )paquete,unSocket);			
+					dserial_path((t_path * )paquete,unSocket);
+		break;
+
+		case FINALIZARPROGRAMA:
+					dserial_int((int*)paquete,unSocket);
 		break;
 
 		case MENSAJE:	
@@ -515,42 +528,16 @@ t_programaSalida * obtenerPrograma( char * unPath){
 			printf("el archivo no existe" ); 
 		}
 	
-	else{		
+	else{
+		t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
+		fseek (punteroAlArchivo, 0, SEEK_END);
+		estructuraPrograma->tamanio = ftell (punteroAlArchivo);
+		fseek (punteroAlArchivo, 0, SEEK_SET);
+		estructuraPrograma->elPrograma = malloc (estructuraPrograma->tamanio);
+		fread (estructuraPrograma->elPrograma, 1, estructuraPrograma->tamanio, punteroAlArchivo);
+		fclose (punteroAlArchivo);
+		return estructuraPrograma;
 	
-	int tamanioLinea=0;
-	int lineaLeida=0;
-	int offset=0;
-	t_programaSalida * estructuraPrograma=(t_programaSalida*)maloc(sizeof(t_programaSalida));
-	lineaDeCodigo=malloc(100*sizeof(char));
-	estructuraPrograma->elPrograma=malloc(100);
-				int tamanioPrograma=100;
-				
-				char * programaAyuda;
-				
-				while(!feof(punteroAlArchivo)&& fgets (lineaDeCodigo, 100, punteroAlArchivo)!=NULL)
-						{ 
-						tamanioLinea=strlen(lineaDeCodigo);
-
-						if(tamanioLinea>(tamanioPrograma-offset))
-						{	programaAyuda=malloc(tamanioPrograma);
-
-							strcpy(programaAyuda,estructuraPrograma->elPrograma);
-							estructuraPrograma->elPrograma=malloc(tamanioLinea+tamanioPrograma);
-							tamanioPrograma+=tamanioLinea;
-						}
-						else
-						{
-						memcpy(estructuraPrograma->elPrograma+offset,lineaDeCodigo,tamanioLinea); 
-						offset=tamanioLinea;
-
-						}
-						
-						}
-						fflush(stdout);printf("%s\n",estructuraPrograma->elPrograma);
-						fclose(punteroAlArchivo);
-						free(lineaDeCodigo);
-						free(programaAyuda);
-						return estructuraPrograma;
 		}
 }
 

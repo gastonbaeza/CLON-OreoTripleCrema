@@ -1,4 +1,5 @@
 #ifndef _estructuras_h
+#include <parser/metadata_program.h>
 #define _estructuras_h
 
 
@@ -68,7 +69,7 @@ typedef struct {
 				int referenciaATabla;
 				int paginasCodigo; // estaba en el TP pero no lo habiamos puesto
 				int posicionStack;
-				int indiceCodigo;
+				t_intructions * indiceCodigo;
 				int indiceEtiquetas;
 				int exitCode;
 				}__attribute__((packed))
