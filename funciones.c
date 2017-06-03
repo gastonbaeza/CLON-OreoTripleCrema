@@ -509,7 +509,13 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 t_programaSalida * obtenerPrograma( char * unPath){
 	FILE * punteroAlArchivo;
 	char * lineaDeCodigo;
+	if((punteroAlArchivo=fopen(unPath,"r"))==NULL)
+		{
+			fflush(stdout); 
+			printf("el archivo no existe" ); 
+		}
 	
+	else{		
 	
 	int tamanioLinea=0;
 	int lineaLeida=0;
@@ -546,7 +552,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 						free(programaAyuda);
 						return estructuraPrograma;
 		}
-
+}
 
 void pagaraprata()
 {
