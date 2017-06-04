@@ -1,5 +1,6 @@
-#include "funciones.h"
+
 #include "estructuras.h"
+#include "funciones.h"
 #include <commons/collections/list.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,6 +102,43 @@ void generarDumpCache( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int 
 		printf("%i\n",memoriaCache[unFrame].pid);
 		printf("%p\n",memoriaCache[unFrame].contenido);
 	}
+}
+void generarDumpMemoria(t_marco * marcos, int MARCOS)
+{
+	int unMarco=0;
+	for(unMarco;unMarco<MARCOS;unMarco++)
+	{
+		printf("%p\n",marcos[unMarco].numeroPagina);
+	}
+}
+void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)//expandir despues esa funcion para que informe cosas mas lindas
+{
+
+	int encontrados=0;
+	int unMarco=0;
+	for(unMarco;unMarco<MARCOS;unMarco++)
+	{
+		if(bloquesAdmin[unMarco].pid==pid)
+		{encontrados++;
+			
+		}
+
+	}
+	if(encontrados==0) printf("%s\n","El pid no se encuentra en memoria" );
+	else{printf("Se encontraron %i %s\n",encontrados,"paginas asociadas a ese proceso" );}
+}
+void generarDumpProceso(t_estructuraADM * bloquesAdmin, int MARCOS, int pid,t_marco * marcos)
+{	int encontrados=0;
+	int unMarco=0;
+	for(unMarco;unMarco<MARCOS;unMarco++)
+	{
+		if(bloquesAdmin[unMarco].pid==pid)
+		{encontrados++;
+			printf("%p\n",marcos[unMarco].numeroPagina);
+		}
+
+	}
+	if(encontrados==0) printf("%s\n","El pid no se encuentra en memoria" );
 }
 void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 {
