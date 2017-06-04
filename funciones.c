@@ -91,6 +91,17 @@ void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
 
 
 }
+void generarDumpCache( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int MARCO_SIZE)
+{
+	int unFrame;
+	for(unFrame=0;unFrame<ENTRADAS_CACHE;unFrame++)
+	{
+
+		printf("%i\n",memoriaCache[unFrame].frame);
+		printf("%i\n",memoriaCache[unFrame].pid);
+		printf("%p\n",memoriaCache[unFrame].contenido);
+	}
+}
 void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 {
 	t_list * procesosActivos;
