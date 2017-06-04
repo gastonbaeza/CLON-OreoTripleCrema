@@ -50,8 +50,8 @@
 #define FALSE 0
 #define OK 1
 #define FAIL 0
-#define LIBRE 1
-#define OCUPADO 0
+#define LIBRE 0
+#define OCUPADO 1
 #define BLOQUE 20
 
 
@@ -98,29 +98,31 @@ void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 	buscarProcesosActivos(procesosActivos,bloquesAdmin,MARCOS);
 	int unaAdmin;
 	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
-	{fflush(stdout);printf("%s","tabla de paginas");
-		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].frame);
-		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].pid);
-		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].hashPagina);
-		fflush(stdout);printf("%i",bloquesAdmin[unaAdmin].estado);
+	{fflush(stdout);printf("%s\n","tabla de paginas");
+		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].frame);
+		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pid);
+		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].hashPagina);
+		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].estado);
 
 	}
 	int cantidadProcesos=list_size(procesosActivos);
-	int unProceso;
-	t_list * proceso;
-	proceso=list_create();
+	int unProceso=0;
+	int * proceso=malloc(sizeof(int));
+	printf("%s\n","lista de procesos activos:" ); 
 	for (unProceso = 0; unProceso < cantidadProcesos; unProceso++)
-	{	proceso=list_get(procesosActivos,unProceso);
-		// fflush(stdout);printf("procesos activos: %i",proceso);
-	}
+	{	
+		memcpy(proceso,list_get(procesosActivos,unProceso),sizeof(int));
+		
+		fflush(stdout);printf("proceso: %i|",*proceso);
+	}printf("%s\n"," " );
 }
 void buscarProcesosActivos(t_list * procesosActivos, t_estructuraADM * bloquesAdmin, int MARCOS)
  {
  	int unaAdmin;
  	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
  	{
-		if(bloquesAdmin[unaAdmin].pid!=-1)
-			{ list_add(procesosActivos,(void*)bloquesAdmin[unaAdmin].pid);}
+		if(bloquesAdmin[unaAdmin].pid!=(-1))
+			{ list_add(procesosActivos,&bloquesAdmin[unaAdmin].pid);}
 
 	}
 }
@@ -141,34 +143,36 @@ int cantidadBloquesOcupados(int MARCOS, t_estructuraADM * bloquesAdmin)
 
 
 int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS)
-{
-int encontradas=0;
-int unBloque=0;
-while(encontradas<unaCantidad)
-	{
-		if(bloquesAdmin[unBloque].estado==LIBRE)
-		{
-			encontradas++;
-		}
-		unBloque++;
-		if(unBloque == MARCOS)
-			{return FAIL;}
-	}	
-return OK;
+{int cantidadRestantes;
+	int encontradas;
+ 	int paginasRecorridas=0;
+ 	int unFrame=0;
+ 	 while(paginasRecorridas+unaCantidad<MARCOS)
+    { cantidadRestantes=unaCantidad;
+    	encontradas=0;
+
+    while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0)		
+    	{cantidadRestantes --;
+    		unFrame++;encontradas++;
+    		
+    	    	}
+    	if(cantidadRestantes==0)
+    		{	return encontradas;}} unFrame++;
+    	paginasRecorridas++;
+return FAIL;
 	
 }
 void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int marco_size)
 {
 int unaPagina;
-int desplazamiento=0;
+
 int paginasRequeridas=list_size(paginasParaUsar)-stackRequeridas;
 for ( unaPagina = 0; unaPagina < paginasRequeridas; unaPagina++)
 {
-memcpy((void *)list_get(paginasParaUsar,unaPagina),codigo+desplazamiento,marco_size);
-desplazamiento+=marco_size;
+memcpy((void *)list_get(paginasParaUsar,unaPagina),codigo,marco_size-1);
 }
 
-for(unaPagina=0;unaPagina<stackRequeridas;unaPagina++)
+for(unaPagina=paginasRequeridas;unaPagina<paginasRequeridas+stackRequeridas;unaPagina++)
 {
 	char * stack=calloc(marco_size,marco_size);
 	memcpy((void *)list_get(paginasParaUsar,unaPagina),stack,marco_size);
@@ -189,24 +193,34 @@ int calcularPaginas(int tamanioPagina,int tamanio)
 }
  							
 
-int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos)
+int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid)
  {	int cantidadPaginas=0;
  	int paginasRecorridas=0;
- 	 time_t tiempo;
-    srand((unsigned) time(&tiempo));
-    int unFrame;
-    while(cantidadPaginas<paginasRequeridas && paginasRecorridas<MARCOS)
-    {
-    unFrame=rand() % MARCOS;
+ 	int unFrame=0;
+ 	int cantidadRestantes;
+    
+    
+    printf("cantidad de paginas requeridas : %i\n",paginasRequeridas);
+    while(paginasRecorridas+paginasRequeridas<MARCOS)
+    { cantidadRestantes=paginasRequeridas;
+    
 
-    if(bloquesAdmin[unFrame].estado==LIBRE)		
-    	{
+    while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0)		
+    	{cantidadRestantes --;
+    		unFrame++;
+    		
+    	    	}
+    	if(cantidadRestantes==0)
+    		{	 unFrame-=paginasRequeridas;
+    			for(unFrame=0;unFrame<paginasRequeridas;unFrame++)
+    			{
     		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina);
-    		bloquesAdmin[unFrame].estado==OCUPADO;
-    		cantidadPaginas++;
-    	}
+    		bloquesAdmin[unFrame].estado=OCUPADO;
+    		bloquesAdmin[unFrame].pid=unPid;
+    		bloquesAdmin[unFrame].hashPagina=123123;
+    			}return OK;} unFrame++;
     	paginasRecorridas++;
-    } return OK;
+    } return FAIL;
  }	
 int buscarAdministrativa(int pid,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
 {
@@ -521,7 +535,6 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 
 t_programaSalida * obtenerPrograma( char * unPath){
 	FILE * punteroAlArchivo;
-	char * lineaDeCodigo;
 	if((punteroAlArchivo=fopen(unPath,"r"))==NULL)
 		{
 			fflush(stdout); 
