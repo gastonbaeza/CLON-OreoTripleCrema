@@ -147,18 +147,19 @@ int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS
 	int encontradas;
  	int paginasRecorridas=0;
  	int unFrame=0;
- 	 while(paginasRecorridas+unaCantidad<MARCOS)
-    { cantidadRestantes=unaCantidad;
+ 	while(paginasRecorridas+unaCantidad<MARCOS){ 
+ 	 	cantidadRestantes=unaCantidad;
     	encontradas=0;
-
-    while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0)		
-    	{cantidadRestantes --;
+		while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0){
+			cantidadRestantes --;
     		unFrame++;encontradas++;
-    		
-    	    	}
-    	if(cantidadRestantes==0)
-    		{	return encontradas;}} unFrame++;
+    	}
+    	if(cantidadRestantes==0){
+    		return encontradas;
+    	}
+    	unFrame++;	
     	paginasRecorridas++;
+    }
 return FAIL;
 	
 }
@@ -201,26 +202,28 @@ int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t
     
     
     printf("cantidad de paginas requeridas : %i\n",paginasRequeridas);
-    while(paginasRecorridas+paginasRequeridas<MARCOS)
-    { cantidadRestantes=paginasRequeridas;
+    while(paginasRecorridas+paginasRequeridas<MARCOS){
+    	cantidadRestantes=paginasRequeridas;
     
-
-    while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0)		
-    	{cantidadRestantes --;
-    		unFrame++;
-    		
-    	    	}
-    	if(cantidadRestantes==0)
-    		{	 unFrame-=paginasRequeridas;
-    			for(unFrame=0;unFrame<paginasRequeridas;unFrame++)
-    			{
-    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina);
-    		bloquesAdmin[unFrame].estado=OCUPADO;
-    		bloquesAdmin[unFrame].pid=unPid;
-    		bloquesAdmin[unFrame].hashPagina=123123;
-    			}return OK;} unFrame++;
+		while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0){
+	    	cantidadRestantes --;
+	    		unFrame++;
+	    }
+    	if(cantidadRestantes==0){
+    		unFrame-=paginasRequeridas;
+    		for(unFrame;unFrame<paginasRequeridas+unFrame;unFrame++){
+	    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina);
+	    		bloquesAdmin[unFrame].estado=OCUPADO;
+	    		bloquesAdmin[unFrame].pid=unPid;
+	    		bloquesAdmin[unFrame].hashPagina=123123;
+	    		paginasRequeridas--;
+    		}
+    		return OK;
+    	} 
+    	unFrame++;
     	paginasRecorridas++;
-    } return FAIL;
+    }
+    return FAIL;
  }	
 int buscarAdministrativa(int pid,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
 {

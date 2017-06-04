@@ -434,6 +434,7 @@ void consola(){
 					printf("\tEstado: %i\n", PCBS[i].estado);
 					printf("\tPC: %i\n", PCBS[i].programCounter);
 					printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
+					printf("\tPaginas de codigo: %i\n", PCBS[i].paginasCodigo);
 					printf("\tPosicion stack: %i\n", PCBS[i].posicionStack);
 					printf("\tCantidad de instrucciones: %i\n", PCBS[i].cantidadInstrucciones);
 					printf("\tIndice Codigo:\n");
@@ -633,7 +634,6 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					programa= obtenerPrograma(path->path);
 					// CALCULO LA CANTIDAD DE PAGINAS
 					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
-					int cantPaginasStack = calcularPaginas(TAMPAGINA,STACK_SIZE);
 					// GENERO LA METADATA DEL SCRIPT
 					metadata=metadata_desde_literal(programa->elPrograma);
 					// CREO EL PCB
@@ -663,7 +663,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					solicitudMemoria->tamanioCodigo=programa->tamanio;
 					solicitudMemoria->codigo=programa->elPrograma;
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
-					solicitudMemoria->cantidadPaginasStack=cantPaginasStack;
+					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 					solicitudMemoria->pid=pid;
 					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
 					// LO AGREGO A LA LISTA DE JOBS
@@ -728,7 +728,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					cantidadJobs--;
 					jobs=realloc(jobs,cantidadJobs*sizeof(jobs[0]));
 					// ENVIO RESPUESTA A CONSOLA
-					enviarDinamico(RESULTADOINICIARPROGRAMA,dataDeConexion->socket,resultado);
+					// enviarDinamico(RESULTADOINICIARPROGRAMA,dataDeConexion->socket,resultado);
 					// LIBERO MEMORIA
 					free(respuestaSolicitud);
 					free(resultado);

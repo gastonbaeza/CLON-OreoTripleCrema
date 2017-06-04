@@ -51,6 +51,9 @@
 t_list * procesos;
 
 pthread_mutex_t semaforoProcesos;
+pthread_mutex_t mutexComunicacion;
+pthread_mutex_t mutexfreeDataConexion;
+int PUEDOLIBERAR=2;
 char * mensajeError="la instruccion solicitada no existe, gracias vuelvas prontos";
 char * mensajeFinalizacionHilo="el hilo no esta, el hilo se fue, el hilo se escapa de mi vida";
 
@@ -58,7 +61,9 @@ char * mensajeFinalizacionHilo="el hilo no esta, el hilo se fue, el hilo se esca
 
 void recibir(dataParaComunicarse * dataConexion){
 	int socket = dataConexion->socket;
-	free(dataConexion);
+	pthread_mutex_lock(&mutexfreeDataConexion);
+	PUEDOLIBERAR--;
+	pthread_mutex_unlock(&mutexfreeDataConexion);
 void * paquete;
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
@@ -66,17 +71,25 @@ t_mensaje * unMensaje;
 int * unPid;
 t_resultadoIniciarPrograma * resultado;
 while(1) {
-	recibir=recv(socket,seleccionador, sizeof(t_seleccionador),0);
+	while(0>recibir){
+		pthread_mutex_lock(&mutexComunicacion);
+		recibir=recv(socket,seleccionador, sizeof(t_seleccionador),0);
+		pthread_mutex_unlock(&mutexComunicacion);
+	}
 switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
 						unMensaje->mensaje=malloc(1);
+						pthread_mutex_lock(&mutexComunicacion);
 						recibirDinamico(MENSAJE, socket, unMensaje);
+						pthread_mutex_unlock(&mutexComunicacion);
 						printf("%s",unMensaje->mensaje);
 		break;
 
 		case RESULTADOINICIARPROGRAMA:
+					pthread_mutex_lock(&mutexComunicacion);
 					recibirDinamico(RESULTADOINICIARPROGRAMA,socket, paquete);
+					pthread_mutex_unlock(&mutexComunicacion);
 					 resultado=malloc(sizeof(t_resultadoIniciarPrograma));
 					memcpy(resultado,paquete,sizeof(t_resultadoIniciarPrograma));
 					if (resultado->resultado){
@@ -91,7 +104,9 @@ switch (seleccionador->tipoPaquete){
 
 void enviar(dataParaComunicarse * dataConexion){
 	int socket = dataConexion->socket;
-	free(dataConexion);
+	pthread_mutex_lock(&mutexfreeDataConexion);
+	PUEDOLIBERAR--;
+	pthread_mutex_unlock(&mutexfreeDataConexion);
 int cancelarThread=0;
 int PIDS[list_size(procesos)];
 int unPid;
@@ -110,7 +125,9 @@ while(cancelarThread==0){
 							scanf("%s",path_ansisop->path); //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
 							path_ansisop->tamanio=strlen(path_ansisop->path)+1;
 							path_ansisop->path=realloc(path_ansisop->path,(path_ansisop->tamanio)*sizeof(char));
+							pthread_mutex_lock(&mutexComunicacion);
 							enviarDinamico(PATH,socket,path_ansisop);
+							pthread_mutex_unlock(&mutexComunicacion);
 							free(path_ansisop->path);
 							free(path_ansisop);
 		break;
@@ -119,7 +136,9 @@ while(cancelarThread==0){
 							
 							printf ("PID: ");
 							scanf("%d", PID);
+							pthread_mutex_lock(&mutexComunicacion);
 							enviarDinamico(FINALIZARPROGRAMA,socket,PID);
+							pthread_mutex_unlock(&mutexComunicacion);
 	
 		break;
 	case DESCONECTARCONSOLA:
@@ -134,7 +153,9 @@ while(cancelarThread==0){
 							}
 							int * procesosAMatar;
 							procesosAMatar=&PIDS[0];
-							enviarDinamico(KERNEL,ARRAYPIDS,socket,(void *)procesosAMatar,list_size(procesos)*sizeof(int)); 
+							pthread_mutex_lock(&mutexComunicacion);
+							enviarDinamico(ARRAYPIDS,socket,(void *)procesosAMatar); 
+							pthread_mutex_unlock(&mutexComunicacion);
 							pthread_mutex_unlock(&semaforoProcesos);
 							cancelarThread ++;
 	
@@ -165,6 +186,8 @@ int main(){
 
 	////////////////////////////////////////
 	pthread_mutex_init(&semaforoProcesos,NULL);
+	pthread_mutex_init(&mutexComunicacion,NULL);
+	pthread_mutex_init(&mutexfreeDataConexion,NULL);
 	int bytesRecibidos;
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
@@ -187,8 +210,10 @@ int main(){
 	config_destroy(CFG);
 	pthread_t hiloEnviar, hiloRecibir;
 	pthread_create(&hiloEnviar, NULL, (void *) enviar, dataConexion);
-	pthread_join(hiloEnviar,NULL); // cuando el hilo enviar termina (el usuario pone quit por ej) se termina el proceso consola
 	pthread_create(&hiloRecibir, NULL, (void *) recibir, dataConexion);
+	while(PUEDOLIBERAR>0);
+	free(dataConexion);
+	pthread_join(hiloEnviar,NULL); // cuando el hilo enviar termina (el usuario pone quit por ej) se termina el proceso consola
 	pthread_join(hiloRecibir,NULL);//tiene que ser 2 argumentos
 
 	
