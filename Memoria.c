@@ -172,7 +172,7 @@ for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de ad
 bloquesAdmin[unaAdmin].estado=LIBRE;
 bloquesAdmin[unaAdmin].pid=-1;
 bloquesAdmin[unaAdmin].frame=unaAdmin;
-//bloquesAdmin[unaAdmin].hashPagina=miFuncionDeHash(bloquesAdmin[unaAdmin].pid,bloquesAdmin[unaAdmin].frame);
+bloquesAdmin[unaAdmin].hashPagina=666;
 	
 }
  
@@ -200,22 +200,21 @@ for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a 
 
 
 pthread_create(&hiloAceptador,NULL,(void *)aceptar,unData);
-//pthread_t hiloConsolaMemoria;
-//pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
+pthread_t hiloConsolaMemoria;
+pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
 pthread_join(hiloAceptador,NULL);
-//pthread_join(hiloConsolaMemoria,NULL);
+pthread_join(hiloConsolaMemoria,NULL);
 }
 
 
 
 void comunicarse(dataParaComunicarse * estructura){ // aca tenemos que agregar toda la wea que es "global"
-
+fflush(stdout); 
  int unData=estructura->socket;
-printf("%i \n", unData);
 
-void * paquete;
+
 int recibir;
-t_seleccionador * seleccionador;
+t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 t_list * paginasParaUsar;
 
 t_pcb * unPcb;
@@ -223,38 +222,49 @@ t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
 
+t_solicitudMemoria * solicitudMemoria;
 while(1) {
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
 	
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
-							recibirDinamico(SOLICITUDMEMORIA,unData,paquete);
+							solicitudMemoria=malloc(sizeof(t_solicitudMemoria)); //esto lo vi en stack overflow no me peguen
+							recibirDinamico(SOLICITUDMEMORIA,unData,solicitudMemoria);
+							solicitudMemoria->codigo=realloc(solicitudMemoria->codigo,(solicitudMemoria->tamanioCodigo+1)*sizeof(char));
+							printf("Tamaño: %i\n", solicitudMemoria->tamanioCodigo);
+							printf("Codigo: %s\n", solicitudMemoria->codigo);
+							printf("Cant Pags Codigo: %i\n", solicitudMemoria->cantidadPaginasCodigo);
+							printf("Cant Pags Stack: %i\n", solicitudMemoria->cantidadPaginasStack);
+							printf("PID: %i\n", solicitudMemoria->pid);
 							
-							t_solicitudMemoria * solicitudMemoria=(t_solicitudMemoria *)paquete; //esto lo vi en stack overflow no me peguen
  							
  							paginasRequeridas=solicitudMemoria->cantidadPaginasCodigo;
  							stackRequeridas=solicitudMemoria->cantidadPaginasStack;
+ 							printf("hay x canatidad paginas libres %i\n",hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS));
+ 							sleep(5);
+ 							printf("fin sleep\n");
  							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
  							{ 
  							solicitudMemoria->respuesta=FAIL;
- 							enviarDinamico(RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria);
+ 							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitudMemoria);
  							}
 
  							else
  							{ //mandarOK memoria
  							solicitudMemoria->respuesta=OK;
- 							// codigo del programa
- 							enviarDinamico(RESPUESTAOKMEMORIA,socketKernel, (void *) solicitudMemoria);
+ 							// codigo del programaf
+ 							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitudMemoria);
+ 							printf("Despues de enviar\n");
  							char * codigo=malloc(solicitudMemoria->tamanioCodigo);
  							memcpy(codigo,solicitudMemoria->codigo,solicitudMemoria->tamanioCodigo);
  							paginasParaUsar=list_create();
  							/*Deje el algoritmo extra sin codear en buscar paginas*/
- 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos);
+ 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos,solicitudMemoria->pid);
  							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
  							free(codigo);
  							free(solicitudMemoria);
- 							free(paginasParaUsar);
- 							free(paquete);
+ 							
+ 							
  							//enviarDinamico notificacion de que se asigno genialmente
 
  							 }	
@@ -266,7 +276,7 @@ while(1) {
  					break;
  		 
  					
- 		case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
+ 	/*	case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
 							 
 							 unPcb=(t_pcb *)paquete;
@@ -289,7 +299,7 @@ while(1) {
  								free(paquete);
 								free(unPcb);
 
- 		break;
+ 		break;*/
  				}
 }//switch
 
@@ -299,44 +309,50 @@ while(1) {
 
 
 
-/*void consolaMemoria()
-{	int pid;
+void consolaMemoria()
+{	
+	int pid;
 	int retardo;
 	
 	int cancelarThread=0;
 	while(cancelarThread==0)
 	{
-	int * instruccionConsola;
+	int * instruccionConsola=malloc(sizeof(int));
 	int bloquesOcupados, bloquesLibre;
+	printf("%s\n", "bienvenido a la consola de memoria");
+	printf("%s\n","ingrese 0 para retardo" );
+	printf("%s\n","ingrese 1 para dump" );
+	printf("%s\n", "ingrese 2 para size");
+	
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 
-case RETARDO: 
+/*case RETARDO: 
 						
 						fflush(stdout);printf("%s", "ingrese retardo (en milisegundos)");
 						scanf("%d",&retardo);	
 						retardo=(int)(retardo*0.001);
-		break;
-	case DUMP:		fflush(stdout);printf("%s", "seleccione objeto de dump"); scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
+		break;*/
+	case DUMP:		fflush(stdout);printf("%s", "seleccione objeto de dump 2"); scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
 					switch(*instruccionConsola)
 					{
-						case CACHE:generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
+						/*case CACHE:generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
 						break;
 						case MEMORIA:generarDumpMemoria(asignador,MARCOS);
-						break;
+						break;*/
 						case TABLA:generarDumpAdministrativas(bloquesAdmin, MARCOS);	
 						break;
-						case PID:		
+						/*case PID:		
 										scanf("%d",&pid);
 										generarDumpProceso(pid);
-						break;
+						break;*/
 						default: pagaraprata();
 					}
 							
 							
 	
 		break;
-	case FLUSH:
+	/*case FLUSH:
 					memset(memoria,0,ENTRADAS_CACHE);		
 	
 		break;
@@ -353,17 +369,16 @@ case RETARDO:
 				case PID:
 				break;
 				default: pagaraprata();
-			}	
+			}	*/
 							
 		break;
 
-	default:	printf("%s",mensajeError);//error no se declara
-	
+	default:	printf("%s",mensajeError);//error no se declara 
+	break;
 	}
-	printf("%s",mensajeFinalizacionHilo);
+	}
 }
-}
-*/
+
 
 
 
@@ -385,6 +400,7 @@ while(1){
 		fflush(stdout);printf("%i\n",*unBuffer );
 		if(*unBuffer==KERNEL)
 			{	tamPagina=MARCO_SIZE;
+				printf("MARCO SIZE: %i\n",tamPagina );
 				memcpy(unBuffer,&tamPagina, sizeof(int));
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
 				socketKernel=socketNuevaConexion;	

@@ -267,7 +267,7 @@ void consola(){
 	int consolaHabilitada=1;
 	int opcion,opcion2;
 	int pid;
-	int i;
+	int i,j;
 	printf("\nPresione enter para iniciar la consola.\n");
 	getchar();
 	while(consolaHabilitada){
@@ -435,7 +435,12 @@ void consola(){
 					printf("\tPC: %i\n", PCBS[i].programCounter);
 					printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
 					printf("\tPosicion stack: %i\n", PCBS[i].posicionStack);
-					printf("\tIndice Codigo: en desarrollo.\n");
+					printf("\tCantidad de instrucciones: %i\n", PCBS[i].cantidadInstrucciones);
+					printf("\tIndice Codigo:\n");
+					for (j = 0; j < PCBS[i].cantidadInstrucciones; j++)
+					{
+						printf("\t\tInstruccion: %i,\tOffset: %i.\n", PCBS[i].indiceCodigo[j].start, PCBS[i].indiceCodigo[j].offset);
+					}
 					printf("\tIndice Etiquetas: %i\n", PCBS[i].indiceEtiquetas);
 					printf("\tExit Code: %i\n", PCBS[i].exitCode);
 				}
@@ -579,6 +584,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	t_path * path;
 	int PidAFinalizar;
 	t_metadata_program * metadata;
+	t_resultadoIniciarPrograma * resultado;
 	// RETURN VALUES
 	int pid;
 	int rv;
@@ -602,8 +608,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 		if (dataDeConexion->interfaz==CPU)
 			seleccionador->tipoPaquete=SOLICITUDPCB;
 		else
-			while(0>=recv(dataDeConexion->socket, seleccionador, sizeof(t_seleccionador), 0));
-        switch(seleccionador->tipoPaquete){
+			while(0>recv(dataDeConexion->socket, seleccionador, sizeof(t_seleccionador), 0));
+		switch(seleccionador->tipoPaquete){
 				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
 					// RECIBO EL PATH
 					path = malloc (sizeof(t_path));
@@ -638,7 +644,10 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pcb->programCounter=0;
 					pcb->paginasCodigo=cantPaginasCodigo;
 					pcb->posicionStack=0;
+					pcb->cantidadInstrucciones=metadata->instrucciones_size;
+					pcb->indiceCodigo=malloc(metadata->instrucciones_size*sizeof(t_intructions));
 					memcpy(pcb->indiceCodigo,metadata->instrucciones_serializado,metadata->instrucciones_size*sizeof(t_intructions));
+					metadata_destruir(metadata);
 					pcb->indiceEtiquetas=0;
 					pcb->exitCode=1;
 					// LO AGREGO A LA TABLA
@@ -651,12 +660,12 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					// SOLICITUD DE MEMORIA
 					t_solicitudMemoria * solicitudMemoria;
 					solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
+					solicitudMemoria->tamanioCodigo=programa->tamanio;
 					solicitudMemoria->codigo=programa->elPrograma;
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 					solicitudMemoria->cantidadPaginasStack=cantPaginasStack;
 					solicitudMemoria->pid=pid;
 					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
-					printf("%s\n", programa->elPrograma);
 					// LO AGREGO A LA LISTA DE JOBS
 					if (cantidadJobs % BLOQUE == 0)
 						jobs = realloc (jobs, (cantidadJobs+BLOQUE) * sizeof(jobs[0]));
@@ -666,28 +675,19 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					free(path);
 					free(solicitudMemoria);
 					free(pcb);
-				break;
-				case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
-					recibirDinamico(FINALIZARPROGRAMA,dataDeConexion->socket,&PidAFinalizar);
-					finalizarPid(PidAFinalizar);
-				break;
-				case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
-				break;
-				case SOLICITUDPCB:
-					// INICIO DE HILO PLANIFICADOR
-        			dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
-        			dataDePlanificacion=dataDeConexion;
-					pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDeConexion);
-					estaComunicacion=0;
-        		break;
-        		case RESPUESTAOKMEMORIA:
-        			// RECIBO LA RESPUESTA DE MEMORIA
+					// RECIBO LA RESPUESTA DE MEMORIA
+					while(0>recv(SOCKETMEMORIA, seleccionador, sizeof(t_seleccionador), 0));
 					respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
-					recibirDinamico(RESPUESTAOKMEMORIA,dataDeConexion->socket,respuestaSolicitud);
+					recibirDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,respuestaSolicitud);
+					printf("Tamaño: %i\n", respuestaSolicitud->tamanioCodigo);
+					printf("Codigo: %s\n", respuestaSolicitud->codigo);
+					printf("Cant Pags Codigo: %i\n", respuestaSolicitud->cantidadPaginasCodigo);
+					printf("Cant Pags Stack: %i\n", respuestaSolicitud->cantidadPaginasStack);
+					printf("PID: %i\n", respuestaSolicitud->pid);
+					printf("Respuesta: %i\n", respuestaSolicitud->respuesta);
 					// PREPARO LA RESPUESTA A CONSOLA
-					t_resultadoIniciarPrograma * resultado;
 					resultado=malloc(sizeof(t_resultadoIniciarPrograma));
-					int pid = respuestaSolicitud->pid;
+					pid = respuestaSolicitud->pid;
 					resultado->pid=pid;
 					// VERIFICO SI PUEDO PASAR A NEW
 					if (respuestaSolicitud->respuesta==OK){
@@ -716,14 +716,14 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 						resultado->resultado=1;
 					}
 					// ELIMINO EL PID DE MI COLA DE JOBS
-					int i=0;
-					while(jobs[i]!=pid)
-						i++;
-					for (i; i < cantidadJobs; i++){
-						if (i+1==cantidadJobs)
-							jobs[i]=-1;
+					int j=0;
+					while(jobs[j]!=pid)
+						j++;
+					for (j; j < cantidadJobs; j++){
+						if (j+1==cantidadJobs)
+							jobs[j]=-1;
 						else
-							jobs[i]=jobs[i+1];
+							jobs[j]=jobs[j+1];
 					}
 					cantidadJobs--;
 					jobs=realloc(jobs,cantidadJobs*sizeof(jobs[0]));
@@ -732,6 +732,22 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					// LIBERO MEMORIA
 					free(respuestaSolicitud);
 					free(resultado);
+				break;
+				case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
+					recibirDinamico(FINALIZARPROGRAMA,dataDeConexion->socket,&PidAFinalizar);
+					finalizarPid(PidAFinalizar);
+				break;
+				case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
+				break;
+				case SOLICITUDPCB:
+					// INICIO DE HILO PLANIFICADOR
+        			dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
+        			dataDePlanificacion=dataDeConexion;
+					pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDeConexion);
+					estaComunicacion=0;
+        		break;
+        		case SOLICITUDMEMORIA:
+        			
         		break;
 		    }
 		free(seleccionador);
@@ -829,18 +845,22 @@ hints.ai_socktype = SOCK_STREAM;
 struct addrinfo *memoria;
 getaddrinfo(IP_MEMORIA,PUERTO_MEMORIA,&hints,&memoria);
 int socketMemoria=socket(memoria->ai_family,memoria->ai_socktype,memoria->ai_protocol);
+int * buffer=malloc(sizeof(int));
 if ((rv = connect(socketMemoria,memoria->ai_addr,memoria->ai_addrlen)) == -1) 
 	perror("No se pudo conectar con memoria.\n");
 else if (rv == 0){
 	printf("Se conectó con memoria correctamente.\n");
-	handshakeCliente(socketMemoria,KERNEL,NULL);}
+	handshakeCliente(socketMemoria,KERNEL,buffer);
+	free(buffer);
+}
 SOCKETMEMORIA=socketMemoria;
 // RECIBO EL TAMAÑO DE PAGINA
 int nbytes;
-int * tamPagina;
+int tamPagina;
 // while( 0>recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0));
-recv(SOCKETMEMORIA, tamPagina, sizeof(int), 0);
-TAMPAGINA=/**tamPagina*/10;
+recv(SOCKETMEMORIA, &tamPagina, sizeof(int), 0);
+printf("MARCO SIZE: %i\n", tamPagina);
+TAMPAGINA=tamPagina;
 freeaddrinfo(memoria);
 // CONEXION CON FILESYSTEM (NO ES NECESARIO HACER HANDSHAKE, KERNEL ES EL ÚNICO QUE SE CONECTA A FS)
 struct addrinfo *fs;
