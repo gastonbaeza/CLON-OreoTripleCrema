@@ -1,6 +1,6 @@
 #include "funciones.h"
 #include "estructuras.h"
-#include "parser.h"
+#include <parser/parser.h>
 #include <commons/collections/list.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,13 +11,13 @@
 #include <unistd.h>
 #include <commons/txt.h>
 #include <errno.h>
-#include "metadata_program.h"
+#include <parser/metadata_program.h>
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stddef.h>
-#include "dummy_ansisop.h"
+#include <dummy-cpu/dummy_ansisop.h>
 
 
 #define CPU 1
@@ -260,7 +260,7 @@ void iniciarEjecucion(linea){
 		
 		t_peticionLinea * peticionLinea=malloc(sizeof(t_peticionLinea));
 		peticionLinea->start=pcb->indiceCodigo[index][0];
-		peticionLinea->offset=pcb->indiceCodigo[index][1]];		
+		peticionLinea->offset=pcb->indiceCodigo[index][1];		
 		envioDinamico(solicitudDeLineaCodigo,socketMemoria,(void *) peticionLinea);
 		pcb->programCounter=pcb->indiceCodigo[index][0];
 	

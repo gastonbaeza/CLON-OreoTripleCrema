@@ -69,6 +69,7 @@ typedef struct {
 				int referenciaATabla;
 				int paginasCodigo; // estaba en el TP pero no lo habiamos puesto
 				int posicionStack;
+				int cantidadInstrucciones;
 				t_intructions * indiceCodigo;
 				int indiceEtiquetas;
 				int exitCode;
