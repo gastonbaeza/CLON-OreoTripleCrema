@@ -1,7 +1,8 @@
 
 
-// #include "desSerializador.h"
+
 #include "estructuras.h"
+
 #include <commons/collections/list.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +39,7 @@
  	#define ACTUALIZARPCB 4
 	
 	//-------------------------------
-	#define RETARDO 0
+	#define DELAY 0
 	#define DUMP 1
 	#define FLUSH 2
 	#define SIZE 3
@@ -64,8 +65,9 @@
 #define TABLA 2
 #define PID 3
 #define PCB 3
-
-
+#define PIDSIZE 1
+#define MEMORIASIZE 0
+int retardo;
 t_estructuraADM * bloquesAdmin;
 int tamPagina;
 t_list * paginasLiberadas;
@@ -85,9 +87,10 @@ char *REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
 void * memoria;
 t_marco * marcos;
-t_marco * memoriaCache;
+t_estructuraCache* memoriaCache;
 int socketKernel;
-
+void * memoria;
+void * cache;
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
@@ -179,9 +182,9 @@ bloquesAdmin[unaAdmin].hashPagina=666;
 marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
 int unMarco=0;
 
-void * memoria=calloc(MARCOS*MARCO_SIZE,MARCOS*MARCO_SIZE);
-void * cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
-memoriaCache=(t_marco*)cache;
+ memoria=calloc(MARCOS*MARCO_SIZE,MARCOS*MARCO_SIZE);
+ cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
+memoriaCache=(t_estructuraCache*)cache;
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
@@ -191,8 +194,10 @@ for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada regio
 
 for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
 	{
-		memoriaCache[unMarco].numeroPagina=cache+(unMarco*MARCO_SIZE);
-	}
+		memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
+		memoriaCache[unMarco].frame=-unMarco; //para distinguir  una pagina real de una virgen
+		memoriaCache[unMarco].pid=-1;
+			}
 	
 	asignador=&marcos[0];
 ////////////////////////////////INICIAMOS HILOS DE COMINICACION/////////////////////////////////////////////
@@ -310,70 +315,111 @@ while(1) {
 
 
 void consolaMemoria()
-{	
+{	printf("%s\n", "bienvenido a la consola de memoria");
 	int pid;
-	int retardo;
+	int unMarco;
 	
 	int cancelarThread=0;
 	while(cancelarThread==0)
-	{
+	{ clear();
 	int * instruccionConsola=malloc(sizeof(int));
 	int bloquesOcupados, bloquesLibre;
-	printf("%s\n", "bienvenido a la consola de memoria");
-	printf("%s\n","ingrese 0 para retardo" );
-	printf("%s\n","ingrese 1 para dump" );
-	printf("%s\n", "ingrese 2 para size");
+	printf("%s\n","**********************");
+	printf("%s\n","ingrese 0 para modificar el retardo de acceso de memoria" );
+	printf("%s\n","**********************");
+	printf("%s\n","ingrese 1 para realizar acciones de tipo dump" );
+	printf("%s\n","**********************");
+	printf("%s\n", "ingrese 2 para realizar un flush de cache");
+	printf("%s\n","**********************");
+	printf("%s\n", "ingrese 3 para obtener informacion acerca del tamaño");
+	printf("%s\n","**********************");
 	
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 
-/*case RETARDO: 
+	case DELAY: 		
+						clear();
+						printf("%s\n","Ingrese el nuevo valor de retardo: " );
+						getchar();
+						scanf("%d",&retardo);
 						
-						fflush(stdout);printf("%s", "ingrese retardo (en milisegundos)");
-						scanf("%d",&retardo);	
-						retardo=(int)(retardo*0.001);
-		break;*/
-	case DUMP:		fflush(stdout);printf("%s", "seleccione objeto de dump 2"); scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
+							
+						retardo=retardo;
+						printf("El nuevo retardo ha sido actualizado a: %i %s\n", retardo,"milisegundos" );printf("%s\n", "presione una tecla para volver al menu de la consola");getchar(); getchar();
+		break;
+	case DUMP:		clear();
+					fflush(stdout);printf("%s\n", "Para realizar un dump de cache ingrese 0"); 
+					fflush(stdout);printf("%s\n", "Para realizar un dump de memoria ingrese 1"); 
+					fflush(stdout);printf("%s\n", "Para realizar un dump de administrativas ingrese 2"); 
+					fflush(stdout);printf("%s\n", "Para realizar un dump de un proceso ingrese 3"); 
+
+
+
+					scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
 					switch(*instruccionConsola)
 					{
-						/*case CACHE:generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
+						case CACHE:
+									clear();
+									generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
-						case MEMORIA:generarDumpMemoria(asignador,MARCOS);
-						break;*/
-						case TABLA:generarDumpAdministrativas(bloquesAdmin, MARCOS);	
+						case MEMORIA:
+										clear();
+										generarDumpMemoria(asignador,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
-						/*case PID:		
+						case TABLA:
+										clear();
+										generarDumpAdministrativas(bloquesAdmin, MARCOS);	printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+						break;
+						case PID:		clear();
+										printf("%s\n","ingrese un pid para realizar dump" );
+										getchar();
 										scanf("%d",&pid);
-										generarDumpProceso(pid);
-						break;*/
+										generarDumpProceso(pid); printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+						break;
 						default: pagaraprata();
+						break;
 					}
 							
 							
 	
 		break;
-	/*case FLUSH:
-					memset(memoria,0,ENTRADAS_CACHE);		
-	
+	case FLUSH:	clear();
+					
+					for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
+					{
+					memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
+					memoriaCache[unMarco].frame=-unMarco; //para distinguir  una pagina real de una virgen
+					memoriaCache[unMarco].pid=-1;
+					}	printf("%s\n","la memoria cache ha sido reinicializada" );	
+						printf("%s\n", "presione una tecla para volver al menu de la consola");getchar(); getchar();
 		break;
-	case SIZE:			fflush(stdout);printf("%s", "seleccione objeto de size"); scanf("%d",instruccionConsola);
+	case SIZE:	clear();		fflush(stdout);printf("%s\n", "para conocer el tamaño de la memoria ingrese 0");
+
+								fflush(stdout);printf("%s\n", "para conocer el tamaño de un proceso ingrese 1");getchar();
+			 					scanf("%d",instruccionConsola);
 			switch(*instruccionConsola)
 			{
-				case MEMORIA:	
-								fflush(stdout);printf("cantidadDePaginas %i", MARCOS);
+				case MEMORIASIZE:	clear();
+								fflush(stdout);printf("cantidadDePaginas: %i\n", MARCOS);
 								bloquesLibre=cantidadBloquesLibres(MARCOS,bloquesAdmin);
-								fflush(stdout);printf("cantidadBloquesLibres%i", bloquesLibre);
+								fflush(stdout);printf("cantidadBloquesLibres: %i\n", bloquesLibre);
 								bloquesOcupados=cantidadBloquesOcupados(MARCOS,bloquesAdmin);
-								fflush(stdout);printf("cantidadBloquesOcupados%i", bloquesOcupados);
+								fflush(stdout);printf("cantidadBloquesOcupados: %i\n", bloquesOcupados);
+								printf("%s\n", "presione una tecla para volver al menu de la consola");
+								fflush(stdout);
+								getchar();getchar();
 				break;
-				case PID:
+				case PIDSIZE:clear(); printf("%s\n","ingrese un pid" );
+				getchar(); scanf("%d",&pid);
+				 calcularTamanioProceso(pid,bloquesAdmin,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola"); getchar();getchar();
 				break;
 				default: pagaraprata();
-			}	*/
+				break;
+			}	
 							
 		break;
 
-	default:	printf("%s",mensajeError);//error no se declara 
+	default:	
 	break;
 	}
 	}
@@ -391,13 +437,12 @@ pthread_t hiloComunicador;
 struct sockaddr_in addr;
 int addrlen = sizeof(addr);
 if(rv=listen(unData->socket,BACKLOG)==-1) perror("Error en el listen");
-printf("%i %i\n",unData->socket,rv);
 while(1){
 	if ((socketNuevaConexion = accept(unData->socket, (struct sockaddr *)&addr,&addrlen)) == -1) perror("Error con conexion entrante");
 	else {
 		memcpy(dataNuevo,unData,sizeof(dataParaComunicarse));
 		handshakeServer(socketNuevaConexion,MEMORIA,(void*)unBuffer);
-		fflush(stdout);printf("%i\n",*unBuffer );
+		
 		if(*unBuffer==KERNEL)
 			{	tamPagina=MARCO_SIZE;
 				printf("MARCO SIZE: %i\n",tamPagina );
