@@ -10,7 +10,12 @@ typedef struct {
 				int bytes;
 				}__attribute__((packed))
 				  hashMemoria;
-
+typedef struct 
+				{ 	int frame;
+					int pid;
+					void * contenido;
+	
+				}t_estructuraCache;
 typedef struct { 
 				
 				void * numeroPagina;
