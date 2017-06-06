@@ -2,6 +2,7 @@
 #include "estructuras.h"
 #include <parser/parser.h>
 #include <commons/collections/list.h>
+#include <commons/config.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,40 +12,41 @@
 #include <unistd.h>
 #include <commons/txt.h>
 #include <errno.h>
-<<<<<<< HEAD
-
-=======
-#include <parser/metadata_program.h>
->>>>>>> 034a8b25478aa39ce2f0d74deb8dbd4ccfa31db2
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stddef.h>
-#include <dummy-cpu/dummy_ansisop.h>
 
 
-#define CPU 1
-#define solicitudDeLineaCodigo 3
-#define ACTUALIZARPCB 4
-#define solicitudDeCodigo 5
+
+#define SOLICITUDLINEA 2
 #define FINALIZARPROCESO 16
 #define PCB 17
-#define CODIGO 18
+#define CPU 1
+
 #define LINEA 19
 
-int continuarEjecucion=1;
-int index=0;
-int PID;
+t_puntero (*AnSISOP_definirVariable)(t_nombre_variable identificador_variable){
 
+}
+
+int continuarEjecucion=1;
+int PID;
+int i;
 t_pcb * pcb;
+char * IP_KERNEL;
+char * PUERTO_KERNEL;
+char * IP_MEMORIA;
+char * PUERTO_MEMORIA;
+
 
 
 int socketKernel;
 int socketMemoria;
 
 
-void conectarKernel(socketKernel){
+void conectarKernel(void){
 
 int bytesRecibidos;
 	struct addrinfo hints;
@@ -68,38 +70,46 @@ int bytesRecibidos;
 	
 	freeaddrinfo(serverInfo);
 
-
-void handshakeCliente(socketKernel, CPU, int * unBuffer);
+void * unBuffer;
+handshakeCliente(socketKernel, CPU, unBuffer);
 void * paquete;
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-t_pcb * pcb;
+
+t_peticionLinea * peticionLinea;
 while(1) {
 	while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
-	paquete=malloc(seleccionador->tamanio);
+	
 	if(seleccionador->unaInterfaz==CPU){
 	switch (seleccionador->tipoPaquete){
 		case PCB: // [Identificador del Programa] // informacion del proceso
-							recibirDinamico(PCB,socketKernel,(void *) paquete);
 							
-							pcb=malloc(t_pcb);
- 							memcpy((void *)pcb,(void *)paquete,sizeof(paquete));
- 							PID= pcb->pid;
+							recibirDinamico(PCB,socketKernel,pcb);
+							
  							
-							envioDinamico(solicitudDeLineaCodigo, socketMemoria, (void *)PID); 		
+ 							peticionLinea=malloc(sizeof(t_peticionLinea));
+							peticionLinea->start=pcb->indiceCodigo[0].start;
+							peticionLinea->offset=pcb->indiceCodigo[0].offset;		
+							envioDinamico(SOLICITUDLINEA,socketMemoria,(void *) peticionLinea);
+							free(peticionLinea);
+							pcb->programCounter=pcb->indiceCodigo[0].start;
+							i=0;
+
+ 								
  								
  				break;
 
  		case FINALIZARPROCESO: 
- 								
- 								continuarEjecucion=0; 								
+ 								continuarEjecucion=0; 
+ 								free(pcb->indiceCodigo);					
  		break;
-}}}}	
+}}}
+free(seleccionador);
+}	
 
 
 
-void conectarMemoria(socketMemoria){
-	int socketMemoria;
+void conectarMemoria(void){
 	int bytesRecibidos;
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
@@ -117,27 +127,28 @@ void conectarMemoria(socketMemoria){
 	connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen);
 
 	freeaddrinfo(serverInfo);
+	void * unBuffer;
 
 	
-	void handshakeCliente(socketMemoria, CPU, int * unnBuffer);
+	handshakeCliente(socketMemoria, CPU, unBuffer);
 	void * paquete;
 	int recibir;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	t_linea * linea;
+	char* lineaCodigo;
 	t_programaSalida * programa;
 	while(1){
 		while(0>recv(socketMemoria, seleccionador, sizeof(t_seleccionador),0));
-		paquete=malloc(seleccionador->tamanio);
+		
 		if(continuarEjecucion==1){
 	if(seleccionador->unaInterfaz==CPU){
  	switch(seleccionador->tipoPaquete){
  		case LINEA: 
- 					recibirDinamico(LINEA,socketMemoria, (void *) paquete);
- 					
- 					linea=malloc(t_linea);
- 					memcpy((void *)linea,(void *)paquete,sizeof(paquete));
- 					linea=linea->linea;
- 					iniciarEjecucion(linea);
+ 					linea=malloc(sizeof(t_linea));
+ 					recibirDinamico(LINEA,socketMemoria, linea);
+ 					lineaCodigo=malloc(linea->tamanio);
+ 					lineaCodigo=linea->linea;
+ 					iniciarEjecucion(lineaCodigo);
  					free(linea);
  		break;
 
@@ -147,7 +158,9 @@ void conectarMemoria(socketMemoria){
 }}}
 
 				
- 	}}			
+ 	}
+ 	free(seleccionador);
+ }			
 
 
  
@@ -156,15 +169,6 @@ void conectarMemoria(socketMemoria){
 
 
 
-AnSISOP_funciones functions = {
-		.AnSISOP_definirVariable		= dummy_definirVariable,
-		.AnSISOP_obtenerPosicionVariable= dummy_obtenerPosicionVariable,
-		.AnSISOP_finalizar 				= dummy_finalizar,
-		.AnSISOP_dereferenciar			= dummy_dereferenciar,
-		.AnSISOP_asignar				= dummy_asignar,
-
-};
-AnSISOP_kernel kernel_functions = { };
 
 
 //tiene que estar siempre en contacto con la memoria
@@ -187,16 +191,17 @@ AnSISOP_kernel kernel_functions = { };
 int main(){
 
 
-	t_config *CFG;
+	t_config * CFG;
 	CFG = config_create("CPUCFG.txt");
-	char *IP_KERNEL=(char*) config_get_string_value(CFG ,"IP_KERNEL");
-	char *IP_MEMORIA= (char*)config_get_string_value(CFG, "IP_MEMORIA");
-	char *PUERTO_KERNEL= (char*)config_get_string_value(CFG ,"PUERTO_KERNEL");
-	char *PUERTO_MEMORIA= (char*)config_get_string_value(CFG,"PUERTO_MEMORIA");
+	IP_KERNEL=(char*) config_get_string_value(CFG ,"IP_KERNEL");
+	IP_MEMORIA= (char*)config_get_string_value(CFG, "IP_MEMORIA");
+	PUERTO_KERNEL= (char*)config_get_string_value(CFG ,"PUERTO_KERNEL");
+	PUERTO_MEMORIA= (char*)config_get_string_value(CFG,"PUERTO_MEMORIA");
 	printf("Configuración:\nIP_KERNEL = %s,\nIP_MEMORIA=%s,\nPUERTO_KERNEL = %s.\n,PUERTO_MEMORIA=%s. \n",IP_KERNEL,IP_MEMORIA,PUERTO_KERNEL,PUERTO_MEMORIA);
 	
 	printf("Presione enter para continuar.\n");
 	getchar();
+	pcb=malloc(sizeof(t_pcb));
 	/*
 	*
 	*/
@@ -205,8 +210,8 @@ int main(){
 	config_destroy(CFG);
 
 	pthread_t conectarKernel, conectarMemoria;
-	pthread_create(&conectarKernel, NULL, (void *) conectarKernel,&socketKernel);
 	pthread_create(&conectarMemoria, NULL, (void *) conectarMemoria,&socketMemoria);
+	pthread_create(&conectarKernel, NULL, (void *) conectarKernel,&socketKernel);
 	pthread_join(conectarKernel,NULL);
 	pthread_join(conectarMemoria,NULL);
 
@@ -215,7 +220,7 @@ int main(){
 
 
 
-void iniciarEjecucion(linea){
+void iniciarEjecucion(char * linea){
 
 		
 		printf("\t Evaluando -> %s", linea);
@@ -225,13 +230,14 @@ void iniciarEjecucion(linea){
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
 		
 		
-		index++
+		i++;
 		
 		t_peticionLinea * peticionLinea=malloc(sizeof(t_peticionLinea));
-		peticionLinea->start=pcb->indiceCodigo[index][0];
-		peticionLinea->offset=pcb->indiceCodigo[index][1];		
-		envioDinamico(solicitudDeLineaCodigo,socketMemoria,(void *) peticionLinea);
-		pcb->programCounter=pcb->indiceCodigo[index][0];
+		peticionLinea->start=pcb->indiceCodigo[i].start;
+		peticionLinea->offset=pcb->indiceCodigo[i].offset;		
+		envioDinamico(SOLICITUDLINEA,socketMemoria,(void *) peticionLinea);
+		pcb->programCounter=pcb->indiceCodigo[i].start;
+		free(peticionLinea);
 	
 	
 		
