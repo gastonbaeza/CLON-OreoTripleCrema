@@ -11,7 +11,11 @@
 #include <unistd.h>
 #include <commons/txt.h>
 #include <errno.h>
+<<<<<<< HEAD
+
+=======
 #include <parser/metadata_program.h>
+>>>>>>> 034a8b25478aa39ce2f0d74deb8dbd4ccfa31db2
 #include <sys/time.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
@@ -82,7 +86,7 @@ while(1) {
  							memcpy((void *)pcb,(void *)paquete,sizeof(paquete));
  							PID= pcb->pid;
  							
-							envioDinamico(solicitudDeCodigo, socketMemoria, (void *)PID); 		
+							envioDinamico(solicitudDeLineaCodigo, socketMemoria, (void *)PID); 		
  								
  				break;
 
@@ -139,42 +143,7 @@ void conectarMemoria(socketMemoria){
 
 
 
- 		case CODIGO:
- 					recibirDinamico(CODIGO,socketMemoria,(void*)paquete);
- 					
- 					programa=malloc(t_programaSalida);
- 					memcpy((void *)codigo,(void *)paquete,sizeof(paquete));
- 					codigo=programa->elPrograma;
- 					t_metadata_program * metadata;
- 					metadata = metadata_desde_literal(codigo);
- 					int indice[metadata->instruccionesSize][2];
- 					int unaFila;
- 					int unaColumna;
- 					for ( unaFila= 0; unaFila< metadata->instruccionesSize; unaFila++)
- 					{	
- 						for ( unaColumna= 0; unaColumna < 2; ++unaColumna)
- 						{
- 							if (unaColumna==0)
- 							{
- 								indice[unaFila][unaColumna]=(metadata->instruccionesSerializadas+unaFila*sizeof(t_instructions))->start;
- 							}
- 							else if (unaColumna==1)
- 							{
- 								indice[unaFila][unaColumna]=(metadata->instruccionesSerializadas+unaFila*sizeof(t_instructions))->offset;
- 							}
- 						}
- 					}
- 					//creo el vector del indice de codigo con tamaño de intrucciones_size
- 					t_peticionLinea * peticionLinea=malloc(sizeof(t_peticionLinea));
- 					peticionLinea->start=pcb->indiceCodigọ[index][0];
- 					peticionLinea->offset=pcb->indiceCodigo[index][1]];
- 					enviarDinamico(solicitudDeLineaCodigo, socketMemoria,peticionLinea);
- 					pcb->programCounter=pcb->indiceCodigo[index][0];
- 					free(peticionLinea);
-					
- 					
-
- 		break;
+ 		
 }}}
 
 				
