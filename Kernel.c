@@ -442,7 +442,18 @@ void consola(){
 					{
 						printf("\t\tInstruccion: %i,\tOffset: %i.\n", PCBS[i].indiceCodigo[j].start, PCBS[i].indiceCodigo[j].offset);
 					}
-					printf("\tIndice Etiquetas: %i\n", PCBS[i].indiceEtiquetas);
+					printf("\tCantidad de etiquetas: %i\n", PCBS[i].cantidadEtiquetas);
+					printf("\tIndice Etiquetas:\n");
+					for (j = 0; j < PCBS[i].cantidadEtiquetas; j++)
+					{
+						printf("\t\tIdentificador: %c,\tPosicion primera instruccion: %i.\n", PCBS[i].indiceEtiquetas[j].id, PCBS[i].indiceEtiquetas[j].posPrimerInstruccion);
+					}
+					// printf("\tCantidad de stack: %i\n", PCBS[i].cantidadStack);
+					// printf("\tIndice Stack:\n");
+					// for (j = 0; j < PCBS[i].cantidadStack; j++)
+					// {
+					// 	printf("\t\tIdentificador: %c,\tPosicion primera instruccion: %i.\n", PCBS[i].indiceEtiquetas[j].id, PCBS[i].indiceEtiquetas[j].posPrimerInstruccion);
+					// }
 					printf("\tExit Code: %i\n", PCBS[i].exitCode);
 				}
 				printf("Presione enter para volver al menú principal.\n");

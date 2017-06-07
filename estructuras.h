@@ -66,6 +66,43 @@ typedef struct {
 				}__attribute__((packed))
 				  dataParaComunicarse;
 
+typedef struct { 
+				char id;
+				int posPrimerInstruccion;				
+				}__attribute__((packed))
+				  t_etiqueta;
+
+typedef struct { 
+				char id;
+				int pagina;	
+				int offset;	
+				int size;				
+				}__attribute__((packed))
+				  t_argumento;
+
+typedef struct { 
+				int id;
+				int pagina;	
+				int offset;	
+				int size;				
+				}__attribute__((packed))
+				  t_variable;
+
+typedef struct {
+				int pagina;
+				int offset;
+				int size;
+				}__attribute__((packed))
+					t_posMemoria;
+
+typedef struct { 
+				t_argumento * argumentos;
+				t_variable * variables;
+				int posRetorno;
+				t_posMemoria varRetorno;		
+				}__attribute__((packed))
+				  t_stack;
+
 
 typedef struct {
 				int pid;
@@ -76,7 +113,10 @@ typedef struct {
 				int posicionStack;
 				int cantidadInstrucciones;
 				t_intructions * indiceCodigo;
-				int indiceEtiquetas;
+				int cantidadEtiquetas;
+				t_etiqueta * indiceEtiquetas; 
+				int tamanioStack;
+				t_stack * indiceStack;
 				int exitCode;
 				}__attribute__((packed))
 				 t_pcb;
@@ -107,10 +147,22 @@ typedef struct {
 				 t_solicitudMemoria;
 
 typedef struct {
+				
+				int start;
+				int offset; 
+
+				}__attribute__((packed))
+				 t_peticionLinea;
+
+typedef struct {
+				
 				char * linea;
-				int tamanioLinea;
+				int tamanio;
+
 				}__attribute__((packed))
 				 t_linea;
+
+
 typedef struct 
 				{
 				int pid;
