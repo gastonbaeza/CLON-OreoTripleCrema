@@ -380,7 +380,7 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(pcb->cantidadInstrucciones),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(pcb->indiceCodigo),cantidadInstrucciones*sizeof(t_intructions),0);
+	send(unSocket,&(pcb->indiceCodigo),pcb->cantidadInstrucciones*sizeof(t_intructions),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(pcb->indiceEtiquetas),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -407,8 +407,8 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(pcb->cantidadInstrucciones),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	pcb->indiceCodigo=malloc(cantidadInstrucciones*sizeof(t_intructions));
-	while(0>recv(unSocket,&(pcb->indiceCodigo),cantidadInstrucciones*sizeof(t_intructions),0));
+	pcb->indiceCodigo=malloc(pcb->cantidadInstrucciones*sizeof(t_intructions));
+	while(0>recv(unSocket,&(pcb->indiceCodigo),pcb->cantidadInstrucciones*sizeof(t_intructions),0));
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(pcb->indiceEtiquetas),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
