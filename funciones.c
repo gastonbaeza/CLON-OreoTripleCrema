@@ -111,6 +111,71 @@ void generarDumpMemoria(t_marco * marcos, int MARCOS)
 		printf("%p\n",marcos[unMarco].numeroPagina);
 	}
 }
+int estaEnCache(int unPid,int pagina, t_estructuraCache * memoriaCache, int  ENTRADAS_CACHE)// si esta presente en cache me devuelve la posicion de la entrada, sino devuelve -1
+{	int paginaEncontrada=0;
+	int paginasRecorridas=0;
+	for(paginasRecorridas;paginasRecorridas<ENTRADAS_CACHE;paginasRecorridas++)
+	{
+		if(memoriaCache[paginasRecorridas].pid == unPid && memoriaCache[paginasRecorridas].frame==pagina) return paginasRecorridas;
+	}return -1;
+}
+void incrementarAntiguedadPorAcceso(t_estructuraCache* memoriaCache, int ENTRADAS_CACHE)//cada vez que hago un acceso tengo que cambiar la antiguedad de todos
+{
+	int unaEntrada=0;
+	for (unaEntrada; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
+	{
+			memoriaCache[unaEntrada].antiguedad+=1;
+	}
+}
+int buscarEntradaMasAntigua(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)
+{	int entradaMasAntigua=-1;
+	int unaEntrada=0;
+	for (unaEntrada; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
+	{
+			if(memoriaCache[unaEntrada].antiguedad>entradaMasAntigua)entradaMasAntigua=memoriaCache[unaEntrada].antiguedad;
+
+	}
+return entradaMasAntigua;
+}
+void escribirEnCache(int unPid, int pagina,void * contenido,t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+{	
+	int entrada;
+	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)))
+	{		
+			
+			memcpy(memoriaCache[entrada].contenido+offset,contenido,tamanio);
+	}
+	else
+	{
+		if(-1!=(entrada=hayEspacioEnCache(memoriaCache, ENTRADAS_CACHE)))
+		{
+			
+			memcpy(memoriaCache[entrada].contenido+offset,contenido,tamanio);
+		}
+		else //este es el LRU
+		{
+			entrada=buscarEntradaMasAntigua(memoriaCache,ENTRADAS_CACHE);
+			memcpy(memoriaCache[entrada].contenido+offset,contenido,tamanio);
+		}
+	}
+	memoriaCache[entrada].antiguedad=0;
+	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
+}
+void * solicitarBytescache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+{	void * buffer=malloc(tamanio);
+	int entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE);
+	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio);
+	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
+	return buffer;
+}
+int hayEspacioEnCache(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)// si esta llena me devuelve un -1 sino, la primer entrada libre
+{	int unaEntrada=0;
+	for (unaEntrada; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
+	{
+			if(memoriaCache[unaEntrada].pid!=-1) return unaEntrada;
+	}return -1;
+	
+}
 void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)//expandir despues esa funcion para que informe cosas mas lindas
 {
 
@@ -150,7 +215,7 @@ void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 	{fflush(stdout);printf("%s\n","tabla de paginas");
 		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].frame);
 		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pid);
-		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].hashPagina);
+		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pagina);
 		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].estado);
 
 	}
@@ -248,7 +313,7 @@ int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t
  	int paginasRecorridas=0;
  	int unFrame=0;
  	int cantidadRestantes;
-    
+    int numeroPagina=0;
     
     printf("cantidad de paginas requeridas : %i\n",paginasRequeridas);
     while(paginasRecorridas+paginasRequeridas<MARCOS){
@@ -264,8 +329,8 @@ int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t
 	    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina);
 	    		bloquesAdmin[unFrame].estado=OCUPADO;
 	    		bloquesAdmin[unFrame].pid=unPid;
-	    		bloquesAdmin[unFrame].hashPagina=123123;
-	    		paginasRequeridas--;
+	    		bloquesAdmin[unFrame].pagina=numeroPagina;
+	    		paginasRequeridas--; numeroPagina++;
     		}
     		return OK;
     	} 
