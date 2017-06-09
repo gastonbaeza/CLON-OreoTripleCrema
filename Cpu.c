@@ -41,11 +41,36 @@ pthread_mutex_t mutexPcb;
 int PROXIMAPAG=0;
 int PROXIMOOFFSET=0;
 int TAMPAGINA;
+int programaFinalizado=0;
 
 
 
 int socketKernel;
 int socketMemoria;
+
+
+void nuevoNivelStack(){
+	pthread_mutex_lock(&mutexPcb);
+	pcb->cantidadStack++;
+	pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
+	pcb->posicionStack++;
+	pcb->indiceStack[pcb->posicionStack].cantidadArgumentos=0;
+	pcb->indiceStack[pcb->posicionStack].cantidadVariables=0;
+	pcb->indiceStack[pcb->posicionStack].varRetorno.pagina=-1;
+	pcb->indiceStack[pcb->posicionStack].varRetorno.offset=-1;
+	pcb->indiceStack[pcb->posicionStack].varRetorno.size=-1;
+	pcb->indiceStack[pcb->posicionStack].posRetorno=pcb->programCounter;
+	pthread_mutex_unlock(&mutexPcb);
+}
+
+void finalizarNivelStack(){
+	pthread_mutex_lock(&mutexPcb);
+	pcb->programCounter=pcb->indiceStack[pcb->posicionStack].posRetorno;
+	pcb->cantidadStack--;
+	pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
+	pcb->posicionStack--;
+	pthread_mutex_unlock(&mutexPcb);
+}
 
 		/*
 		 * DEFINIR VARIABLE
@@ -190,13 +215,14 @@ int socketMemoria;
 		 * @return	El valor de la variable compartida
 		 */
 		t_valor_variable (*AnSISOP_obtenerValorCompartida)(t_nombre_compartida variable){
-
+			int valor;
 			t_solicitudValorVariable * solicitudValorVariable;
 			solicitudValorVariable=malloc(sizeof(t_solicitudValorVariable));
 			solicitudValorVariable->variable=variable;
 			
 			enviarDinamico(SOLICITUDVALORVARIABLE,socketKernel,solicitudValorVariable);
-			recibirDinamico(,socketKernel,valor_variable)
+			recv(socketKernel,&valor,sizeof(int),0);
+			return valor;
 		}
 
 		/*
@@ -230,10 +256,22 @@ int socketMemoria;
 		 * @return	void
 		 */
 		void (*AnSISOP_irAlLabel)(t_nombre_etiqueta t_nombre_etiqueta){
-			int i;
+			int i,pos;
 			for (i = 0; i < pcb->cantidadEtiquetas; i++)
 			{
-				if(pcb->indiceEtiquetas[i].nombre==t_nombre_etiqueta)
+				if(!strcmp(pcb->indiceEtiquetas[i].nombre,t_nombre_etiqueta))
+				{
+					pos=pcb->indiceEtiquetas[i].posPrimeraInstruccion;
+				}
+			}
+			for (i = 0; i < pcb->cantidadInstrucciones; i++)
+			{
+				if (pos<=pcb->indiceCodigo[i].start)
+				{
+					pthread_mutex_lock(&mutexPcb);
+					pcb->programCounter=i;
+					pthread_mutex_unlock(&mutexPcb);
+				}
 			}
 		}
 
@@ -249,7 +287,26 @@ int socketMemoria;
 		 * @param	etiqueta	Nombre de la funcion
 		 * @return	void
 		 */
-		void (*AnSISOP_llamarSinRetorno)(t_nombre_etiqueta etiqueta);
+		void (*AnSISOP_llamarSinRetorno)(t_nombre_etiqueta etiqueta){
+			int i,pos;
+			nuevoNivelStack();
+			for (i = 0; i < pcb->cantidadEtiquetas; i++)
+			{
+				if (!strcmp(pcb->indiceEtiquetas[i].nombre,t_nombre_etiqueta))
+				{
+					pos=pcb->indiceEtiquetas[i].posPrimeraInstruccion;
+				}
+			}
+			for (i = 0; i < pcb->cantidadInstrucciones; i++)
+			{
+				if (pos<=pcb->indiceCodigo[i].start)
+				{
+					pthread_mutex_lock(&mutexPcb);
+					pcb->programCounter=i;
+					pthread_mutex_unlock(&mutexPcb);
+				}
+			}
+		}
 
 		/*
 		 * LLAMAR CON RETORNO
@@ -264,7 +321,30 @@ int socketMemoria;
 		 * @param	donde_retornar	Posicion donde insertar el valor de retorno
 		 * @return	void
 		 */
-		void (*AnSISOP_llamarConRetorno)(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
+		void (*AnSISOP_llamarConRetorno)(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+			nuevoNivelStack();
+			pthread_mutex_lock(&mutexPcb);
+			pcb->indiceStack[posicionStack].varRetorno.pagina=calcularPaginas(TAMPAGINA,donde_retornar);
+			pcb->indiceStack[posicionStack].varRetorno.offset=donde_retornar%TAMPAGINA;
+			pcb->indiceStack[posicionStack].varRetorno.size=SIZE;
+			pthread_mutex_unlock(&mutexPcb);
+			for (i = 0; i < pcb->cantidadEtiquetas; i++)
+			{
+				if (!strcmp(pcb->indiceEtiquetas[i].nombre,t_nombre_etiqueta))
+				{
+					pos=pcb->indiceEtiquetas[i].posPrimeraInstruccion;
+				}
+			}
+			for (i = 0; i < pcb->cantidadInstrucciones; i++)
+			{
+				if (pos<=pcb->indiceCodigo[i].start)
+				{
+					pthread_mutex_lock(&mutexPcb);
+					pcb->programCounter=i;
+					pthread_mutex_unlock(&mutexPcb);
+				}
+			}
+		}
 
 
 		/*
@@ -277,7 +357,15 @@ int socketMemoria;
 		 * @param	void
 		 * @return	void
 		 */
-		void (*AnSISOP_finalizar)(void);
+		void (*AnSISOP_finalizar)(void){
+			if (pcb->posicionStack==0)
+			{
+				programaFinalizado=1;
+			}
+			else{
+				finalizarNivelStack();
+			}
+		}
 
 		/*
 		 * RETORNAR
@@ -288,7 +376,17 @@ int socketMemoria;
 		 * @param	retorno	Valor a ingresar en la posicion corespondiente
 		 * @return	void
 		 */
-		void (*AnSISOP_retornar)(t_valor_variable retorno);
+		void (*AnSISOP_retornar)(t_valor_variable retorno){
+			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
+			bytes->pid=PID;
+			bytes->pagina=pcb->paginasCodigo+pcb->indiceStack[posicionStack].varRetorno.pagina;
+			bytes->offset=pcb->indiceStack[posicionStack].varRetorno.offset;
+			bytes->size=pcb->indiceStack[posicionStack].varRetorno.size;
+			bytes->valor=retorno;
+			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			free(bytes);
+			finalizarNivelStack();
+		}
 
 		/*
 		 * WAIT
@@ -660,46 +758,34 @@ int main(){
 	pthread_join(conectarMemoria,NULL);
 
 
-
-
-void buscarIndice(){
-	int i;
-	for (i = 0; i < pcb->cantidadInstrucciones; i++)
-		if (pcb->programCounter==pcb->indiceCodigo[i].start)
-			return i;
-}
-
-void proximaInstruccionUtil(){
-	int i;
-	for (i = 0; i < pcb->cantidadInstrucciones; i++)
-		if (pcb->programCounter<pcb->indiceCodigo[i].start)
-			return pcb->indiceCodigo[i].start;
-}
-
 void iniciarEjecucion(char * linea){
 
 		
 		printf("\t Evaluando -> %s", linea);
+
+		pthread_mutex_lock(&mutexPcb);
+		pcb->programCounter++;
+		pthread_mutex_unlock(&mutexPcb);
 		
 		analizadorLinea(linea, &functions, &kernel_functions);
 		free(linea);
 
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
-		
-		pthread_mutex_lock(&mutexPcb);
-		pcb->programCounter=proximaInstruccionUtil();
-		pthread_mutex_unlock(&mutexPcb);
-		
-		
+		if(!programaFinalizado){
 		t_peticionBytes * peticionLinea=malloc(sizeof(t_peticionBytes));
 		peticionLinea->pid=PID;
-		int i;
-		i=buscarIndice();
- 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[i].start);
-		peticionLinea->offset=pcb->indiceCodigo[i].start;
-		peticionLinea->size=pcb->indiceCodigo[i].offset;			
+ 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+		peticionLinea->offset=pcb->indiceCodigo[pcb->programCounter].start;
+		peticionLinea->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 		envioDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
 		free(peticionLinea);
+		}
+		else{
+			//PASARLE PCB A KERNEL AVISANDO QUE TERMINE
+			programaFinalizado=0;
+		}
+		
+		
 	
 	
 		
