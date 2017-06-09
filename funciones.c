@@ -44,7 +44,9 @@
 	#define PID 1
 	#define PCB 11
 	#define PATH 10
-
+	#define LINEA 19
+	#define SOLICITUDLINEA 62
+	#define ALMACENARBYTES 95
 #define CPU 3
 #define FS 4
 #define TRUE 1
@@ -175,6 +177,22 @@ int hayEspacioEnCache(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)// si
 			if(memoriaCache[unaEntrada].pid!=-1) return unaEntrada;
 	}return -1;
 	
+}
+void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int offset, int tamanio)// en memoria despues de queme solicitan o almacenan bytes tengo que escribirlos en cache, no los hago aca porque sino esta funcion hace mas de lo que debe
+{	void * buffer=malloc(tamanio);
+	int entrada=buscarPagina(unPid, pagina,  marcos,  MARCOS);
+	memcpy(buffer, marcos[entrada].numeroPagina+offset,tamanio);
+	return buffer;
+
+}
+void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio )
+{
+	int entrada=buscarPagina(unPid,pagina,marcos, MARCOS); //agregar retardo por lectura
+	memcpy(marcos[entrada].numeroPagina+offset,contenido,tamanio); // agregar retardo por escritura
+}
+int buscarPagina(int unPid,int pagina, t_marco * marcos, int MARCOS)
+{
+
 }
 void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)//expandir despues esa funcion para que informe cosas mas lindas
 {
@@ -326,7 +344,7 @@ int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t
     	if(cantidadRestantes==0){
     		unFrame-=paginasRequeridas;
     		for(unFrame;unFrame<paginasRequeridas+unFrame;unFrame++){
-	    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina);
+	    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina); // ACA ES DONDE TENGO QUE EMPEZAR A ENCARAR EL HASHEO INTENSO
 	    		bloquesAdmin[unFrame].estado=OCUPADO;
 	    		bloquesAdmin[unFrame].pid=unPid;
 	    		bloquesAdmin[unFrame].pagina=numeroPagina;
@@ -526,7 +544,7 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	}
 	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	pcb->indiceStack=malloc(cantidadStack*sizeof(t_stack));
+	pcb->indiceStack=malloc(pcb->cantidadStack*sizeof(t_stack));
 	for (i = 0; i < pcb->cantidadStack; i++)
 	{
 		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0));
@@ -689,7 +707,8 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		case PCB:	
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
-
+		case ALMACENARBYTES:
+		break;
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
 		// pagaraprata();
 		break;
