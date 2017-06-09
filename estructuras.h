@@ -14,7 +14,7 @@ typedef struct
 				{ 	int frame;
 					int pid;
 					void * contenido;
-	
+					int antiguedad;
 				}t_estructuraCache;
 typedef struct { 
 				
@@ -121,7 +121,7 @@ typedef struct {
 typedef struct { 
 				int frame;
 				int pid;
-				int hashPagina;
+				int pagina;
 				int estado;
 				}t_estructuraADM;
 
