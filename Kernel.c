@@ -446,7 +446,7 @@ void consola(){
 					printf("\tIndice Etiquetas:\n");
 					for (j = 0; j < PCBS[i].cantidadEtiquetas; j++)
 					{
-						printf("\t\tIdentificador: %c,\tPosicion primera instruccion: %i.\n", PCBS[i].indiceEtiquetas[j].id, PCBS[i].indiceEtiquetas[j].posPrimerInstruccion);
+						printf("\t\tIdentificador: %c,\tPosicion primera instruccion: %i.\n", PCBS[i].indiceEtiquetas[j].id, PCBS[i].indiceEtiquetas[j].posPrimeraInstruccion);
 					}
 					// printf("\tCantidad de stack: %i\n", PCBS[i].cantidadStack);
 					// printf("\tIndice Stack:\n");
@@ -652,7 +652,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pcb=malloc(sizeof(t_pcb));
 					pcb->pid = pid;
 					pcb->estado = NEW;
-					pcb->programCounter=0;
+					pcb->programCounter=pcb->indiceCodigo[0].start;
 					pcb->paginasCodigo=cantPaginasCodigo;
 					pcb->posicionStack=0;
 					pcb->cantidadInstrucciones=metadata->instrucciones_size;

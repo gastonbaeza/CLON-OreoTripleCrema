@@ -26,6 +26,8 @@
 #define CPU 1
 
 #define LINEA 19
+#define BLOQUE 5
+#define SIZE 4
 
 int continuarEjecucion=1;
 int PID;
@@ -35,6 +37,10 @@ char * IP_KERNEL;
 char * PUERTO_KERNEL;
 char * IP_MEMORIA;
 char * PUERTO_MEMORIA;
+pthread_mutex_t mutexPcb;
+int PROXIMAPAG=0;
+int PROXIMOOFFSET=0;
+int TAMPAGINA;
 
 
 
@@ -55,13 +61,47 @@ int socketMemoria;
 		 * @return	Puntero a la variable recien asignada
 		 */
 		t_puntero (*AnSISOP_definirVariable)(t_nombre_variable identificador_variable){
-			if (identificador_variable>=48 $$ identificador_variable<=57) // es un parametro
+			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
-				
+				pthread_mutex_lock(&mutexPcb);
+				pcb->indiceStack[posicionStack].cantidadArgumentos++;
+				pcb->indiceStack->argumentos=realloc(pcb->indiceStack->argumentos,pcb->(indiceStack[posicionStack]->cantidadArgumentos)*sizeof(t_argumento));
+				pcb->indiceStack->argumentos[cantidadArgumentos-1].id=identificador_variable;
+				pcb->indiceStack->argumentos[cantidadArgumentos-1].pagina=PROXIMAPAG;
+				pcb->indiceStack->argumentos[cantidadArgumentos-1].offset=PROXIMOOFFSET;
+				pcb->indiceStack->argumentos[cantidadArgumentos-1].size=SIZE;
+				if (PROXIMOOFFSET+SIZE==TAMPAGINA)
+				{
+					PROXIMAPAG++;
+					PROXIMOOFFSET=0;
+				}
+				else
+				{
+					PROXIMOOFFSET+=SIZE;
+				}
+				pthread_mutex_unlock(&mutexPcb);
+				return (pcb->indiceStack->argumentos[cantidadArgumentos-1].pagina)*TAMPAGINA+(pcb->indiceStack->argumentos[cantidadArgumentos-1].offset)
 			}
 			else // es una variable
 			{
-
+				pthread_mutex_lock(&mutexPcb);
+				pcb->indiceStack[posicionStack].cantidadVariables++;
+				pcb->indiceStack->variables=realloc(pcb->indiceStack->variables,pcb->(indiceStack[posicionStack]->cantidadVariables)*sizeof(t_variable));
+				pcb->indiceStack->variables[cantidadVariables-1].id=identificador_variable;
+				pcb->indiceStack->variables[cantidadVariables-1].pagina=PROXIMAPAG;
+				pcb->indiceStack->variables[cantidadVariables-1].offset=PROXIMOOFFSET;
+				pcb->indiceStack->variables[cantidadVariables-1].size=SIZE;
+				if (PROXIMOOFFSET+SIZE==TAMPAGINA)
+				{
+					PROXIMAPAG++;
+					PROXIMOOFFSET=0;
+				}
+				else
+				{
+					PROXIMOOFFSET+=SIZE;
+				}
+				pthread_mutex_unlock(&mutexPcb);
+				return (pcb->indiceStack->variables[cantidadVariables-1].pagina)*TAMPAGINA+(pcb->indiceStack->variables[cantidadVariables-1].offset)
 			}
 		}
 
@@ -75,7 +115,22 @@ int socketMemoria;
 		 * @param	identificador_variable 		Nombre de la variable a buscar (De ser un parametro, se invocara sin el '$')
 		 * @return	Donde se encuentre la variable buscada
 		 */
-		t_puntero (*AnSISOP_obtenerPosicionVariable)(t_nombre_variable identificador_variable);
+		t_puntero (*AnSISOP_obtenerPosicionVariable)(t_nombre_variable identificador_variable){
+			int i;
+			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
+			{
+				return (pcb->indiceStack[posicionStack].argumentos[identificador_variable-48].pagina)*TAMPAGINA+(pcb->indiceStack[posicionStack].argumentos[identificador_variable-48].offset)
+			}
+			else // es una variable
+			{
+				for (i = 0; i < pcb->indiceStack[posicionStack].cantidadVariables; i++)
+				{
+					if (identificador_variable==pcb->indiceStack[posicionStack].variables[i].id)
+						break;
+				}
+				return (pcb->indiceStack->variables[i].pagina)*TAMPAGINA+(pcb->indiceStack->variables[i].offset)
+			}
+		}
 
 		/*
 		 * DEREFERENCIAR
@@ -86,7 +141,20 @@ int socketMemoria;
 		 * @param	direccion_variable	Lugar donde buscar
 		 * @return	Valor que se encuentra en esa posicion
 		 */
-		t_valor_variable (*AnSISOP_dereferenciar)(t_puntero direccion_variable);
+		t_valor_variable (*AnSISOP_dereferenciar)(t_puntero direccion_variable){
+			int offset,pagina,valor;
+			offset=direccion_variable%TAMPAGINA;
+			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
+			t_peticionBytes * peticionValor=malloc(sizeof(t_peticionBytes));
+			peticionValor->pid=PID;
+			peticionValor->pagina=pagina;
+			peticionValor->offset=offset;
+			peticionValor->size=SIZE;
+			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticionValor);
+			free(peticionValor);
+			recv(socketMemoria,&valor,sizeof(int),0);
+			return valor;
+		}
 
 		/*
 		 * ASIGNAR
@@ -98,7 +166,19 @@ int socketMemoria;
 		 * @param	valor	Valor a insertar
 		 * @return	void
 		 */
-		void (*AnSISOP_asignar)(t_puntero direccion_variable, t_valor_variable valor);
+		void (*AnSISOP_asignar)(t_puntero direccion_variable, t_valor_variable valor){
+			int offset,pagina,valor;
+			offset=direccion_variable%TAMPAGINA;
+			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
+			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
+			bytes->pid=PID;
+			bytes->pagina=pagina;
+			bytes->offset=offset;
+			bytes->size=SIZE;
+			bytes->valor=valor;
+			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			free(bytes);
+		}
 
 		/*
 		 * OBTENER VALOR de una variable COMPARTIDA
@@ -149,7 +229,13 @@ int socketMemoria;
 		 * @param	t_nombre_etiqueta	Nombre de la etiqueta
 		 * @return	void
 		 */
-		void (*AnSISOP_irAlLabel)(t_nombre_etiqueta t_nombre_etiqueta);
+		void (*AnSISOP_irAlLabel)(t_nombre_etiqueta t_nombre_etiqueta){
+			int i;
+			for (i = 0; i < pcb->cantidadEtiquetas; i++)
+			{
+				if(pcb->indiceEtiquetas[i].nombre==t_nombre_etiqueta)
+			}
+		}
 
 		/*
 		 * LLAMAR SIN RETORNO
@@ -432,7 +518,7 @@ void * paquete;
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 
-t_peticionLinea * peticionLinea;
+t_peticionBytes * peticionLinea;
 while(1) {
 	while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 	
@@ -440,15 +526,15 @@ while(1) {
 	switch (seleccionador->tipoPaquete){
 		case PCB: // [Identificador del Programa] // informacion del proceso
 							
-							recibirDinamico(PCB,socketKernel,pcb);
-							
- 							
- 							peticionLinea=malloc(sizeof(t_peticionLinea));
-							peticionLinea->start=pcb->indiceCodigo[0].start;
-							peticionLinea->offset=pcb->indiceCodigo[0].offset;		
-							envioDinamico(SOLICITUDLINEA,socketMemoria,(void *) peticionLinea);
+							recibirDinamico(PCB,socketKernel,pcb); 							
+ 							peticionLinea=malloc(sizeof(t_peticionBytes));
+ 							peticionLinea->pid=PID;
+ 							peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[0].start);
+							peticionLinea->offset=pcb->indiceCodigo[0].start;
+							peticionLinea->size=pcb->indiceCodigo[0].offset;		
+							envioDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
+
 							free(peticionLinea);
-							pcb->programCounter=pcb->indiceCodigo[0].start;
 							i=0;
 
  								
@@ -487,6 +573,8 @@ void conectarMemoria(void){
 
 	
 	handshakeCliente(socketMemoria, CPU, unBuffer);
+	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
+
 	void * paquete;
 	int recibir;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
@@ -502,9 +590,8 @@ void conectarMemoria(void){
  		case LINEA: 
  					linea=malloc(sizeof(t_linea));
  					recibirDinamico(LINEA,socketMemoria, linea);
- 					lineaCodigo=malloc(linea->tamanio);
- 					lineaCodigo=linea->linea;
- 					iniciarEjecucion(lineaCodigo);
+					linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
+ 					iniciarEjecucion(linea->linea);
  					free(linea);
  		break;
 
@@ -564,6 +651,7 @@ int main(){
 
 
 	config_destroy(CFG);
+	pthread_mutex_init(&mutexPcb,NULL);
 
 	pthread_t conectarKernel, conectarMemoria;
 	pthread_create(&conectarMemoria, NULL, (void *) conectarMemoria,&socketMemoria);
@@ -574,7 +662,19 @@ int main(){
 
 
 
+void buscarIndice(){
+	int i;
+	for (i = 0; i < pcb->cantidadInstrucciones; i++)
+		if (pcb->programCounter==pcb->indiceCodigo[i].start)
+			return i;
+}
 
+void proximaInstruccionUtil(){
+	int i;
+	for (i = 0; i < pcb->cantidadInstrucciones; i++)
+		if (pcb->programCounter<pcb->indiceCodigo[i].start)
+			return pcb->indiceCodigo[i].start;
+}
 
 void iniciarEjecucion(char * linea){
 
@@ -582,17 +682,23 @@ void iniciarEjecucion(char * linea){
 		printf("\t Evaluando -> %s", linea);
 		
 		analizadorLinea(linea, &functions, &kernel_functions);
+		free(linea);
 
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
 		
+		pthread_mutex_lock(&mutexPcb);
+		pcb->programCounter=proximaInstruccionUtil();
+		pthread_mutex_unlock(&mutexPcb);
 		
-		i++;
 		
-		t_peticionLinea * peticionLinea=malloc(sizeof(t_peticionLinea));
-		peticionLinea->start=pcb->indiceCodigo[i].start;
-		peticionLinea->offset=pcb->indiceCodigo[i].offset;		
-		envioDinamico(SOLICITUDLINEA,socketMemoria,(void *) peticionLinea);
-		pcb->programCounter=pcb->indiceCodigo[i].start;
+		t_peticionBytes * peticionLinea=malloc(sizeof(t_peticionBytes));
+		peticionLinea->pid=PID;
+		int i;
+		i=buscarIndice();
+ 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[i].start);
+		peticionLinea->offset=pcb->indiceCodigo[i].start;
+		peticionLinea->size=pcb->indiceCodigo[i].offset;			
+		envioDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
 		free(peticionLinea);
 	
 	

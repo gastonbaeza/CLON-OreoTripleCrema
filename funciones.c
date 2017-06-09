@@ -365,6 +365,7 @@ void serial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int
 void serial_pcb(t_pcb * pcb, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
+	int i,j;
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,&(pcb->pid),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -380,10 +381,44 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(pcb->cantidadInstrucciones),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(pcb->indiceCodigo),pcb->cantidadInstrucciones*sizeof(t_intructions),0);
+	for (i= 0; i < pcb->cantidadInstrucciones; i++)
+	{
+		send(unSocket, &(pcb->indiceCodigo[i]),sizeof(t_intructions),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
+	send(unSocket,&(pcb->cantidadEtiquetas),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(pcb->indiceEtiquetas),sizeof(int),0);
+	for (i= 0; i < pcb->cantidadEtiquetas; i++)
+	{
+		send(unSocket, &(pcb->indiceEtiquetas[i].tamanioNombre),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		serial_string(pcb->indiceEtiquetas[i].nombre,pcb->indiceEtiquetas[i].tamanioNombre,unSocket);
+		send(unSocket, &(pcb->indiceEtiquetas[i].posPrimeraInstruccion),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
+	send(unSocket,&(pcb->cantidadStack),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	for (i= 0; i < pcb->cantidadStack; i++)
+	{	
+		send(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		for (j = 0; j < pcb->indiceStack[i].cantidadArgumentos; j++)
+		{
+			send(unSocket, &(pcb->indiceStack[i].argumentos[j]),sizeof(t_argumento),0);
+			while(0>=recv(unSocket,buffer, sizeof(int),0));
+		}
+		send(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
+		{
+			send(unSocket, &(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0);
+			while(0>=recv(unSocket,buffer, sizeof(int),0));
+		}
+		send(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		send(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
 	send(unSocket,&(pcb->exitCode),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));free(buffer);
 }
@@ -391,7 +426,7 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 void dserial_pcb(t_pcb* pcb, int unSocket)
 {	
 	int * buffer=malloc(sizeof(int));
-	int a=1;
+	int a=1,j,i;
 	memcpy(buffer,&a,sizeof(int));
 	while(0>recv(unSocket,&(pcb->pid),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
@@ -408,12 +443,50 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	while(0>recv(unSocket,&(pcb->cantidadInstrucciones),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	pcb->indiceCodigo=malloc(pcb->cantidadInstrucciones*sizeof(t_intructions));
-	while(0>recv(unSocket,&(pcb->indiceCodigo),pcb->cantidadInstrucciones*sizeof(t_intructions),0));
+	for (i = 0; i < pcb->cantidadInstrucciones; i++)
+	{
+		while(0>recv(unSocket,&(pcb->indiceCodigo[i]),sizeof(t_intructions),0));
+		send(unSocket,buffer, sizeof(int),0);
+	}
+	while(0>recv(unSocket,&(pcb->cantidadEtiquetas),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->indiceEtiquetas),sizeof(int),0));
+	pcb->indiceEtiquetas=malloc(pcb->cantidadEtiquetas*sizeof(t_etiqueta));
+	for (i = 0; i < pcb->cantidadEtiquetas; i++)
+	{
+		while(0>recv(unSocket,&(pcb->indiceEtiquetas[i].tamanioNombre),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);
+		dserial_string(pcb->indiceEtiquetas[i].nombre,unSocket);
+		while(0>recv(unSocket,&(pcb->indiceEtiquetas[i].posPrimeraInstruccion),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);
+	}
+	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
+	pcb->indiceStack=malloc(cantidadStack*sizeof(t_stack));
+	for (i = 0; i < pcb->cantidadStack; i++)
+	{
+		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);
+		pcb->indiceStack[i].argumentos=malloc(pcb->indiceStack[i].cantidadArgumentos*sizeof(t_argumento));
+		for (j = 0; j < pcb->indiceStack[i].cantidadArgumentos; j++)
+		{
+			while(0>recv(unSocket,&(pcb->indiceStack[i].argumentos[j]),sizeof(t_argumento),0));
+			send(unSocket,buffer, sizeof(int),0);
+		}
+		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);
+		pcb->indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
+		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
+		{
+			while(0>recv(unSocket,&(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0));
+			send(unSocket,buffer, sizeof(int),0);
+		}
+		while(0>recv(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);
+		while(0>recv(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0));
+		send(unSocket,buffer, sizeof(int),0);
+	}
 	while(0>recv(unSocket,&(pcb->exitCode),sizeof(int),0));
-        send(unSocket,buffer, sizeof(int),0);free(buffer);
+    send(unSocket,buffer, sizeof(int),0);free(buffer);
 }
 void dserial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 {	
@@ -441,6 +514,15 @@ void serial_mensaje(t_mensaje * mensaje, int unSocket)
 {
 	
 	serial_string(mensaje->mensaje,mensaje->tamanio,unSocket); 
+}
+void dserial_linea(t_linea * linea, int unSocket)
+{	
+	linea->tamanio=dserial_string(linea->linea,unSocket);}
+
+void serial_linea(t_linea * linea, int unSocket)
+{
+	
+	serial_string(linea->linea,linea->tamanio,unSocket); 
 }
 void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
 {
@@ -535,6 +617,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
 
+		case LINEA:	
+			serial_linea((t_linea * )paquete,unSocket);			
+		break;
+
 		case PCB:	
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
@@ -574,6 +660,10 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 
 		case MENSAJE:	
 					dserial_mensaje((t_mensaje * )paquete,unSocket);			
+		break;
+
+		case LINEA:	
+					dserial_linea((t_linea * )paquete,unSocket);			
 		break;
 
 		case PCB:	
