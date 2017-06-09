@@ -37,7 +37,9 @@
 	#define ESCRIBIRMEMORIA 2
 	#define LIBERARMEMORIA 3
  	#define ACTUALIZARPCB 4
-	
+	#define SOLICITUDLINEA 62
+	#define LINEA 19
+	#define ALMACENARBYTES 95
 	//-------------------------------
 	#define DELAY 0
 	#define DUMP 1
@@ -175,7 +177,7 @@ for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de ad
 bloquesAdmin[unaAdmin].estado=LIBRE;
 bloquesAdmin[unaAdmin].pid=-1;
 bloquesAdmin[unaAdmin].frame=unaAdmin;
-bloquesAdmin[unaAdmin].hashPagina=666;
+bloquesAdmin[unaAdmin].pagina=-1;
 	
 }
  
@@ -197,6 +199,7 @@ for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a 
 		memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
 		memoriaCache[unMarco].frame=-unMarco; //para distinguir  una pagina real de una virgen
 		memoriaCache[unMarco].pid=-1;
+		memoriaCache[unMarco].antiguedad=0;
 			}
 	
 	asignador=&marcos[0];
@@ -221,12 +224,14 @@ fflush(stdout);
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 t_list * paginasParaUsar;
-
+int entrada;
 t_pcb * unPcb;
+t_linea * linea=malloc(sizeof(t_linea));
 t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
-
+t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
+t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
 t_solicitudMemoria * solicitudMemoria;
 while(1) {
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
@@ -257,21 +262,21 @@ while(1) {
  							else
  							{ //mandarOK memoria
  							solicitudMemoria->respuesta=OK;
- 							// codigo del programaf
+ 						
  							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitudMemoria);
  							printf("Despues de enviar\n");
  							char * codigo=malloc(solicitudMemoria->tamanioCodigo);
  							memcpy(codigo,solicitudMemoria->codigo,solicitudMemoria->tamanioCodigo);
  							paginasParaUsar=list_create();
- 							/*Deje el algoritmo extra sin codear en buscar paginas*/
+ 							
  							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos,solicitudMemoria->pid);
  							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
+ 							
  							free(codigo);
  							free(solicitudMemoria);
  							
  							
- 							//enviarDinamico notificacion de que se asigno genialmente
-
+ 							
  							 }	
  							
  							
@@ -280,8 +285,29 @@ while(1) {
 
  					break;
  		 
- 					
- 	/*	case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
+ 					case SOLICITUDLINEA:
+ 										recibirDinamico(SOLICITUDLINEA,unData,peticionBytes);
+ 										linea->linea=malloc(peticionBytes->size);
+ 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
+ 										{//lo busco en cache
+ 											
+ 											memcpy(linea->linea,memoriaCache[entrada].contenido+peticionBytes->offset,peticionBytes->size);
+ 											
+ 											memoriaCache[entrada].antiguedad=0;
+ 											
+
+ 										}
+ 										else
+ 										{//lo busco en memoria
+ 											entrada=buscarPagina(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS);
+ 											memcpy(linea->linea,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
+ 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+ 											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
+ 										}	
+ 											linea->tamanio=peticionBytes->size;
+ 											enviarDinamico(LINEA,unData,linea);
+ 					break;
+ 		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
 							 
 							 unPcb=(t_pcb *)paquete;
@@ -289,16 +315,25 @@ while(1) {
 							 buscarAdministrativa(unPcb->pid, unPcb,bloquesAdmin,MARCOS);	
 							 enviarDinamico(PIDINFO,socketKernel,(void *)unPcb);
 							 free(paquete);
-							 free(unPcb);
+							 free(unPcb);*/
 							 	
  					break;
- 		case ESCRIBIRMEMORIA:
- 							
+ 		case ALMACENARBYTES:	recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
+ 								if((entrada=estaEnCache(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,memoriaCache,ENTRADAS_CACHE))!=-1);
+								
+								else
+ 								{//lo busco en memoria
+								entrada=buscarPagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos,MARCOS);
+																	
+								}	
+								almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,(void*)&bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size);
+								escribirEnCache(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+ 								
  					break;
  		case LIBERARMEMORIA:
  							 
  					break;
- 		case ACTUALIZARPCB:
+ 		/*case ACTUALIZARPCB:
  								recibirDinamico(PCB,unData,paquete);
  								unPcb=(t_pcb *)paquete;
  								free(paquete);
@@ -374,7 +409,8 @@ void consolaMemoria()
 										printf("%s\n","ingrese un pid para realizar dump" );
 										getchar();
 										scanf("%d",&pid);
-										generarDumpProceso(pid); printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+										printf("%i",pid);
+										generarDumpProceso(bloquesAdmin,MARCOS,pid,marcos); printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						default: pagaraprata();
 						break;
