@@ -1,5 +1,6 @@
 #ifndef _estructuras_h
 #include <parser/metadata_program.h>
+#include <parser/parser.h>
 #define _estructuras_h
 
 
@@ -185,6 +186,96 @@ typedef struct {
 				int resultado; // 0 NO HAY MEMORIA - 1 TODO PIOLA
 				}__attribute__((packed))
 				  t_resultadoIniciarPrograma;
+
+typedef struct {
+				int tamanioIdentificador;
+				char * identificadorSemaforo;
+				int estadoSemaforo;
+				
+				}__attribute__((packed))
+					t_solicitudSemaforo;
+
+typedef struct {
+				int espacio;
+				
+				}__attribute__((packed))
+					t_reservarEspacioMemoria;
+
+typedef struct {
+				int direccionMemoria;
+				}__attribute__((packed))
+					t_liberarMemoria;
+
+typedef struct {
+				char* direccionArchivo;
+				t_banderas flags;
+				
+				}__attribute__((packed))
+					t_abrirArchivo;
+
+
+typedef struct {
+				int fdABorrar;
+				
+				
+				}__attribute__((packed))
+					t_borrarArchivo;
+
+typedef struct {
+				int descriptorArchivo;
+				
+			}__attribute__((packed))
+					t_cerrarArchivo;
+
+typedef struct {
+				int fdArchivo;
+				void * informacion;
+				int tamanio;
+				
+				}__attribute__((packed))
+					t_escribirArchivo;
+
+typedef struct {
+				int descriptor;
+				int punteroInformacion;
+				int tamanio;
+				
+				}__attribute__((packed))
+					t_leerArchivo;
+
+typedef struct {
+				int descriptorArchivo;
+				int posicion;
+				}__attribute__((packed))
+					t_moverCursor;
+
+typedef struct {
+				int tamanioNombre;
+				char* variable;
+				}__attribute__((packed))
+					t_solicitudValorVariable;
+
+typedef struct {
+				int tamanioNombre;
+				char* variable;
+				int valor;
+				}__attribute__((packed))
+					t_asignarVariableCompartida;
+
+typedef struct {
+				int estadoSemaforo;
+				}__attribute__((packed))
+					t_semaforo;
+
+typedef struct {
+				int puntero;
+				}__attribute__((packed))
+					t_reservar;
+
+typedef struct {
+				int fd;
+				}__attribute__((packed))
+					t_fdParaLeer;
 
 //funcion que retorna ok/exception al kernel ante el pedido de memoria
 
