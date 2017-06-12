@@ -39,7 +39,7 @@
 	//------------------------------	
 	#define MENSAJE 0
 	#define PIDNUEVO 1
-
+#define PATH 10
 #define CPU 3
 #define FS 4
 #define TRUE 1
@@ -56,14 +56,31 @@ pthread_mutex_t mutexfreeDataConexion;
 int PUEDOLIBERAR=2;
 char * mensajeError="la instruccion solicitada no existe, gracias vuelvas prontos";
 char * mensajeFinalizacionHilo="el hilo no esta, el hilo se fue, el hilo se escapa de mi vida";
+char *IP_KERNEL;
+char * PUERTO_KERNEL;
+char* IP;
+char* PUERTO;
 
+void programa(t_path * path_ansisop){
+	struct addrinfo hints;
+	struct addrinfo *kernel;
+	int * unBuffer=malloc(sizeof(int));
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	int  serverSocket;
+	int rv; 
+	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
+	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 
-
-void recibir(dataParaComunicarse * dataConexion){
-	int socket = dataConexion->socket;
-	pthread_mutex_lock(&mutexfreeDataConexion);
-	PUEDOLIBERAR--;
-	pthread_mutex_unlock(&mutexfreeDataConexion);
+	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
+	handshakeCliente(serverSocket,2,unBuffer);
+	
+	
+	freeaddrinfo(kernel);
+	
+	
+	
 void * paquete;
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
@@ -71,11 +88,8 @@ t_mensaje * unMensaje;
 int * unPid;
 t_resultadoIniciarPrograma * resultado;
 while(1) {
-	while(0>recibir){
-		pthread_mutex_lock(&mutexComunicacion);
-		recibir=recv(socket,seleccionador, sizeof(t_seleccionador),0);
-		pthread_mutex_unlock(&mutexComunicacion);
-	}
+	while(0>recv(serverSocket,seleccionador, sizeof(t_seleccionador),0)){;}
+
 switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
@@ -98,38 +112,87 @@ switch (seleccionador->tipoPaquete){
 						pthread_mutex_unlock(&semaforoProcesos);
 					}
 		break;
+		default: ; break;
 
 
 }}}
 
-void enviar(dataParaComunicarse * dataConexion){
-	int socket = dataConexion->socket;
-	pthread_mutex_lock(&mutexfreeDataConexion);
-	PUEDOLIBERAR--;
-	pthread_mutex_unlock(&mutexfreeDataConexion);
+
+
+int main(){
+
+	//////////////////////////////////////// LEER CONFIGURACION
+
+	t_config *CFG;
+	procesos=list_create();
+	CFG = config_create("consolaCFG.txt");
+	IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
+	PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
+	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
+	
+	printf("Presione enter para continuar.\n");
+	getchar();
+
+	////////////////////////////////////////
+
+	pthread_t  hiloPrograma;
+	int rv;
+IP=malloc(13);
+PUERTO=malloc(10);
+strcpy(IP,IP_KERNEL);
+strcpy(PUERTO,PUERTO_KERNEL);
+	struct addrinfo hints;
+	struct addrinfo *serverInfo;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;	
+	hints.ai_socktype = SOCK_STREAM;
+	fflush(stdout);
+
+	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
+	if ((rv =getaddrinfo(IP_KERNEL, PUERTO_KERNEL, &hints, &serverInfo)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	
+	config_destroy(CFG);
+	int serverSocket;
+	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+
+	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
+	freeaddrinfo(serverInfo);
+	int * buffer=malloc(sizeof(int));
+	handshakeCliente(serverSocket,CONSOLA,buffer);
+	
+
+pthread_mutex_init(&semaforoProcesos,NULL);
 int cancelarThread=0;
 int PIDS[list_size(procesos)];
 int unPid;
 int * PID;
 PID=malloc(sizeof(int));
 t_path * path_ansisop;
+
+
 while(cancelarThread==0){
+	
 	printf("Ingrese una instruccion\n");
+	
+
 	int * instruccionConsola=malloc(sizeof(int));
+	
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 	case INICIARPROGRAMA: //Recibe el path del ansisop y lo envia al kernel
 							path_ansisop=malloc(sizeof(t_path));
 							path_ansisop->path=malloc(150*sizeof(char));
 							printf ("path: \n");
-							scanf("%s",path_ansisop->path); //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
+							scanf("%s",path_ansisop->path);
+							 //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
 							path_ansisop->tamanio=strlen(path_ansisop->path)+1;
 							path_ansisop->path=realloc(path_ansisop->path,(path_ansisop->tamanio)*sizeof(char));
-							pthread_mutex_lock(&mutexComunicacion);
-							enviarDinamico(PATH,socket,path_ansisop);
-							pthread_mutex_unlock(&mutexComunicacion);
-							free(path_ansisop->path);
-							free(path_ansisop);
+							fflush(stdout);printf("este es el code%s\n",path_ansisop->path ); getchar();
+							enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
+							fflush(stdout);printf("este es el code%s\n",path_ansisop->path );
+							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
+							
+							
 		break;
 	case FINALIZARPROGRAMA:
 							//Recibe el pid del proceso a matar y lo envia al kernel
@@ -169,53 +232,10 @@ while(cancelarThread==0){
 	}
 }
 	printf("%s\n",mensajeFinalizacionHilo);
-}
-int main(){
-
-	//////////////////////////////////////// LEER CONFIGURACION
-
-	t_config *CFG;
-	procesos=list_create();
-	CFG = config_create("consolaCFG.txt");
-	char *IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
-	char *PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
-	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
-	
-	printf("Presione enter para continuar.\n");
-	getchar();
-
-	////////////////////////////////////////
-	pthread_mutex_init(&semaforoProcesos,NULL);
-	pthread_mutex_init(&mutexComunicacion,NULL);
-	pthread_mutex_init(&mutexfreeDataConexion,NULL);
-	int bytesRecibidos;
-	struct addrinfo hints;
-	struct addrinfo *serverInfo;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
-	int  serverSocket;
-	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-
-	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
-	handshakeCliente(serverSocket,CONSOLA,NULL);
-
-
-	freeaddrinfo(serverInfo);
-	dataParaComunicarse * dataConexion=malloc(sizeof(dataParaComunicarse));
-	dataConexion->socket=serverSocket;
-	config_destroy(CFG);
-	pthread_t hiloEnviar, hiloRecibir;
-	pthread_create(&hiloEnviar, NULL, (void *) enviar, dataConexion);
-	pthread_create(&hiloRecibir, NULL, (void *) recibir, dataConexion);
-	while(PUEDOLIBERAR>0);
-	free(dataConexion);
-	pthread_join(hiloEnviar,NULL); // cuando el hilo enviar termina (el usuario pone quit por ej) se termina el proceso consola
-	pthread_join(hiloRecibir,NULL);//tiene que ser 2 argumentos
-
-	
 	return 0;
 }
+	
+	
+	
+	
+
