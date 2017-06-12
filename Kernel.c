@@ -652,16 +652,20 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pcb=malloc(sizeof(t_pcb));
 					pcb->pid = pid;
 					pcb->estado = NEW;
-					pcb->programCounter=pcb->indiceCodigo[0].start;
+					pcb->programCounter=0;
 					pcb->paginasCodigo=cantPaginasCodigo;
 					pcb->posicionStack=0;
 					pcb->cantidadInstrucciones=metadata->instrucciones_size;
 					pcb->indiceCodigo=malloc(metadata->instrucciones_size*sizeof(t_intructions));
 					memcpy(pcb->indiceCodigo,metadata->instrucciones_serializado,metadata->instrucciones_size*sizeof(t_intructions));
-					metadata_destruir(metadata);
-					pcb->indiceEtiquetas=0;
+					pcb->indiceEtiquetas->etiquetas_size=metadata->etiquetas_size;
+					pcb->indiceEtiquetas->etiquetas=malloc(metadata->etiquetas_size);
+					pcb->indiceEtiquetas->etiquetas=metadata->etiquetas;
+					pcb->cantidadStack=0;
+					pcb->indiceStack=malloc(sizeof(t_stack));
 					pcb->exitCode=1;
 					// LO AGREGO A LA TABLA
+					metadata_destruir(metadata);
 					pthread_mutex_lock(&mutexPcbs);
 					if (CANTIDADPCBS%BLOQUE==0)
 						PCBS = realloc (PCBS,(CANTIDADPCBS+BLOQUE) * sizeof(PCBS[0]));

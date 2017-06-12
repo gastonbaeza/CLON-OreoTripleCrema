@@ -68,9 +68,8 @@ typedef struct {
 				  dataParaComunicarse;
 
 typedef struct { 
-				int tamanioNombre;
-				char * nombre;
-				int posPrimeraInstruccion;				
+				int etiquetas_size;
+				char * etiquetas;			
 				}__attribute__((packed))
 				  t_etiqueta;
 
@@ -111,8 +110,7 @@ typedef struct {
 				int posicionStack;
 				int cantidadInstrucciones;
 				t_intructions * indiceCodigo;
-				int cantidadEtiquetas;
-				t_etiqueta * indiceEtiquetas; 
+				t_etiquetas indiceEtiquetas; 
 				int cantidadStack;
 				t_stack * indiceStack;
 				int exitCode;
