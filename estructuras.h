@@ -71,7 +71,7 @@ typedef struct {
 				int etiquetas_size;
 				char * etiquetas;			
 				}__attribute__((packed))
-				  t_etiqueta;
+				  t_etiquetas;
 
 typedef struct { 
 				char id;

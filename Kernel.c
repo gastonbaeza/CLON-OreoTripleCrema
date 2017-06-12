@@ -442,12 +442,12 @@ void consola(){
 					{
 						printf("\t\tInstruccion: %i,\tOffset: %i.\n", PCBS[i].indiceCodigo[j].start, PCBS[i].indiceCodigo[j].offset);
 					}
-					printf("\tCantidad de etiquetas: %i\n", PCBS[i].cantidadEtiquetas);
-					printf("\tIndice Etiquetas:\n");
-					for (j = 0; j < PCBS[i].cantidadEtiquetas; j++)
-					{
-						printf("\t\tIdentificador: %c,\tPosicion primera instruccion: %i.\n", PCBS[i].indiceEtiquetas[j].id, PCBS[i].indiceEtiquetas[j].posPrimeraInstruccion);
-					}
+					// printf("\tCantidad de etiquetas: %i\n", PCBS[i].cantidadEtiquetas);
+					// printf("\tIndice Etiquetas:\n");
+					// for (j = 0; j < PCBS[i].cantidadEtiquetas; j++)
+					// {
+					// 	printf("\t\tIdentificador: %c,\tPosicion primera instruccion: %i.\n", PCBS[i].indiceEtiquetas[j].id, PCBS[i].indiceEtiquetas[j].posPrimeraInstruccion);
+					// }
 					// printf("\tCantidad de stack: %i\n", PCBS[i].cantidadStack);
 					// printf("\tIndice Stack:\n");
 					// for (j = 0; j < PCBS[i].cantidadStack; j++)
@@ -658,9 +658,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pcb->cantidadInstrucciones=metadata->instrucciones_size;
 					pcb->indiceCodigo=malloc(metadata->instrucciones_size*sizeof(t_intructions));
 					memcpy(pcb->indiceCodigo,metadata->instrucciones_serializado,metadata->instrucciones_size*sizeof(t_intructions));
-					pcb->indiceEtiquetas->etiquetas_size=metadata->etiquetas_size;
-					pcb->indiceEtiquetas->etiquetas=malloc(metadata->etiquetas_size);
-					pcb->indiceEtiquetas->etiquetas=metadata->etiquetas;
+					pcb->indiceEtiquetas.etiquetas_size=metadata->etiquetas_size;
+					pcb->indiceEtiquetas.etiquetas=malloc(metadata->etiquetas_size);
+					pcb->indiceEtiquetas.etiquetas=metadata->etiquetas;
 					pcb->cantidadStack=0;
 					pcb->indiceStack=malloc(sizeof(t_stack));
 					pcb->exitCode=1;
