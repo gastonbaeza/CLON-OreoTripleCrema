@@ -16,6 +16,7 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <parser/metadata_program.h>
 #include <stddef.h>
 
 
@@ -39,6 +40,11 @@
 #define LIBERARESPACIOMEMORIA 43
 #define BORRARARCHIVO 44
 #define CERRARARCHIVO 45
+#define PCBFINALIZADO 46
+#define FINQUANTUM 47
+#define CONTINUAR 48
+#define PARAREJECUCION 49
+#define ESPERONOVEDADES 50
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -55,7 +61,6 @@ pthread_mutex_t mutexPcb;
 int PROXIMAPAG=0;
 int PROXIMOOFFSET=0;
 int TAMPAGINA;
-int programaFinalizado=0;
 
 
 
@@ -86,6 +91,27 @@ void finalizarNivelStack(){
 	pcb->posicionStack--;
 	pthread_mutex_unlock(&mutexPcb);
 }
+
+
+void liberarContenidoPcb(){
+	free(pcb->indiceCodigo);
+	free(pcb->indiceStack->argumentos);
+	free(pcb->indiceStack->variables);
+	free(pcb->indiceStack);
+}
+
+void posicionarPC(int pos){
+	for (i = 0; i < pcb->cantidadInstrucciones; i++)
+			{
+				if (pos<=pcb->indiceCodigo[i].start)
+				{
+					pthread_mutex_lock(&mutexPcb);
+					pcb->programCounter=i;
+					pthread_mutex_unlock(&mutexPcb);
+				}
+			}
+}
+
 
 		/*
 		 * DEFINIR VARIABLE
@@ -274,22 +300,8 @@ void finalizarNivelStack(){
 		 */
 		void cpu_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
 			int i,pos;
-			for (i = 0; i < pcb->cantidadEtiquetas; i++)
-			{
-				if(!strcmp(pcb->indiceEtiquetas[i].nombre,t_nombre_etiqueta))
-				{
-					pos=pcb->indiceEtiquetas[i].posPrimeraInstruccion;
-				}
-			}
-			for (i = 0; i < pcb->cantidadInstrucciones; i++)
-			{
-				if (pos<=pcb->indiceCodigo[i].start)
-				{
-					pthread_mutex_lock(&mutexPcb);
-					pcb->programCounter=i;
-					pthread_mutex_unlock(&mutexPcb);
-				}
-			}
+			pos=metadata_buscar_etiqueta(t_nombre_etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			posicionarPC(pos);
 		}
 
 		/*
@@ -307,22 +319,8 @@ void finalizarNivelStack(){
 		void cpu_llamarSinRetorno(t_nombre_etiqueta etiqueta){
 			int i,pos;
 			nuevoNivelStack();
-			for (i = 0; i < pcb->cantidadEtiquetas; i++)
-			{
-				if (!strcmp(pcb->indiceEtiquetas[i].nombre,etiqueta))
-				{
-					pos=pcb->indiceEtiquetas[i].posPrimeraInstruccion;
-				}
-			}
-			for (i = 0; i < pcb->cantidadInstrucciones; i++)
-			{
-				if (pos<=pcb->indiceCodigo[i].start)
-				{
-					pthread_mutex_lock(&mutexPcb);
-					pcb->programCounter=i;
-					pthread_mutex_unlock(&mutexPcb);
-				}
-			}
+			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			posicionarPC(pos);
 		}
 
 		/*
@@ -346,22 +344,9 @@ void finalizarNivelStack(){
 			pcb->indiceStack[pcb->posicionStack].varRetorno.offset=donde_retornar%TAMPAGINA;
 			pcb->indiceStack[pcb->posicionStack].varRetorno.size=SIZE;
 			pthread_mutex_unlock(&mutexPcb);
-			for (i = 0; i < pcb->cantidadEtiquetas; i++)
-			{
-				if (!strcmp(pcb->indiceEtiquetas[i].nombre,etiqueta))
-				{
-					pos=pcb->indiceEtiquetas[i].posPrimeraInstruccion;
-				}
-			}
-			for (i = 0; i < pcb->cantidadInstrucciones; i++)
-			{
-				if (pos<=pcb->indiceCodigo[i].start)
-				{
-					pthread_mutex_lock(&mutexPcb);
-					pcb->programCounter=i;
-					pthread_mutex_unlock(&mutexPcb);
-				}
-			}
+			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			posicionarPC(pos);
+			
 		}
 
 
@@ -377,8 +362,9 @@ void finalizarNivelStack(){
 		 */
 		void cpu_finalizar(void){
 			if (pcb->posicionStack==0)
-			{
-				programaFinalizado=1;
+			{	
+				enviarDinamico(PCBFINALIZADO,socketKernel,pcb);
+				liberarContenidoPcb();
 			}
 			else{
 				finalizarNivelStack();
@@ -652,24 +638,7 @@ void iniciarEjecucion(char * linea){
 		free(linea);
 
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
-		if(!programaFinalizado){
-		t_peticionBytes * peticionLinea;
-		peticionLinea=malloc(sizeof(t_peticionBytes));
-		peticionLinea->pid=PID;
- 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
-		peticionLinea->offset=pcb->indiceCodigo[pcb->programCounter].start;
-		peticionLinea->size=pcb->indiceCodigo[pcb->programCounter].offset;			
-		enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
-		free(peticionLinea);
-		}
-		else{
-			//PASARLE PCB A KERNEL AVISANDO QUE TERMINE
-			programaFinalizado=0;
-		}
-		
-		
-	
-	
+			
 		
 }
 
@@ -696,21 +665,29 @@ int bytesRecibidos;
 
 	
 	freeaddrinfo(serverInfo);
-
-void * unBuffer;
-handshakeCliente(socketKernel, CPU, unBuffer);
-void * paquete;
-int recibir;
-t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	void * unBuffer;
+	handshakeCliente(socketKernel, CPU, unBuffer);
+	int recibir;
+	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+	t_linea * linea;
 
 t_peticionBytes * peticionLinea;
 while(1) {
-	while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
+	if (continuarEjecucion)
+	{
+		enviarDinamico(ESPERONOVEDADES,socketKernel,NULL);
+		while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
+	}
+	else{
+		seleccionador->tipoPaquete=PARAREJECUCION;
+	}
 	
 	if(seleccionador->unaInterfaz==CPU){
 	switch (seleccionador->tipoPaquete){
-		case PCB: // [Identificador del Programa] // informacion del proceso
-							
+		case PCB: 
 							recibirDinamico(PCB,socketKernel,pcb); 							
  							peticionLinea=malloc(sizeof(t_peticionBytes));
  							peticionLinea->pid=PID;
@@ -718,77 +695,40 @@ while(1) {
 							peticionLinea->offset=pcb->indiceCodigo[0].start;
 							peticionLinea->size=pcb->indiceCodigo[0].offset;		
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
-
 							free(peticionLinea);
-							i=0;
+							linea=malloc(sizeof(t_linea));
+		 					recibirDinamico(LINEA,socketMemoria, linea);
+							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
+		 					iniciarEjecucion(linea->linea);
+		 					free(linea);
+							break;
+		case CONTINUAR:
+							
+							peticionLinea=malloc(sizeof(t_peticionBytes));
+							peticionLinea->pid=PID;
+					 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+							peticionLinea->offset=pcb->indiceCodigo[pcb->programCounter].start;
+							peticionLinea->size=pcb->indiceCodigo[pcb->programCounter].offset;			
+							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
+							free(peticionLinea);
+							linea=malloc(sizeof(t_linea));
+		 					recibirDinamico(LINEA,socketMemoria, linea);
+							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
+		 					iniciarEjecucion(linea->linea);
+		 					free(linea);
+							break;
 
- 								
- 								
- 				break;
-
- 		case FINALIZARPROCESO: 
- 								continuarEjecucion=0; 
- 								free(pcb->indiceCodigo);					
+ 		case FINALIZARPROCESO: case FINQUANTUM: case PARAREJECUCION:
+ 								enviarDinamico(PCBFINALIZADO,socketKernel,pcb);
+ 								liberarContenidoPcb();		
  		break;
 }}}
 free(seleccionador);
+free(buffer);
 }	
 
 
 
-void conectarMemoria(void){
-	int bytesRecibidos;
-	struct addrinfo hints;
-	struct addrinfo *serverInfo;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	getaddrinfo(IP_MEMORIA,PUERTO_MEMORIA,&hints,&serverInfo);
-
-
-	socketMemoria = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-
-
-	connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen);
-
-	freeaddrinfo(serverInfo);
-	void * unBuffer;
-
-	
-	handshakeCliente(socketMemoria, CPU, unBuffer);
-	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
-
-	void * paquete;
-	int recibir;
-	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-	t_linea * linea;
-	char* lineaCodigo;
-	t_programaSalida * programa;
-	while(1){
-		while(0>recv(socketMemoria, seleccionador, sizeof(t_seleccionador),0));
-		
-		if(continuarEjecucion==1){
-	if(seleccionador->unaInterfaz==CPU){
- 	switch(seleccionador->tipoPaquete){
- 		case LINEA: 
- 					linea=malloc(sizeof(t_linea));
- 					recibirDinamico(LINEA,socketMemoria, linea);
-					linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
- 					iniciarEjecucion(linea->linea);
- 					free(linea);
- 		break;
-
-
-
- 		
-}}}
-
-				
- 	}
- 	free(seleccionador);
- }			
 
 
  
@@ -833,16 +773,37 @@ int main(){
 	/*
 	*
 	*/
+	int bytesRecibidos;
+	struct addrinfo hints;
+	struct addrinfo *serverInfo;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	getaddrinfo(IP_MEMORIA,PUERTO_MEMORIA,&hints,&serverInfo);
+
+
+	socketMemoria = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+
+
+	connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen);
+
+	freeaddrinfo(serverInfo);
+	void * unBuffer;
+
+	
+	handshakeCliente(socketMemoria, CPU, unBuffer);
+	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
+
 
 
 	config_destroy(CFG);
 	pthread_mutex_init(&mutexPcb,NULL);
 
 	pthread_t conectarKernel, conectarMemoria;
-	pthread_create(&conectarMemoria, NULL, (void *) conectarMemoria,&socketMemoria);
 	pthread_create(&conectarKernel, NULL, (void *) conectarKernel,&socketKernel);
 	pthread_join(conectarKernel,NULL);
-	pthread_join(conectarMemoria,NULL);
 }
 
 
