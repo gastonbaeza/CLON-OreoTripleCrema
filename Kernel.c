@@ -643,6 +643,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					// RECUPERO EL PROGRAMA DEL PATH
 					t_programaSalida * programa;
 					programa= obtenerPrograma(path->path);
+					printf("despues de obtener programa: %s\n",programa->elPrograma );
 					// CALCULO LA CANTIDAD DE PAGINAS
 					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
 					// GENERO LA METADATA DEL SCRIPT
@@ -694,6 +695,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					while(0>recv(SOCKETMEMORIA, seleccionador, sizeof(t_seleccionador), 0));
 					respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
 					recibirDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,respuestaSolicitud);
+					printf("el tamanio real es: %i\n",strlen(solicitudMemoria->codigo) );
 					printf("Tamaño: %i\n", respuestaSolicitud->tamanioCodigo);
 					printf("Codigo: %s\n", respuestaSolicitud->codigo);
 					printf("Cant Pags Codigo: %i\n", respuestaSolicitud->cantidadPaginasCodigo);
