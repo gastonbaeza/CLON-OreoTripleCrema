@@ -94,16 +94,16 @@ switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
 						unMensaje->mensaje=malloc(1);
-						pthread_mutex_lock(&mutexComunicacion);
-						recibirDinamico(MENSAJE, socket, unMensaje);
-						pthread_mutex_unlock(&mutexComunicacion);
+						
+						recibirDinamico(MENSAJE, serverSocket, unMensaje);
+						
 						printf("%s",unMensaje->mensaje);
 		break;
 
 		case RESULTADOINICIARPROGRAMA:
-					pthread_mutex_lock(&mutexComunicacion);
-					recibirDinamico(RESULTADOINICIARPROGRAMA,socket, paquete);
-					pthread_mutex_unlock(&mutexComunicacion);
+				
+					recibirDinamico(RESULTADOINICIARPROGRAMA,serverSocket, paquete);
+					
 					 resultado=malloc(sizeof(t_resultadoIniciarPrograma));
 					memcpy(resultado,paquete,sizeof(t_resultadoIniciarPrograma));
 					if (resultado->resultado){
@@ -199,9 +199,9 @@ while(cancelarThread==0){
 							
 							printf ("PID: ");
 							scanf("%d", PID);
-							pthread_mutex_lock(&mutexComunicacion);
+							
 							enviarDinamico(FINALIZARPROGRAMA,socket,PID);
-							pthread_mutex_unlock(&mutexComunicacion);
+							
 	
 		break;
 	case DESCONECTARCONSOLA:
@@ -216,9 +216,9 @@ while(cancelarThread==0){
 							}
 							int * procesosAMatar;
 							procesosAMatar=&PIDS[0];
-							pthread_mutex_lock(&mutexComunicacion);
+							
 							enviarDinamico(ARRAYPIDS,socket,(void *)procesosAMatar); 
-							pthread_mutex_unlock(&mutexComunicacion);
+							
 							pthread_mutex_unlock(&semaforoProcesos);
 							cancelarThread ++;
 	
