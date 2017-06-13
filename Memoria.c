@@ -232,48 +232,50 @@ int paginasRequeridas;
 int stackRequeridas;
 t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
 t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
-t_solicitudMemoria * solicitudMemoria;
+t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
 while(1) {
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
 	
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
-							solicitudMemoria=malloc(sizeof(t_solicitudMemoria)); //esto lo vi en stack overflow no me peguen
-							recibirDinamico(SOLICITUDMEMORIA,unData,solicitudMemoria);
-							solicitudMemoria->codigo=realloc(solicitudMemoria->codigo,(solicitudMemoria->tamanioCodigo+1)*sizeof(char));
-							printf("Tamaño: %i\n", solicitudMemoria->tamanioCodigo);
-							printf("Codigo: %s\n", solicitudMemoria->codigo);
-							printf("Cant Pags Codigo: %i\n", solicitudMemoria->cantidadPaginasCodigo);
-							printf("Cant Pags Stack: %i\n", solicitudMemoria->cantidadPaginasStack);
-							printf("PID: %i\n", solicitudMemoria->pid);
+							 //esto lo vi en stack overflow no me peguen
+							solicitud->codigo=calloc(1,solicitud->tamanioCodigo+sizeof(char));
+							recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
+							fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);printf("este es el tamanio oculto :%i\n",strlen(solicitud->codigo) );
+
+							fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);
+							printf("Codigo: %s\n", solicitud->codigo); printf("este es el tamanio oculto :%i\n",strlen(solicitud->codigo) );
+							printf("Cant Pags Codigo: %i\n", solicitud->cantidadPaginasCodigo);
+							printf("Cant Pags Stack: %i\n", solicitud->cantidadPaginasStack);
+							printf("PID: %i\n", solicitud->pid);
 							
  							
- 							paginasRequeridas=solicitudMemoria->cantidadPaginasCodigo;
- 							stackRequeridas=solicitudMemoria->cantidadPaginasStack;
+ 							paginasRequeridas=solicitud->cantidadPaginasCodigo;
+ 							stackRequeridas=solicitud->cantidadPaginasStack;
  							printf("hay x canatidad paginas libres %i\n",hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS));
  							sleep(5);
  							printf("fin sleep\n");
  							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
  							{ 
- 							solicitudMemoria->respuesta=FAIL;
- 							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitudMemoria);
+ 							solicitud->respuesta=FAIL;
+ 							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitud);
  							}
 
  							else
  							{ //mandarOK memoria
- 							solicitudMemoria->respuesta=OK;
+ 							solicitud->respuesta=OK;
  						
- 							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitudMemoria);
+ 							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitud);
  							printf("Despues de enviar\n");
- 							char * codigo=malloc(solicitudMemoria->tamanioCodigo);
- 							memcpy(codigo,solicitudMemoria->codigo,solicitudMemoria->tamanioCodigo);
+ 							char * codigo=malloc(solicitud->tamanioCodigo);
+ 							memcpy(codigo,solicitud->codigo,solicitud->tamanioCodigo);
  							paginasParaUsar=list_create();
  							
- 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos,solicitudMemoria->pid);
+ 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos,solicitud->pid);
  							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
  							
  							free(codigo);
- 							free(solicitudMemoria);
+ 							free(solicitud);
  							
  							
  							
