@@ -21,19 +21,19 @@
 #include <commons/config.h>
 #define BACKLOG 5
 #define KERNEL 0
-	#define ARRAYPIDS 5
+	#define ARRAYPIDS 51
 	#define PIDFINALIZACION 2
 	#define PATH 10
-	#define RESULTADOINICIARPROGRAMA 6
 #define MEMORIA 1
 	#define SOLICITUDMEMORIA 0
+	#define RESULTADOINICIARPROGRAMA 23
 	#define SOLICITUDINFOPROG 1
 	#define ESCRIBIRMEMORIA 2
 	#define LIBERARMEMORIA 3
  	#define ACTUALIZARPCB 4
 #define CONSOLA 2
 	#define INICIARPROGRAMA 0
-	#define FINALIZARPROGRAMA 1
+	#define FINALIZARPROGRAMA 88
 	#define DESCONECTARCONSOLA 2
 	#define LIMPIARMENSAJES 3
 	//------------------------------	
@@ -76,6 +76,7 @@ void programa(t_path * path_ansisop){
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
 	handshakeCliente(serverSocket,2,unBuffer);
 	
+	enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
 	
 	freeaddrinfo(kernel);
 	
@@ -88,8 +89,8 @@ t_mensaje * unMensaje;
 int * unPid;
 t_resultadoIniciarPrograma * resultado;
 while(1) {
-	while(0>recv(serverSocket,seleccionador, sizeof(t_seleccionador),0)){;}
-
+	resultado=malloc(sizeof(t_resultadoIniciarPrograma));
+	while(0>recv(serverSocket,seleccionador, sizeof(t_seleccionador),0));
 switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
@@ -101,14 +102,12 @@ switch (seleccionador->tipoPaquete){
 		break;
 
 		case RESULTADOINICIARPROGRAMA:
-				
-					recibirDinamico(RESULTADOINICIARPROGRAMA,serverSocket, paquete);
-					
-					 resultado=malloc(sizeof(t_resultadoIniciarPrograma));
-					memcpy(resultado,paquete,sizeof(t_resultadoIniciarPrograma));
+					recibirDinamico(RESULTADOINICIARPROGRAMA,serverSocket, resultado);
+
 					if (resultado->resultado){
 						pthread_mutex_lock(&semaforoProcesos);
 						list_add(procesos,(void *)(resultado->pid));
+						printf("El pid asignado es : %i\n", resultado->pid);
 						pthread_mutex_unlock(&semaforoProcesos);
 					}
 		break;
@@ -172,7 +171,12 @@ t_path * path_ansisop;
 
 while(cancelarThread==0){
 	
-	printf("Ingrese una instruccion\n");
+	printf("Seleccione una de las siguientes opciones ingresando el número correspondiente.\n");
+	printf("%i %s\n",INICIARPROGRAMA,"-Iniciar programa.");
+	printf("%i %s\n",DESCONECTARCONSOLA,"-Desconectar consola.");
+	printf("%i %s\n",LIMPIARMENSAJES,"-Limpiar los mensajes.");
+	printf("%i %s\n",FINALIZARPROGRAMA,"-Finalizar programa.");
+	
 	
 
 	int * instruccionConsola=malloc(sizeof(int));
@@ -187,9 +191,6 @@ while(cancelarThread==0){
 							 //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
 							path_ansisop->tamanio=strlen(path_ansisop->path)+1;
 							path_ansisop->path=realloc(path_ansisop->path,(path_ansisop->tamanio)*sizeof(char));
-							fflush(stdout);printf("este es el code%s\n",path_ansisop->path ); getchar();
-							enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
-							fflush(stdout);printf("este es el code%s\n",path_ansisop->path );
 							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
 							
 							
@@ -197,27 +198,28 @@ while(cancelarThread==0){
 	case FINALIZARPROGRAMA:
 							//Recibe el pid del proceso a matar y lo envia al kernel
 							
-							printf ("PID: ");
-							scanf("%d", PID);
+							printf ("PID: \n");
+							scanf("%d", &unPid);
 							
-							enviarDinamico(FINALIZARPROGRAMA,socket,PID);
 							
+							enviarDinamico(FINALIZARPROGRAMA,serverSocket,&unPid);
+								
 	
 		break;
 	case DESCONECTARCONSOLA:
 							//Recibo los PIDs que Kernel fue guardando y se los mando para que los mate
-							//FALTA finalizar la conexión de todos los threads de la consola con el kernel -----!?!?!?!?!?!?
 							pthread_mutex_lock(&semaforoProcesos);
-							
+							printf("%s\n"," ha inicializado el proceso de desconexion" );
+							printf("%i\n",list_size(procesos));
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
 								PIDS[unPid]=*(int *)list_get(procesos,unPid);
 
 							}
-							int * procesosAMatar;
+							int *procesosAMatar;
 							procesosAMatar=&PIDS[0];
 							
-							enviarDinamico(ARRAYPIDS,socket,(void *)procesosAMatar); 
+							enviarDinamico(ARRAYPIDS,serverSocket,(void *)procesosAMatar); 
 							
 							pthread_mutex_unlock(&semaforoProcesos);
 							cancelarThread ++;
