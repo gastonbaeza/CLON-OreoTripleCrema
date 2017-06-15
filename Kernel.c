@@ -23,14 +23,45 @@
 #define CONSOLA 2
 #define CPU 3
 #define FS 4
+#define SOLICITUDBYTES 31
+#define ABRIRARCHIVO 32
+#define ABRIOARCHIVO 33
+#define ESCRIBIRARCHIVO 34
+#define LEERARCHIVO 35
+#define ALMACENARBYTES 36
+#define SOLICITUDVALORVARIABLE 37
+#define ASIGNARVARIABLECOMPARTIDA 38
+#define SOLICITUDSEM 39
+#define SEMAFORO 40
+#define RESERVARESPACIO 41
+#define RESERVAESPACIO 42
+#define LIBERARESPACIOMEMORIA 43
+#define BORRARARCHIVO 44
+#define CERRARARCHIVO 45
+#define PCBFINALIZADO 46
+#define FINQUANTUM 47
+#define CONTINUAR 48
+#define PARAREJECUCION 49
+#define ESPERONOVEDADES 50
+#define MOVERCURSOR 52
+#define FINALIZARPROCESO 53
+#define PCBBLOQUEADO 54
+#define PCBQUANTUM 55
+#define PCBFINALIZADOPORCONSOLA 56
+#define FINQUANTUM 47
+#define CONTINUAR 48
+#define PARAREJECUCION 49
+#define ESPERONOVEDADES 50	
+
+	#define ARRAYPIDS 51
 	#define SOLICITUDMEMORIA 0
 	#define RESPUESTAOKMEMORIA 1
 	#define INICIARPROGRAMA 2
-	#define FINALIZARPROGRAMA 3
+	#define FINALIZARPROGRAMA 88
 	#define DESCONECTARCONSOLA 4
-	#define RESULTADOINICIARPROGRAMA 5
 	#define SOLICITUDPCB 6
 	#define PCB 7
+	#define RESULTADOINICIARPROGRAMA 23
 	#define ESCRIBIR 8
 	#define PIDFINALIZOPROCESO 9
 	#define PATH 10
@@ -80,6 +111,7 @@ pthread_mutex_t mutexPcbs;
 pthread_mutex_t mutexSocketsConsola;
 pthread_mutex_t mutexGradoMultiprog;
 pthread_mutex_t mutexPausaPlanificacion;
+pthread_mutex_t mutexProcesosReady;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
@@ -268,7 +300,7 @@ void consola(){
 	int opcion,opcion2;
 	int pid;
 	int i,j;
-	printf("\nPresione enter para iniciar la consola.\n");
+	printf("\nPresione enter para iniciar la consola del Kernel.\n");
 	getchar();
 	while(consolaHabilitada){
 		system("clear");
@@ -300,6 +332,7 @@ void consola(){
 						system("clear");
 						if (CANTIDADNEWS==0)
 							printf("Cola new vacía.\n");
+							
 						else{
 							printf("Cola new:\n");
 							for (i = 0; i < CANTIDADNEWS; i++)
@@ -330,14 +363,14 @@ void consola(){
 						else{
 							printf("Cola block:\n");
 							for (i = 0; i < CANTIDADBLOCKS; i++)
-								printf("\t%i\n",COLAEXEC[i]);
+								printf("\t%i\n",COLABLOCK[i]);
 						}
 						if (CANTIDADEXITS==0)
 							printf("Cola exit vacía.\n");
 						else{
 							printf("Cola exit:\n");
 							for (i = 0; i < CANTIDADEXITS; i++)
-								printf("\t%i\n",COLAEXEC[i]);
+								printf("\t%i\n",COLAEXIT[i]);
 						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
@@ -395,7 +428,7 @@ void consola(){
 						else{
 							printf("Cola block:\n");
 							for (i = 0; i < CANTIDADBLOCKS; i++)
-								printf("\t%i\n",COLAEXEC[i]);
+								printf("\t%i\n",COLABLOCK[i]);
 						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
@@ -408,7 +441,7 @@ void consola(){
 						else{
 							printf("Cola exit:\n");
 							for (i = 0; i < CANTIDADEXITS; i++)
-								printf("\t%i\n",COLAEXEC[i]);
+								printf("\t%i\n",COLAEXIT[i]);
 						}
 						printf("Presione enter para volver al menú principal.\n");
 						getchar();
@@ -433,15 +466,15 @@ void consola(){
 					printf("Proceso %i:\n", pid);
 					printf("\tEstado: %i\n", PCBS[i].estado);
 					printf("\tPC: %i\n", PCBS[i].programCounter);
-					printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
+					// printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
 					printf("\tPaginas de codigo: %i\n", PCBS[i].paginasCodigo);
 					printf("\tPosicion stack: %i\n", PCBS[i].posicionStack);
 					printf("\tCantidad de instrucciones: %i\n", PCBS[i].cantidadInstrucciones);
-					printf("\tIndice Codigo:\n");
-					for (j = 0; j < PCBS[i].cantidadInstrucciones; j++)
-					{
-						printf("\t\tInstruccion: %i,\tOffset: %i.\n", PCBS[i].indiceCodigo[j].start, PCBS[i].indiceCodigo[j].offset);
-					}
+					// printf("\tIndice Codigo:\n");
+					// for (j = 0; j < PCBS[i].cantidadInstrucciones; j++)
+					// {
+					// 	printf("\t\tInstruccion: %i,\tOffset: %i.\n", PCBS[i].indiceCodigo[j].start, PCBS[i].indiceCodigo[j].offset);
+					// }
 					// printf("\tCantidad de etiquetas: %i\n", PCBS[i].cantidadEtiquetas);
 					// printf("\tIndice Etiquetas:\n");
 					// for (j = 0; j < PCBS[i].cantidadEtiquetas; j++)
@@ -510,81 +543,146 @@ void consola(){
 	}
 }
 
+void quantum(int * flagQuantum){
+	sleep(QUANTUM*QUANTUM_SLEEP);
+	*flagQuantum=1;
+}
+
 void planificar(dataParaComunicarse * dataDePlanificacion){
 	int pid;
 	t_pcb * pcb;
 	int cpuLibre = 1;
+	int flagQuantum;
 	t_seleccionador * seleccionador;
-	while(PLANIFICACIONHABILITADA){
-		while(PLANIFICACIONPAUSADA){} // SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
-		// VERIFICO QUE SIGA EN LA COLA DE EXEC
-		if (!estaExec(pid))
-			cpuLibre=1;
-		rellenarColaReady();
-		if (cpuLibre)
+	seleccionador->tipoPaquete=PCB;
+	pthread_t hiloQuantum;
+	while(PLANIFICACIONHABILITADA)
+	{
+		while(PLANIFICACIONPAUSADA);// SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
+		while(0>recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0));
+		switch(seleccionador->tipoPaquete)
 		{
-			if (hayProcesosReady()){
-					// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
-					pid = COLAREADY[0];
-					// LO SACO DE DICHA COLA Y OBTENGO SU PCB
-					getPcbAndRemovePid(pid,pcb);
-					// LO PONGO EN LA COLA DE EJECUTANDO
-					pthread_mutex_lock(&mutexColaExec);
-					if (CANTIDADEXECS % BLOQUE == 0)
-						COLAEXEC = realloc (COLAEXEC,(CANTIDADEXECS+BLOQUE) * sizeof(COLAEXEC[0]));
-					COLAEXEC[CANTIDADEXECS]=pid;
-					CANTIDADEXECS++;
-					pthread_mutex_unlock(&mutexColaExec);
-					// CAMBIO ESTADO A EJECUTANDO
-					cambiarEstado(pid,EXEC);
-					// LE MANDO EL PCB AL CPU
-					enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
-					cpuLibre=0;
-			}
-		}
-		else{
-			seleccionador=malloc(sizeof(t_seleccionador));
-			recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0);
-			switch(seleccionador->tipoPaquete){
-				case PIDFINALIZOPROCESO: //FINALIZACION CORRECTA
-					// RECIBO EL PCB
-					pcb=malloc(sizeof(t_pcb));
-					recibirDinamico(PIDFINALIZOPROCESO,dataDePlanificacion->socket,pcb);
-					pcb->exitCode=0;
-					updatePCB(pcb);
-					pid=pcb->pid;
-					// LO AGREGO A LA COLA EXIT
-					pthread_mutex_lock(&mutexColaExit);
-					if (CANTIDADEXITS % BLOQUE == 0)
-						COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
-					COLAEXIT[CANTIDADEXITS]=pid;
-					CANTIDADEXITS++;
-					pthread_mutex_unlock(&mutexColaExit);
-					cambiarEstado(pid,EXIT);
-					// BUSCO LA POSICION EN LA COLA DE EXEC
-					int index=0;
-					while(COLAEXEC[index]!=pid)
-						index++;
-					// LO SACO DE LA COLA DE EXEC
-					for (index; index < CANTIDADEXECS; index++){
+			case ESPERONOVEDADES:
+				if (!estaExec(pid)) // SI ESTA BLOQUEADO MANDO PARAREJECUCION
+					enviarDinamico(PARAREJECUCION,dataDePlanificacion->socket, NULL);
+				if (flagQuantum) // SI TERMINO QUANTUM MANDO FINQUANTUM
+					enviarDinamico(FINQUANTUM, dataDePlanificacion->socket,NULL);
+				if (PCBS[pid].estado==EXIT) // SI FINALIZO EL PROCESO FORZADAMENTE MANDO FINALIZARPROCESO
+				 	enviarDinamico(FINALIZARPROCESO, dataDePlanificacion->socket,NULL);
+				else // SI NO HAY NOVEDADES MANDO CONTINUAR
+					enviarDinamico(CONTINUAR, dataDePlanificacion->socket,NULL);
+			break;
+			case PCB:
+						pthread_mutex_lock(&mutexProcesosReady);
+						while(!hayProcesosReady());
+						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
+						pid = COLAREADY[0];
+						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
+						getPcbAndRemovePid(pid,pcb);
+						pthread_mutex_unlock(&mutexProcesosReady);
+						// LO PONGO EN LA COLA DE EJECUTANDO
 						pthread_mutex_lock(&mutexColaExec);
-						if (index+1==CANTIDADEXECS)
-							COLAEXEC[index]=-1;
-						else
-							COLAEXEC[index]=COLAEXEC[index+1];
+						if (CANTIDADEXECS % BLOQUE == 0)
+							COLAEXEC = realloc (COLAEXEC,(CANTIDADEXECS+BLOQUE) * sizeof(COLAEXEC[0]));
+						COLAEXEC[CANTIDADEXECS]=pid;
+						CANTIDADEXECS++;
 						pthread_mutex_unlock(&mutexColaExec);
-					}
-					pthread_mutex_lock(&mutexColaExec);
-					CANTIDADEXECS--;
-					COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
-					pthread_mutex_unlock(&mutexColaExec);
+						// CAMBIO ESTADO A EJECUTANDO
+						cambiarEstado(pid,EXEC);
+						// LE MANDO EL PCB AL CPU
+						enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
+						cpuLibre=0;
+						if (ALGORITMO == "RR")
+						{
+							flagQuantum=0;
+							pthread_create(&hiloQuantum,NULL,(void *)quantum,&flagQuantum);
+						}
+			break;
+			// VARIABLES COMPARTIDAS
+			case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
+			break;
+			case ASIGNARVARIABLECOMPARTIDA: // CPU QUIERE ASIGNAR UN VALOR A UNA VARIABLE COMPARTIDA
+			break;
+			// SEMAFOROS
+			case SOLICITUDSEM: // CPU ESTA HACIENDO WAIT/SIGNAL (VER ESTRUCTURA)
+			break;
+			// HEAP
+			case RESERVARESPACIO: // CPU RESERVA LUGAR EN EL HEAP
+			break;
+			case LIBERARESPACIOMEMORIA: // CPU LIBERA MEMORIA DEL HEAP
+			break;
+			// FILE SYSTEM
+			case ABRIRARCHIVO: // CPU ABRE ARCHIVO
+			break;
+			case BORRARARCHIVO: // CPU BORRA ARCHIVO
+			break;
+			case CERRARARCHIVO: // CPU CIERRA ARCHIVO
+			break;
+			case MOVERCURSOR: // CPU MUEVE EL CURSOR DE UN ARCHIVO
+			break;
+			case ESCRIBIRARCHIVO: // CPU ESCRIBE EN UN ARCHIVO
+			break;
+			case LEERARCHIVO: // CPU OBTIENE CONTENIDO DEL ARCHIVO
+			break;
+			case PCBFINALIZADO: //FINALIZACION CORRECTA
+						// RECIBO EL PCB
+						pcb=malloc(sizeof(t_pcb));
+						recibirDinamico(PCBFINALIZADO,dataDePlanificacion->socket,pcb);
+						pcb->exitCode=0;
+						updatePCB(pcb);
+						pid=pcb->pid;
+						// LO AGREGO A LA COLA EXIT
+						pthread_mutex_lock(&mutexColaExit);
+						if (CANTIDADEXITS % BLOQUE == 0)
+							COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
+						COLAEXIT[CANTIDADEXITS]=pid;
+						CANTIDADEXITS++;
+						pthread_mutex_unlock(&mutexColaExit);
+						cambiarEstado(pid,EXIT);
+						// BUSCO LA POSICION EN LA COLA DE EXEC
+						int index=0;
+						while(COLAEXEC[index]!=pid)
+							index++;
+						// LO SACO DE LA COLA DE EXEC
+						for (index; index < CANTIDADEXECS; index++){
+							pthread_mutex_lock(&mutexColaExec);
+							if (index+1==CANTIDADEXECS)
+								COLAEXEC[index]=-1;
+							else
+								COLAEXEC[index]=COLAEXEC[index+1];
+							pthread_mutex_unlock(&mutexColaExec);
+						}
+						pthread_mutex_lock(&mutexColaExec);
+						CANTIDADEXECS--;
+						COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
+						pthread_mutex_unlock(&mutexColaExec);
+						free(pcb);
+			break;
+			case PCBFINALIZADOPORCONSOLA:
+				// RECIBO EL PCB
+						pcb=malloc(sizeof(t_pcb));
+						recibirDinamico(PCBFINALIZADOPORCONSOLA,dataDePlanificacion->socket,pcb);
+						pcb->exitCode=-7;
+						cambiarEstado(pcb->pid,EXIT);
+						updatePCB(pcb);
+						free(pcb);
+			break;
+			case PCBQUANTUM:
+				pcb=malloc(sizeof(t_pcb));
+				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
+				cambiarEstado(pcb->pid,READY);
+				// TODO: AGREGAR A COLA READY
+				updatePCB(pcb);
 				free(pcb);
-				break;
-				case ESCRIBIR:
-				break;
-			}
-			free(seleccionador);
-			cpuLibre=1;
+			break;
+			case PCBBLOQUEADO:
+				pcb=malloc(sizeof(t_pcb));
+				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
+				cambiarEstado(pcb->pid,READY);
+				// TODO AGREGAR A COLA BLOCKED
+				updatePCB(pcb);
+				free(pcb);
+			break;
 		}
 	}
 	// LIBERO MEMORIA
@@ -643,7 +741,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					// RECUPERO EL PROGRAMA DEL PATH
 					t_programaSalida * programa;
 					programa= obtenerPrograma(path->path);
-					printf("despues de obtener programa: %s\n",programa->elPrograma );
+					
 					// CALCULO LA CANTIDAD DE PAGINAS
 					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
 					// GENERO LA METADATA DEL SCRIPT
@@ -695,7 +793,6 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					while(0>recv(SOCKETMEMORIA, seleccionador, sizeof(t_seleccionador), 0));
 					respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
 					recibirDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,respuestaSolicitud);
-					printf("el tamanio real es: %i\n",strlen(solicitudMemoria->codigo) );
 					printf("Tamaño: %i\n", respuestaSolicitud->tamanioCodigo);
 					printf("Codigo: %s\n", respuestaSolicitud->codigo);
 					printf("Cant Pags Codigo: %i\n", respuestaSolicitud->cantidadPaginasCodigo);
@@ -745,13 +842,15 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					cantidadJobs--;
 					jobs=realloc(jobs,cantidadJobs*sizeof(jobs[0]));
 					// ENVIO RESPUESTA A CONSOLA
-					// enviarDinamico(RESULTADOINICIARPROGRAMA,dataDeConexion->socket,resultado);
+					enviarDinamico(RESULTADOINICIARPROGRAMA,dataDeConexion->socket,resultado);
 					// LIBERO MEMORIA
 					free(respuestaSolicitud);
 					free(resultado);
 				break;
 				case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
+					printf("%s\n", "estoy en finalizarPrograma antes");
 					recibirDinamico(FINALIZARPROGRAMA,dataDeConexion->socket,&PidAFinalizar);
+					printf("%s\n","recibi el pid a finalizar chamigo" );
 					finalizarPid(PidAFinalizar);
 				break;
 				case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
@@ -848,6 +947,7 @@ pthread_mutex_init(&mutexGradoMultiprog,NULL);
 pthread_mutex_init(&mutexColaExec,NULL);
 pthread_mutex_init(&mutexColaBlock,NULL);
 pthread_mutex_init(&mutexPausaPlanificacion,NULL);
+pthread_mutex_init(&mutexProcesosReady,NULL);
 // INICIO COLA READYS
 inicializarColaReadys();
 // RETURN VALUES

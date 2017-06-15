@@ -26,9 +26,10 @@
 
 #define BACKLOG 5
 #define KERNEL 0
-	#define ARRAYPIDS 5
+	#define ARRAYPIDS 51
 #define MEMORIA 1
 	#define SOLICITUDMEMORIA 0
+	#define RESULTADOINICIARPROGRAMA 23
 	#define SOLICITUDINFOPROG 1
 	#define ESCRIBIRMEMORIA 2
 	#define LIBERARMEMORIA 3
@@ -36,7 +37,7 @@
  	#define PROGRAMASALIDA 5
 #define CONSOLA 2
 	#define INICIARPROGRAMA 0
-	#define FINALIZARPROGRAMA 1
+	#define FINALIZARPROGRAMA 88
 	#define DESCONECTARCONSOLA 2
 	#define LIMPIARMENSAJES 3
 	//------------------------------	
@@ -56,6 +57,7 @@
 #define LIBRE 0
 #define OCUPADO 1
 #define BLOQUE 20
+
 
 
 void horaYFechaActual (char horaActual[19]) {
@@ -373,13 +375,21 @@ int buscarAdministrativa(int pid,t_pcb * unPcb, t_estructuraADM * bloquesAdminis
 	return FAIL;
 }
 /////////// LEEEEEEEMEEEEE ME OLVIDE DE HACER FREE DE LOS PAQUETES UNA VEZ QUE LOS MANDO A LA WEA/////
-void serial_int(int* numero,int unSocket)
-{
-	send(unSocket,&(numero),sizeof(int),0);
+void serial_int(int * numero,int unSocket)
+{	
+	int * buffer=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer,&b,sizeof(int));
+	send(unSocket,numero,sizeof(int),0);	
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 }
-void dserial_int(int* numero,int unSocket)
+void dserial_int(int * numero,int unSocket)
 {
-	while(0>=recv(unSocket,&(numero),sizeof(int),0));
+	int * buffer=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer,&b,sizeof(int));
+	while(0>=recv(unSocket,numero,sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
 }
 int dserial_string(char * unString,int unSocket)
 {	int tamanio;
@@ -561,6 +571,22 @@ void dserial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 {	
 	programaSalida->tamanio=dserial_string(programaSalida->elPrograma,unSocket);}
 
+void dserial_resultadoIniciarPrograma(t_resultadoIniciarPrograma* resultadoIniciarPrograma, int unSocket){
+
+	dserial_int(&(resultadoIniciarPrograma->pid),unSocket);
+	dserial_int(&(resultadoIniciarPrograma->resultado),unSocket);
+
+}
+void serial_resultadoIniciarPrograma(t_resultadoIniciarPrograma* resultadoIniciarPrograma, int unSocket){
+
+	serial_int(&(resultadoIniciarPrograma->pid),unSocket);
+	serial_int(&(resultadoIniciarPrograma->resultado),unSocket);
+}
+void serial_arrayPids(int * arraypids,int unSocket){
+
+	serial_int(arraypids,unSocket);
+}
+
 void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 {
 	
@@ -663,7 +689,9 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
+	
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
+	
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
@@ -678,8 +706,9 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_path((t_path * )paquete,unSocket);			
 		break;
 
-		case FINALIZARPROGRAMA:
+		case FINALIZARPROGRAMA: 
 			serial_int((int*)paquete,unSocket);
+			
 		break;
 
 		case MENSAJE:	
@@ -694,6 +723,12 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case ALMACENARBYTES:
+		break;
+		case ARRAYPIDS:
+			serial_arrayPids((int *)paquete,unSocket);
+		break;
+		case RESULTADOINICIARPROGRAMA:
+			serial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);
 		break;
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
 		// pagaraprata();
@@ -739,6 +774,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case PCB:	
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
+		case RESULTADOINICIARPROGRAMA:
+					dserial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);
+		break;
 
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
 		// pagaraprata();
@@ -770,6 +808,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 	
 		}
 }
+
 
 void pagaraprata()
 {
