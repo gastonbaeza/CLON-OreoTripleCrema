@@ -22,9 +22,8 @@
 
 
 #define SOLICITUDLINEA 2
-#define FINALIZARPROCESO 16
 #define PCB 17
-#define CPU 1
+#define CPU 3
 #define SOLICITUDBYTES 31
 #define ABRIRARCHIVO 32
 #define ABRIOARCHIVO 33
@@ -45,6 +44,11 @@
 #define CONTINUAR 48
 #define PARAREJECUCION 49
 #define ESPERONOVEDADES 50
+#define MOVERCURSOR 52
+#define FINALIZARPROCESO 53
+#define PCBBLOQUEADO 54
+#define PCBQUANTUM 55
+#define PCBFINALIZADOPORCONSOLA 56
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -243,6 +247,7 @@ void posicionarPC(int pos){
 			bytes->size=SIZE;
 			bytes->valor=valor;
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			printf("%i\n", bytes->valor);
 			free(bytes);
 		}
 
@@ -644,6 +649,7 @@ void iniciarEjecucion(char * linea){
 
 void conectarKernel(void){
 
+	printf("asd\n");
 int bytesRecibidos;
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
@@ -689,6 +695,7 @@ while(1) {
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
 							recibirDinamico(PCB,socketKernel,pcb);
+							printf("PID: %i\n", pcb->pid);
 							peticionLinea=malloc(sizeof(t_peticionBytes));
 							peticionLinea->pid=PID;
 					 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
@@ -718,8 +725,16 @@ while(1) {
 		 					free(linea);
 		break;
 
- 		case FINALIZARPROCESO: case FINQUANTUM: case PARAREJECUCION:
- 								enviarDinamico(PCBFINALIZADO,socketKernel,pcb);
+ 		case FINALIZARPROCESO: 
+ 								enviarDinamico(PCBFINALIZADOPORCONSOLA,socketKernel,pcb);
+ 								liberarContenidoPcb();
+ 		break;
+ 		case FINQUANTUM: 
+ 								enviarDinamico(PCBQUANTUM,socketKernel,pcb);
+ 								liberarContenidoPcb();
+ 		break;
+ 		case PARAREJECUCION:
+ 								enviarDinamico(PCBBLOQUEADO,socketKernel,pcb);
  								liberarContenidoPcb();		
  		break;
 }}}
@@ -760,7 +775,7 @@ int main(){
 
 
 	t_config * CFG;
-	CFG = config_create("CPUCFG.txt");
+	CFG = config_create("cpuCFG.txt");
 	IP_KERNEL=(char*) config_get_string_value(CFG ,"IP_KERNEL");
 	IP_MEMORIA= (char*)config_get_string_value(CFG, "IP_MEMORIA");
 	PUERTO_KERNEL= (char*)config_get_string_value(CFG ,"PUERTO_KERNEL");
@@ -790,20 +805,25 @@ int main(){
 	connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen);
 
 	freeaddrinfo(serverInfo);
-	void * unBuffer;
+	int * unBuffer;
+	unBuffer=malloc(sizeof(int));
+	handshakeCliente(socketMemoria, CPU, unBuffer);	
+	free(unBuffer);
+	printf("%i\n", *unBuffer);
 
-	
-	handshakeCliente(socketMemoria, CPU, unBuffer);
-	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
+	if (0>recv(socketMemoria, &TAMPAGINA, sizeof(int), 0))
+		perror("recv.\n");
+
+	printf("MARCO SIZE: %i\n", TAMPAGINA);
 
 
 
-	config_destroy(CFG);
+	// config_destroy(CFG);
 	pthread_mutex_init(&mutexPcb,NULL);
-
-	pthread_t conectarKernel, conectarMemoria;
+	pthread_t conectarKernel;
 	pthread_create(&conectarKernel, NULL, (void *) conectarKernel,&socketKernel);
 	pthread_join(conectarKernel,NULL);
+	free(pcb);
 }
 
 

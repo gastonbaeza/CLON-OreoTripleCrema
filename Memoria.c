@@ -47,7 +47,7 @@
 	#define SIZE 3
 #define CONSOLA 2
 	#define INICIARPROGRAMA 0
-	#define FINALIZARPROGRAMA 1
+	#define FINALIZARPROGRAMA 104
 	#define DESCONECTARCONSOLA 2
 	#define LIMPIARMENSAJES 3
 	//------------------------------	
@@ -226,14 +226,16 @@ t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 t_list * paginasParaUsar;
 int entrada;
 t_pcb * unPcb;
-t_linea * linea=malloc(sizeof(t_linea));
+
 t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
-t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
-t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
-t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
+
 while(1) {
+	t_linea * linea=malloc(sizeof(t_linea));
+	t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
+	t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
+	t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
 	
 	switch (seleccionador->tipoPaquete){
@@ -241,10 +243,9 @@ while(1) {
 							 //esto lo vi en stack overflow no me peguen
 							solicitud->codigo=calloc(1,solicitud->tamanioCodigo+sizeof(char));
 							recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
-							fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);printf("este es el tamanio oculto :%i\n",strlen(solicitud->codigo) );
-
+							
 							fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);
-							printf("Codigo: %s\n", solicitud->codigo); printf("este es el tamanio oculto :%i\n",strlen(solicitud->codigo) );
+							printf("Codigo: %s\n", solicitud->codigo); 
 							printf("Cant Pags Codigo: %i\n", solicitud->cantidadPaginasCodigo);
 							printf("Cant Pags Stack: %i\n", solicitud->cantidadPaginasStack);
 							printf("PID: %i\n", solicitud->pid);
@@ -253,8 +254,6 @@ while(1) {
  							paginasRequeridas=solicitud->cantidadPaginasCodigo;
  							stackRequeridas=solicitud->cantidadPaginasStack;
  							printf("hay x canatidad paginas libres %i\n",hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS));
- 							sleep(5);
- 							printf("fin sleep\n");
  							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
  							{ 
  							solicitud->respuesta=FAIL;
@@ -482,6 +481,13 @@ while(1){
 		handshakeServer(socketNuevaConexion,MEMORIA,(void*)unBuffer);
 		
 		if(*unBuffer==KERNEL)
+			{	tamPagina=MARCO_SIZE;
+				printf("MARCO SIZE: %i\n",tamPagina );
+				memcpy(unBuffer,&tamPagina, sizeof(int));
+				send(socketNuevaConexion, unBuffer,sizeof(int),0);
+				socketKernel=socketNuevaConexion;	
+			}
+			if(*unBuffer==CPU)
 			{	tamPagina=MARCO_SIZE;
 				printf("MARCO SIZE: %i\n",tamPagina );
 				memcpy(unBuffer,&tamPagina, sizeof(int));
