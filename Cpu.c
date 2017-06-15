@@ -26,7 +26,7 @@
 #define PCB 17
 #define CPU 1
 #define SOLICITUDBYTES 31
-#define ABRIRARCHiVO 32
+#define ABRIRARCHIVO 32
 #define ABRIOARCHIVO 33
 #define ESCRIBIRARCHIVO 34
 #define LEERARCHIVO 35
@@ -496,7 +496,7 @@ void posicionarPC(int pos){
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
 					abrirArchivo->direccionArchivo=direccion;
 					abrirArchivo->flags=flags;
-					enviarDinamico(ABRIRARCHiVO,socketKernel,abrirArchivo);
+					enviarDinamico(ABRIRARCHIVO,socketKernel,abrirArchivo);
 					t_fdParaLeer * fdParaLeer= malloc(sizeof(t_fdParaLeer));
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
 					
@@ -551,7 +551,7 @@ void posicionarPC(int pos){
 			moverCursor->descriptorArchivo=descriptor_archivo;
 			moverCursor->posicion=posicion;
 			
-			enviarDinamico(ABRIRARCHiVO,socketKernel,moverCursor);
+			enviarDinamico(MOVERCURSOR,socketKernel,moverCursor);
 		}
 		/*
 		 * ESCRIBIR ARCHIVO
@@ -688,12 +688,12 @@ while(1) {
 	if(seleccionador->unaInterfaz==CPU){
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
-							recibirDinamico(PCB,socketKernel,pcb); 							
- 							peticionLinea=malloc(sizeof(t_peticionBytes));
- 							peticionLinea->pid=PID;
- 							peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[0].start);
-							peticionLinea->offset=pcb->indiceCodigo[0].start;
-							peticionLinea->size=pcb->indiceCodigo[0].offset;		
+							recibirDinamico(PCB,socketKernel,pcb);
+							peticionLinea=malloc(sizeof(t_peticionBytes));
+							peticionLinea->pid=PID;
+					 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+							peticionLinea->offset=pcb->indiceCodigo[pcb->programCounter].start;
+							peticionLinea->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
 							free(peticionLinea);
 							linea=malloc(sizeof(t_linea));
@@ -701,7 +701,7 @@ while(1) {
 							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
 		 					iniciarEjecucion(linea->linea);
 		 					free(linea);
-							break;
+		 					break;							
 		case CONTINUAR:
 							
 							peticionLinea=malloc(sizeof(t_peticionBytes));
@@ -716,7 +716,7 @@ while(1) {
 							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
 		 					iniciarEjecucion(linea->linea);
 		 					free(linea);
-							break;
+		break;
 
  		case FINALIZARPROCESO: case FINQUANTUM: case PARAREJECUCION:
  								enviarDinamico(PCBFINALIZADO,socketKernel,pcb);
