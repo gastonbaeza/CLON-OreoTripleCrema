@@ -649,8 +649,6 @@ void iniciarEjecucion(char * linea){
 
 void conectarKernel(void){
 
-	printf("asd\n");
-int bytesRecibidos;
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
@@ -659,11 +657,6 @@ int bytesRecibidos;
 	hints.ai_socktype = SOCK_STREAM;
 
 	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
-
-
-	
-	
-	
 	socketKernel = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 
 
@@ -671,27 +664,23 @@ int bytesRecibidos;
 
 	
 	freeaddrinfo(serverInfo);
-	int * buffer=malloc(sizeof(int));
-	int a=1;
-	memcpy(buffer,&a,sizeof(int));
-	void * unBuffer;
+	int * unBuffer=malloc(sizeof(int));
 	handshakeCliente(socketKernel, CPU, unBuffer);
+	free(unBuffer);
 	int recibir;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	t_linea * linea;
+	int primerAcceso=1;
 
 t_peticionBytes * peticionLinea;
 while(1) {
-	if (continuarEjecucion)
-	{
-		enviarDinamico(ESPERONOVEDADES,socketKernel,NULL);
-		while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
-	}
-	else{
-		seleccionador->tipoPaquete=PARAREJECUCION;
-	}
+		if (primerAcceso){
+					primerAcceso=0;}
+		else
+			enviarDinamico(ESPERONOVEDADES,socketKernel,NULL);
+		while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+	printf("tipoPaquete: %i\n",seleccionador->tipoPaquete);
 	
-	if(seleccionador->unaInterfaz==CPU){
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
 							recibirDinamico(PCB,socketKernel,pcb);
@@ -737,9 +726,8 @@ while(1) {
  								enviarDinamico(PCBBLOQUEADO,socketKernel,pcb);
  								liberarContenidoPcb();		
  		break;
-}}}
+}}
 free(seleccionador);
-free(buffer);
 }	
 
 
@@ -788,7 +776,6 @@ int main(){
 	/*
 	*
 	*/
-	int bytesRecibidos;
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 
@@ -808,21 +795,18 @@ int main(){
 	int * unBuffer;
 	unBuffer=malloc(sizeof(int));
 	handshakeCliente(socketMemoria, CPU, unBuffer);	
-	free(unBuffer);
-	printf("%i\n", *unBuffer);
 
-	if (0>recv(socketMemoria, &TAMPAGINA, sizeof(int), 0))
-		perror("recv.\n");
+	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
 
-	printf("MARCO SIZE: %i\n", TAMPAGINA);
 
 
 
 	// config_destroy(CFG);
 	pthread_mutex_init(&mutexPcb,NULL);
-	pthread_t conectarKernel;
-	pthread_create(&conectarKernel, NULL, (void *) conectarKernel,&socketKernel);
-	pthread_join(conectarKernel,NULL);
+	pthread_t conectarKernelA;
+	printf("MARCO SIZE: %i\n", TAMPAGINA);
+	pthread_create(&conectarKernelA, NULL, (void *) conectarKernel,NULL);
+	pthread_join(conectarKernelA,NULL);
 	free(pcb);
 }
 

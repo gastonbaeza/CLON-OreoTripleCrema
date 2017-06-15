@@ -43,7 +43,7 @@
 	//------------------------------	
 	#define MENSAJE 7
 	#define PID 1
-	#define PCB 11
+	#define PCB 17
 	#define PATH 10
 	#define LINEA 19
 	#define SOLICITUDLINEA 62
@@ -689,9 +689,9 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	
+	printf("antes seleccionador\n");
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
-	
+	printf("tipoPaquete en enviarDinamico: %i \n", seleccionador->tipoPaquete);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
@@ -719,7 +719,8 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_linea((t_linea * )paquete,unSocket);			
 		break;
 
-		case PCB:	
+		case PCB:
+			printf("case pcb de enviar\n");	
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case ALMACENARBYTES:
@@ -772,6 +773,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 
 		case PCB:	
+		printf("case pcb de recibir\n");
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case RESULTADOINICIARPROGRAMA:

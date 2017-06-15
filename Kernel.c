@@ -56,7 +56,7 @@
 	#define FINALIZARPROGRAMA 88
 	#define DESCONECTARCONSOLA 4
 	#define SOLICITUDPCB 6
-	#define PCB 7
+	#define PCB 17
 	#define RESULTADOINICIARPROGRAMA 23
 	#define ESCRIBIR 8
 	#define PIDFINALIZOPROCESO 9
@@ -130,11 +130,9 @@ void inicializarColaReadys(){
 }
 
 int hayProcesosReady(){
-	int i=0;
-	for (i; i < GRADO_MULTIPROG; i++)
-		if (COLAREADY[i]!=-1)
-			i=1;
-	return i;
+	if (COLAREADY[0]!=-1)
+			return 1;
+	return 0;
 }
 
 void getPcbAndRemovePid(int pid, t_pcb * pcb){
@@ -164,14 +162,21 @@ void rellenarColaReady(){
 	int primerReadyLibre;
 	primerReadyLibre=GRADO_MULTIPROG-cantVacios;
 	for (i=0; i<cantVacios; i++){
-		pthread_mutex_lock(&mutexColaReady);
-		COLAREADY[primerReadyLibre+i]=COLANEW[0];
-		pthread_mutex_unlock(&mutexColaReady);
-		pthread_mutex_lock(&mutexColaNew);
-		CANTIDADNEWS--;
-		COLANEW+=sizeof(int);
-		COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(COLANEW[0]));
-		pthread_mutex_unlock(&mutexColaNew);
+		if (CANTIDADNEWS>0)
+		{
+			printf("%i\n",CANTIDADNEWS );
+			pthread_mutex_lock(&mutexColaReady);
+			COLAREADY[primerReadyLibre+i]=COLANEW[0];
+			pthread_mutex_unlock(&mutexColaReady);
+			pthread_mutex_lock(&mutexColaNew);
+			CANTIDADNEWS--;
+			if (CANTIDADNEWS>0)
+			{
+				COLANEW+=sizeof(int);
+			}
+			COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(int));
+			pthread_mutex_unlock(&mutexColaNew);
+		}
 	}
 }
 
@@ -549,13 +554,17 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_pcb * pcb;
 	int cpuLibre = 1;
 	int flagQuantum;
-	t_seleccionador * seleccionador;
+	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	seleccionador->tipoPaquete=PCB;
 	pthread_t hiloQuantum;
+	int primerAcceso=1;
 	while(PLANIFICACIONHABILITADA)
 	{
 		while(PLANIFICACIONPAUSADA);// SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
-		while(0>recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0));
+		if (primerAcceso){
+					primerAcceso=0;}
+		else
+			while(0>recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0));
 		switch(seleccionador->tipoPaquete)
 		{
 			case ESPERONOVEDADES:
@@ -567,13 +576,16 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				 	enviarDinamico(FINALIZARPROCESO, dataDePlanificacion->socket,NULL);
 				else // SI NO HAY NOVEDADES MANDO CONTINUAR
 					enviarDinamico(CONTINUAR, dataDePlanificacion->socket,NULL);
-			break;
+				break;
 			case PCB:
 						pthread_mutex_lock(&mutexProcesosReady);
-						while(!hayProcesosReady());
+						while(!hayProcesosReady()){
+							rellenarColaReady();
+						}
 						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 						pid = COLAREADY[0];
 						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
+						pcb=malloc(sizeof(t_pcb));
 						getPcbAndRemovePid(pid,pcb);
 						pthread_mutex_unlock(&mutexProcesosReady);
 						// LO PONGO EN LA COLA DE EJECUTANDO
@@ -586,7 +598,10 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						// CAMBIO ESTADO A EJECUTANDO
 						cambiarEstado(pid,EXEC);
 						// LE MANDO EL PCB AL CPU
+						printf("socket: %i\n", dataDePlanificacion->socket);
 						enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
+						printf("Despues\n");
+						free(pcb);
 						cpuLibre=0;
 						if (ALGORITMO == "RR")
 						{
@@ -854,8 +869,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 				case SOLICITUDPCB:
 					// INICIO DE HILO PLANIFICADOR
         			dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
-        			dataDePlanificacion=dataDeConexion;
-					pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDeConexion);
+        			dataDePlanificacion->socket=dataDeConexion->socket;
+        			pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDePlanificacion);
 					estaComunicacion=0;
         		break;
         		case SOLICITUDMEMORIA:

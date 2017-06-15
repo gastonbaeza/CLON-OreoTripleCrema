@@ -492,7 +492,7 @@ while(1){
 				printf("MARCO SIZE: %i\n",tamPagina );
 				memcpy(unBuffer,&tamPagina, sizeof(int));
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
-				socketKernel=socketNuevaConexion;	
+					
 			}
 		dataNuevo->socket=socketNuevaConexion;
 		pthread_create(&hiloComunicador,NULL,(void *) comunicarse,dataNuevo);
