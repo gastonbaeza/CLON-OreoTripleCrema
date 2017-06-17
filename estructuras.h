@@ -205,6 +205,7 @@ typedef struct {
 					t_liberarMemoria;
 
 typedef struct {
+				int tamanio;
 				char* direccionArchivo;
 				t_banderas flags;
 				

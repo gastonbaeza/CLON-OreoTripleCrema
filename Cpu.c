@@ -32,7 +32,7 @@
 #define ALMACENARBYTES 36
 #define SOLICITUDVALORVARIABLE 37
 #define ASIGNARVARIABLECOMPARTIDA 38
-#define SOLICITUDSEM 39
+#define SOLICITUDSEMSIGNAL 39
 #define SEMAFORO 40
 #define RESERVARESPACIO 41
 #define RESERVAESPACIO 42
@@ -49,6 +49,7 @@
 #define PCBBLOQUEADO 54
 #define PCBQUANTUM 55
 #define PCBFINALIZADOPORCONSOLA 56
+#define SOLICITUDSEMWAIT 57
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -673,7 +674,7 @@ void conectarKernel(void){
 	t_linea * linea;
 	int primerAcceso=1;
 
-t_peticionBytes * peticionLinea;
+t_peticionBytes * peticion;
 while(1) {
 		if (primerAcceso){
 					primerAcceso=0;}

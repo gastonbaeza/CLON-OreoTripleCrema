@@ -46,8 +46,6 @@
 	#define PCB 17
 	#define PATH 10
 	#define LINEA 19
-	#define SOLICITUDLINEA 62
-	#define ALMACENARBYTES 95
 #define CPU 3
 #define FS 4
 #define TRUE 1
@@ -57,6 +55,32 @@
 #define LIBRE 0
 #define OCUPADO 1
 #define BLOQUE 20
+#define SOLICITUDBYTES 31
+#define ABRIRARCHIVO 32
+#define ABRIOARCHIVO 33
+#define ESCRIBIRARCHIVO 34
+#define LEERARCHIVO 35
+#define ALMACENARBYTES 36
+#define SOLICITUDVALORVARIABLE 37
+#define ASIGNARVARIABLECOMPARTIDA 38
+#define SOLICITUDSEMSIGNAL 39
+#define SEMAFORO 40
+#define RESERVARESPACIO 41
+#define RESERVAESPACIO 42
+#define LIBERARESPACIOMEMORIA 43
+#define BORRARARCHIVO 44
+#define CERRARARCHIVO 45
+#define PCBFINALIZADO 46
+#define FINQUANTUM 47
+#define CONTINUAR 48
+#define PARAREJECUCION 49
+#define ESPERONOVEDADES 50
+#define MOVERCURSOR 52
+#define FINALIZARPROCESO 53
+#define PCBBLOQUEADO 54
+#define PCBQUANTUM 55
+#define PCBFINALIZADOPORCONSOLA 56
+#define SOLICITUDSEMWAIT 57
 
 
 
@@ -680,7 +704,7 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 		
 	free(buffer);
 }
-void serial_peticion(t_peticionBytes * peticionLinea, int unSocket)
+void serial_peticion(t_peticionBytes * peticion, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
@@ -733,7 +757,7 @@ void dserial_bytes(t_almacenarBytes * bytes, int unSocket)
 	free(buffer);
 }
 
-void dserial_peticion(t_peticionBytes* peticionLinea, int unSocket)
+void dserial_peticion(t_peticionBytes* peticion, int unSocket)
 {	
 	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -763,113 +787,113 @@ void serial_asignarVariableCompartida(t_asignarVariableCompartida * asignarVaria
 {
 	
 	serial_string(asignarVariableCompartida->variable,asignarVariableCompartida->tamanioNombre,unSocket); 
-	serial_int(asignarVariableCompartida->valor,unSocket);
+	serial_int(&(asignarVariableCompartida->valor),unSocket);
 }
 void dserial_asignarValorCompartida(t_asignarVariableCompartida * asignarVariableCompartida, int unSocket)
 {	
 	asignarVariableCompartida->tamanioNombre=dserial_string(asignarVariableCompartida->variable,unSocket);
-	dserial_int(asignarVariableCompartida->valor,unSocket);}
+	dserial_int(&(asignarVariableCompartida->valor),unSocket);}
 
 void serial_solicitudSemaforo(t_solicitudSemaforo * solicitudSemaforo, int unSocket)
 {
 	
 	serial_string(solicitudSemaforo->identificadorSemaforo,solicitudSemaforo->tamanioIdentificador,unSocket); 
-	serial_int(solicitudSemaforo->estadoSemaforo,unSocket);
+	serial_int(&(solicitudSemaforo->estadoSemaforo),unSocket);
 }
 void dserial_solicitudSemaforo(t_solicitudSemaforo * solicitudSemaforo, int unSocket)
 {	
 	solicitudSemaforo->tamanioIdentificador=dserial_string(solicitudSemaforo->identificadorSemaforo,unSocket);
-	dserial_int(solicitudSemaforo->estadoSemaforo,unSocket);}
+	dserial_int(&(solicitudSemaforo->estadoSemaforo),unSocket);}
 
 void serial_reservarEspacioMemoria(t_reservarEspacioMemoria * reservarEspacioMemoria, int unSocket)
 {
-	serial_int(reservarEspacioMemoria->espacio,unSocket);
+	serial_int(&(reservarEspacioMemoria->espacio),unSocket);
 }
 void dserial_reservarEspacioMemoria(t_reservarEspacioMemoria * reservarEspacioMemoria, int unSocket)
 {	
-	dserial_int(reservarEspacioMemoria->espacio,unSocket);}
+	dserial_int(&(reservarEspacioMemoria->espacio),unSocket);}
 
 void serial_liberarMemoria(t_liberarMemoria * liberarMemoria, int unSocket)
 {
-	serial_int(liberarMemoria->direccionMemoria,unSocket);
+	serial_int(&(liberarMemoria->direccionMemoria),unSocket);
 }
 void dserial_liberarMemoria(t_liberarMemoria * liberarMemoria, int unSocket)
 {	
-	dserial_int(liberarMemoria->direccionMemoria,unSocket);}
+	dserial_int(&(liberarMemoria->direccionMemoria),unSocket);}
 
 void serial_abrirArchivo(t_abrirArchivo * abrirArchivo, int unSocket){
-	serial_int(abrirArchivo->direccionArchivo, unSocket),
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
+	serial_string(abrirArchivo->direccionArchivo,abrirArchivo->tamanio,unSocket);
 	send(unSocket,&(abrirArchivo->flags),sizeof(t_banderas),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 }
 
-void dserial_abrirArchivo(t_abrirArchivo * abrirArchivo,unSocket){
-	serial_int(abrirArchivo->direccionArchivo,unSocket);
+void dserial_abrirArchivo(t_abrirArchivo * abrirArchivo,int unSocket){
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	while(0>recv(unSocket,&(peticionLinea->pid),sizeof(int),0));
+	abrirArchivo->tamanio=dserial_string(abrirArchivo->direccionArchivo,unSocket);
+	while(0>recv(unSocket,&(abrirArchivo->flags),sizeof(t_banderas),0));
 	send(unSocket,buffer, sizeof(int),0);
 }
 void serial_borrarArchivo(t_borrarArchivo * borrarArchivo, int unSocket)
 {
-	serial_int(borrarArchivo->fdABorrar,unSocket);
+	serial_int(&(borrarArchivo->fdABorrar),unSocket);
 }
 void dserial_borrarArchivo(t_borrarArchivo * borrarArchivo, int unSocket)
 {	
-	dserial_int(borrarArchivo->fdABorrar,unSocket);
+	dserial_int(&(borrarArchivo->fdABorrar),unSocket);
 }
 void serial_cerrarArchivo(t_cerrarArchivo * cerrarArchivo, int unSocket)
 {
-	serial_int(cerrarArchivo->descriptorArchivo,unSocket);
+	serial_int(&(cerrarArchivo->descriptorArchivo),unSocket);
 }
 void dserial_cerrarArchivo(t_cerrarArchivo * cerrarArchivo, int unSocket)
 {	
-	dserial_int(cerrarArchivo->descriptorArchivo,unSocket);
+	dserial_int(&(cerrarArchivo->descriptorArchivo),unSocket);
 }
-void serial_fdParaLeer(t_fdParaLeer * cerrarArchivo, int unSocket)
+void serial_fdParaLeer(t_fdParaLeer * fdParaLeer, int unSocket)
 {
-	serial_int(cerrarArchivo->descriptorArchivo,unSocket);
+	serial_int(&(fdParaLeer->fd),unSocket);
 }
-void dserial_cerrarArchivo(t_cerrarArchivo * cerrarArchivo, int unSocket)
+void dserial_fdParaLeer(t_fdParaLeer * fdParaLeer, int unSocket)
 {	
-	dserial_int(cerrarArchivo->descriptorArchivo,unSocket);
+	dserial_int(&(fdParaLeer->fd),unSocket);
 }
 void serial_moverCursor(t_moverCursor * moverCursor, int unSocket)
 {
-	serial_int(moverCursor->descriptorArchivo,unSocket);
-	serial_int(moverCursor->posicion,unSocket);
+	serial_int(&(moverCursor->descriptorArchivo),unSocket);
+	serial_int(&(moverCursor->posicion),unSocket);
 }
 void dserial_moverCursor(t_moverCursor * moverCursor, int unSocket)
 {	
-	dserial_int(moverCursor->descriptorArchivo,unSocket);
-	dserial_int(moverCursor->posicion,unSocket);
+	dserial_int(&(moverCursor->descriptorArchivo),unSocket);
+	dserial_int(&(moverCursor->posicion),unSocket);
 }
 void serial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {
 	
 	serial_string(escribirArchivo->informacion,escribirArchivo->tamanio,unSocket); 
-	serial_int(escribirArchivo->fdArchivo,unSocket);
+	serial_int(&(escribirArchivo->fdArchivo),unSocket);
 }
 void dserial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {	
 	escribirArchivo->tamanio=dserial_string(escribirArchivo->informacion,unSocket);
-	dserial_int(escribirArchivo->fdArchivo,unSocket);
+	dserial_int(&(escribirArchivo->fdArchivo),unSocket);
 }
 void serial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
 {
-	serial_int(leerArchivo->descriptorArchivo,unSocket);
-	serial_int(leerArchivo->punteroInformacion,unSocket);
-	serial_int(leerArchivo->tamanio,unSocket);
+	serial_int(&(leerArchivo->descriptor),unSocket);
+	serial_int(&(leerArchivo->punteroInformacion),unSocket);
+	serial_int(&(leerArchivo->tamanio),unSocket);
 }
 void dserial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
 {	
-	dserial_int(leerArchivo->descriptorArchivo,unSocket);
-	dserial_int(leerArchivo->punteroInformacion,unSocket);
-	dserial_int(leerArchivo->tamanio,unSocket);
+	dserial_int(&(leerArchivo->descriptor),unSocket);
+	dserial_int(&(leerArchivo->punteroInformacion),unSocket);
+	dserial_int(&(leerArchivo->tamanio),unSocket);
 }
 
 void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
@@ -916,7 +940,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		case ALMACENARBYTES:
 			serial_bytes((t_almacenarBytes *)paquete,unSocket);
 		break;
-		case SOLICITARBYTES:
+		case SOLICITUDBYTES:
 			serial_peticion((t_peticionBytes *)paquete,unSocket);
 		break;
 		case ARRAYPIDS:
@@ -1010,7 +1034,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case RESULTADOINICIARPROGRAMA:
 					dserial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);
 		break;
-		case SOLICITARBYTES:
+		case SOLICITUDBYTES:
 			dserial_peticion((t_peticionBytes *)paquete,unSocket);
 		break;
 		case ALMACENARBYTES:
@@ -1135,4 +1159,95 @@ fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 
+}
+
+int estaLibreMarco(int unMarco)// devuelve 1 si esta libre
+{
+    if (bloquesAdmin[unMarco].estado=0;)return 1;
+    return 0;
+}
+int buscarMarcoLibre(t_marco *marcos,int MARCOS) //devuelve -1 en falta de memoria o el marco libre
+{
+    int unMarco=0;
+    for(unMarco;unMarco<MARCOS;unMarco++)
+    {
+        if(estaLibreMarco(unMarco)) return unMarco;
+
+    }
+    return -1;
+}
+
+int buscarPaginas(int paginasRequeridas, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid)
+ {    int indice;
+     int unFrame=0;
+     int marco;
+     for(unFrame;unFrame<paginasRequeridas;unFrame++)
+     {    indice=calcularPosicion(unPid,unFrame);
+         marco=buscarMarcoLibre(marcos,MARCOS);
+         if(marco!=-1){
+         agregarSiguienteEnOverflow(unPid,marco);
+         bloquesAdmin[marco].estado=OCUPADO;
+        bloquesAdmin[marco].pid=unPid;
+        bloquesAdmin[marco].pagina=unFrame;} else return -1;
+     }
+    
+  
+ }
+
+/* Función Hash */
+unsigned int calcularPosicion(int pid, int num_pagina) {
+    char str1[20];
+    char str2[20];
+    sprintf(str1, "%d", pid);
+    sprintf(str2, "%d", num_pagina);
+    strcat(str1, str2);
+    unsigned int indice = atoi(str1) % CANTIDAD_DE_MARCOS;
+    return indice;
+}
+
+/* Inicialización vector overflow. Cada posición tiene una lista enlazada que guarda números de frames.
+ * Se llenará a medida que haya colisiones correspondientes a esa posición del vector. */
+void inicializarOverflow(int cantidad_de_marcos) {
+    overflow = malloc(sizeof(t_list*) * cantidad_de_marcos);
+    int i;
+    for (i = 0; i < CANTIDAD_DE_MARCOS; ++i) { /* Una lista por frame */
+        overflow[i] = list_create();
+    }
+}
+
+/* En caso de colisión, busca el siguiente frame en el vector de overflow.
+ * Retorna el número de frame donde se encuentra la página. */
+int buscarEnOverflow(int indice, int pid, int pagina) {
+    int i = 0;
+    for (i = 0; i < list_size(overflow[indice]); i++) {
+        if (esPaginaCorrecta(list_get(overflow[indice], i), pid, pagina)) {
+            return list_get(overflow[indice], i);
+        }
+    }
+}
+
+/* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
+void agregarSiguienteEnOverflow(int pos_inicial, int nro_frame) {
+    list_add(overflow[pos_inicial], nro_frame);
+}
+
+/* Elimina un frame de la lista enlazada correspondiente a una determinada posición del vector de overflow  */
+void borrarDeOverflow(int posicion, int frame) {
+    int i = 0;
+    int index_frame;
+
+    for (i = 0; i < list_size(overflow[posicion]); i++) {
+        if (frame == (int) list_get(overflow[posicion], i)) {
+            index_frame = i;
+            i = list_size(overflow[posicion]);
+        }
+    }
+
+    list_remove(overflow[posicion], index_frame);
+}
+
+/* A implementar por el alumno. Devuelve 1 a fin de cumplir con la condición requerida en la llamada a la función */
+int esPaginaCorrecta(int pos_candidata, int pid, int pagina) {
+
+    return 1;
 }

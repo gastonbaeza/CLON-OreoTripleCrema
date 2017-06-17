@@ -71,6 +71,11 @@
 #define EXEC 2
 #define BLOCK 3
 #define EXIT 4
+	#define MENSAJE 7
+
+#define SOLICITUDSEMSIGNAL 39
+
+#define SOLICITUDSEMWAIT 57
 // VARIABLES GLOBALES
 char * ALGORITMO;
 int PLANIFICACIONHABILITADA=1;
@@ -551,13 +556,25 @@ void quantum(int * flagQuantum){
 
 void planificar(dataParaComunicarse * dataDePlanificacion){
 	int pid;
-	t_pcb * pcb;
+	t_pcb * pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
 	int flagQuantum;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	seleccionador->tipoPaquete=PCB;
 	pthread_t hiloQuantum;
 	int primerAcceso=1;
+	t_solicitudValorVariable * solicitudVariable;
+	t_asignarVariableCompartida * asignarVariable;
+	t_solicitudSemaforo * solicitudSemaforo;
+	t_reservarEspacioMemoria * reservarMemoria;
+	t_liberarMemoria * liberarMemoria;
+	t_abrirArchivo * abrirArchivo;
+	t_borrarArchivo * borrarArchivo;
+	t_cerrarArchivo * cerrarArchivo;
+	t_moverCursor * moverCursor;
+	t_escribirArchivo * escribirArchivo;
+	t_leerArchivo * leerArchivo;
+	t_mensaje * mensaje;
 	while(PLANIFICACIONHABILITADA)
 	{
 		while(PLANIFICACIONPAUSADA);// SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
@@ -585,7 +602,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 						pid = COLAREADY[0];
 						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
-						pcb=malloc(sizeof(t_pcb));
 						getPcbAndRemovePid(pid,pcb);
 						pthread_mutex_unlock(&mutexProcesosReady);
 						// LO PONGO EN LA COLA DE EJECUTANDO
@@ -601,7 +617,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						printf("socket: %i\n", dataDePlanificacion->socket);
 						enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
 						printf("Despues\n");
-						free(pcb);
 						cpuLibre=0;
 						if (ALGORITMO == "RR")
 						{
@@ -611,33 +626,78 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			break;
 			// VARIABLES COMPARTIDAS
 			case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
+				solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
+				recibirDinamico(SOLICITUDVALORVARIABLE,dataDePlanificacion->socket,solicitudVariable);
+				free(solicitudVariable);
 			break;
 			case ASIGNARVARIABLECOMPARTIDA: // CPU QUIERE ASIGNAR UN VALOR A UNA VARIABLE COMPARTIDA
+				asignarVariable=malloc(sizeof(t_asignarVariableCompartida));
+				recibirDinamico(ASIGNARVARIABLECOMPARTIDA,dataDePlanificacion->socket,asignarVariable);
+				free(asignarVariable);
 			break;
 			// SEMAFOROS
-			case SOLICITUDSEM: // CPU ESTA HACIENDO WAIT/SIGNAL (VER ESTRUCTURA)
+			case SOLICITUDSEMWAIT: // CPU ESTA HACIENDO WAIT (VER ESTRUCTURA)
+				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
+				recibirDinamico(SOLICITUDSEM,dataDePlanificacion->socket,solicitudSemaforo);
+				free(solicitudSemaforo);
+			break;
+			case SOLICITUDSEMSIGNAL: // CPU ESTA HACIENDO SIGNAL (VER ESTRUCTURA)
+				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
+				recibirDinamico(SOLICITUDSEM,dataDePlanificacion->socket,solicitudSemaforo);
+				free(solicitudSemaforo);
 			break;
 			// HEAP
 			case RESERVARESPACIO: // CPU RESERVA LUGAR EN EL HEAP
+				reservarMemoria=malloc(sizeof(t_reservarEspacioMemoria));
+				recibirDinamico(RESERVARESPACIO,dataDePlanificacion->socket,reservarMemoria);
+				free(reservarMemoria);
 			break;
 			case LIBERARESPACIOMEMORIA: // CPU LIBERA MEMORIA DEL HEAP
+				liberarMemoria=malloc(sizeof(t_liberarMemoria));
+				recibirDinamico(LIBERARESPACIOMEMORIA,dataDePlanificacion->socket,liberarMemoria);
+				free(liberarMemoria);
 			break;
 			// FILE SYSTEM
 			case ABRIRARCHIVO: // CPU ABRE ARCHIVO
+				abrirArchivo=malloc(sizeof(t_abrirArchivo));
+				recibirDinamico(ABRIRARCHIVO,dataDePlanificacion->socket,abrirArchivo);
+				free(abrirArchivo);
 			break;
 			case BORRARARCHIVO: // CPU BORRA ARCHIVO
+				borrarArchivo=malloc(sizeof(t_borrarArchivo));
+				recibirDinamico(BORRARARCHIVO,dataDePlanificacion->socket,borrarArchivo);
+				free(borrarArchivo);
 			break;
 			case CERRARARCHIVO: // CPU CIERRA ARCHIVO
+				cerrarArchivo=malloc(sizeof(t_cerrarArchivo));
+				recibirDinamico(CERRARARCHIVO,dataDePlanificacion->socket,cerrarArchivo);
+				free(cerrarArchivo);
 			break;
 			case MOVERCURSOR: // CPU MUEVE EL CURSOR DE UN ARCHIVO
+				moverCursor=malloc(sizeof(t_moverCursor));
+				recibirDinamico(MOVERCURSOR,dataDePlanificacion->socket,moverCursor);
+				free(moverCursor);
 			break;
 			case ESCRIBIRARCHIVO: // CPU ESCRIBE EN UN ARCHIVO
+				escribirArchivo=malloc(sizeof(t_escribirArchivo));
+				recibirDinamico(ESCRIBIRARCHIVO,dataDePlanificacion->socket,escribirArchivo);
+				if (escribirArchivo->fdArchivo==1)
+				{
+					mensaje=malloc(sizeof(t_mensaje));
+					mensaje->tamanio=escribirArchivo->tamanio;
+					mensaje->mensaje=escribirArchivo->informacion;
+					enviarDinamico(MENSAJE,SOCKETSCONSOLA[pcb->pid],mensaje);
+					free(mensaje);
+				}
+				free(escribirArchivo);
 			break;
 			case LEERARCHIVO: // CPU OBTIENE CONTENIDO DEL ARCHIVO
+				leerArchivo=malloc(sizeof(t_leerArchivo));
+				recibirDinamico(LEERARCHIVO,dataDePlanificacion->socket,leerArchivo);
+				free(leerArchivo);
 			break;
 			case PCBFINALIZADO: //FINALIZACION CORRECTA
 						// RECIBO EL PCB
-						pcb=malloc(sizeof(t_pcb));
 						recibirDinamico(PCBFINALIZADO,dataDePlanificacion->socket,pcb);
 						pcb->exitCode=0;
 						updatePCB(pcb);
@@ -667,37 +727,31 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						CANTIDADEXECS--;
 						COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
 						pthread_mutex_unlock(&mutexColaExec);
-						free(pcb);
 			break;
 			case PCBFINALIZADOPORCONSOLA:
 				// RECIBO EL PCB
-						pcb=malloc(sizeof(t_pcb));
 						recibirDinamico(PCBFINALIZADOPORCONSOLA,dataDePlanificacion->socket,pcb);
 						pcb->exitCode=-7;
 						cambiarEstado(pcb->pid,EXIT);
 						updatePCB(pcb);
-						free(pcb);
 			break;
 			case PCBQUANTUM:
-				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
 				cambiarEstado(pcb->pid,READY);
 				// TODO: AGREGAR A COLA READY
 				updatePCB(pcb);
-				free(pcb);
 			break;
 			case PCBBLOQUEADO:
-				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
 				cambiarEstado(pcb->pid,READY);
 				// TODO AGREGAR A COLA BLOCKED
 				updatePCB(pcb);
-				free(pcb);
 			break;
 		}
 	}
 	// LIBERO MEMORIA
 	free(dataDePlanificacion);
+	free(pcb);
 }
 
 void comunicarse(dataParaComunicarse * dataDeConexion){
