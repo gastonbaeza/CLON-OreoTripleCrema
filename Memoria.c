@@ -37,9 +37,9 @@
 	#define ESCRIBIRMEMORIA 2
 	#define LIBERARMEMORIA 3
  	#define ACTUALIZARPCB 4
-	#define SOLICITUDLINEA 62
+	#define SOLICITUDBYTES 31
 	#define LINEA 19
-	#define ALMACENARBYTES 95
+	#define ALMACENARBYTES 36
 	//-------------------------------
 	#define DELAY 0
 	#define DUMP 1
@@ -93,6 +93,7 @@ t_estructuraCache* memoriaCache;
 int socketKernel;
 void * memoria;
 void * cache;
+t_list** overflow;
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
@@ -170,7 +171,7 @@ unData->socket = listenningSocket;
 
 bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM)+MARCOS*sizeof(t_marco));
  tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
-
+iniciarOverlow(MARCOS);
 int unaAdmin;
 for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de admin con pid-1 libre y num de pag y el hash
 {
@@ -191,7 +192,7 @@ memoriaCache=(t_estructuraCache*)cache;
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
 		marcos[unMarco].numeroPagina=memoria+(unMarco*MARCO_SIZE);
-		
+		marcos[unMarco].estado=0;
 	}
 
 for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
@@ -223,7 +224,6 @@ fflush(stdout);
 
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-t_list * paginasParaUsar;
 int entrada;
 t_pcb * unPcb;
 
@@ -268,9 +268,9 @@ while(1) {
  							printf("Despues de enviar\n");
  							char * codigo=malloc(solicitud->tamanioCodigo);
  							memcpy(codigo,solicitud->codigo,solicitud->tamanioCodigo);
- 							paginasParaUsar=list_create();
  							
- 							buscarPaginas((paginasRequeridas+stackRequeridas),paginasParaUsar,MARCOS,bloquesAdmin,marcos,solicitud->pid);
+ 							
+ 							buscarPaginas((paginasRequeridas+stackRequeridas),MARCOS,bloquesAdmin,marcos,solicitud->pid);
  							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
  							
  							free(codigo);
@@ -286,8 +286,8 @@ while(1) {
 
  					break;
  		 
- 					case SOLICITUDLINEA:
- 										recibirDinamico(SOLICITUDLINEA,unData,peticionBytes);
+ 					case SOLICITUDBYTES:
+ 										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
  										linea->linea=malloc(peticionBytes->size);
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
@@ -306,7 +306,7 @@ while(1) {
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
  										}	
  											linea->tamanio=peticionBytes->size;
- 											enviarDinamico(LINEA,unData,linea);
+ 											enviarDinamico(SOLICITUDBYTES,unData,linea);
  					break;
  		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
