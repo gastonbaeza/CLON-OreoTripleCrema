@@ -220,7 +220,8 @@ void comunicarse(dataParaComunicarse * estructura){ // aca tenemos que agregar t
 fflush(stdout); 
  int unData=estructura->socket;
 
-
+int * buffer;
+int a=1;
 int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 int entrada;
@@ -304,7 +305,11 @@ while(1) {
  											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
  										}	
- 											
+ 											buffer=malloc(sizeof(int));
+											memcpy(buffer,&a,sizeof(int));
+											while(0>=recv(unData,buffer, sizeof(int),0));
+											free(buffer);
+ 											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
  											free(paquete);
  					break;

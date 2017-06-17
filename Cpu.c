@@ -660,7 +660,8 @@ void conectarKernel(void){
 
 	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
 	socketKernel = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-
+	int * buffer;
+	int a=1;
 
 	connect(socketKernel, serverInfo->ai_addr, serverInfo->ai_addrlen);
 
@@ -671,7 +672,7 @@ void conectarKernel(void){
 	free(unBuffer);
 	int recibir;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-	t_linea * linea;
+	char * linea;
 	int primerAcceso=1;
 
 t_peticionBytes * peticion;
@@ -693,12 +694,18 @@ while(1) {
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
+							linea=malloc(peticion->size);
+							buffer=malloc(sizeof(int));
+							memcpy(buffer,&a,sizeof(int));
+							send(socketMemoria,buffer, sizeof(int),0);
+							free(buffer);
+							printf("esperandoLinea\n");
+							while(0>recv(socketMemoria,linea,peticion->size,0)){
+								perror("asd:");
+							}
+							printf("%s\n",linea );
+		 					iniciarEjecucion(linea);
 							free(peticion);
-							linea=malloc(sizeof(t_linea));
-		 					recibirDinamico(LINEA,socketMemoria, linea);
-							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
-		 					iniciarEjecucion(linea->linea);
-		 					free(linea);
 		 					break;							
 		case CONTINUAR:
 							
@@ -708,12 +715,10 @@ while(1) {
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
+							linea=malloc(peticion->size);
+							while(0>recv(socketMemoria,linea,peticion->size,0));
+		 					iniciarEjecucion(linea);
 							free(peticion);
-							linea=malloc(sizeof(t_linea));
-		 					recibirDinamico(LINEA,socketMemoria, linea);
-							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
-		 					iniciarEjecucion(linea->linea);
-		 					free(linea);
 		break;
 
  		case FINALIZARPROCESO: 
