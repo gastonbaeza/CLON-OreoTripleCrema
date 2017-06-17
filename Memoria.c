@@ -226,13 +226,13 @@ int recibir;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 int entrada;
 t_pcb * unPcb;
-
+void * paquete;
 t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
 
 while(1) {
-	t_linea * linea=malloc(sizeof(t_linea));
+	paquete=malloc(peticionBytes->size);
 	t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
 	t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
 	t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
@@ -288,11 +288,11 @@ while(1) {
  		 
  					case SOLICITUDBYTES:
  										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
- 										linea->linea=malloc(peticionBytes->size);
+ 										
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
  											
- 											memcpy(linea->linea,memoriaCache[entrada].contenido+peticionBytes->offset,peticionBytes->size);
+ 											memcpy(paquete,memoriaCache[entrada].contenido+peticionBytes->offset,peticionBytes->size);
  											
  											memoriaCache[entrada].antiguedad=0;
  											
@@ -301,12 +301,13 @@ while(1) {
  										else
  										{//lo busco en memoria
  											entrada=buscarPagina(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS);
- 											memcpy(linea->linea,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
+ 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
  											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
  										}	
- 											linea->tamanio=peticionBytes->size;
- 											enviarDinamico(SOLICITUDBYTES,unData,linea);
+ 											
+ 											send(unData,paquete,peticionBytes->size,0);
+ 											free(paquete);
  					break;
  		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
