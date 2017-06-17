@@ -93,7 +93,7 @@ t_estructuraCache* memoriaCache;
 int socketKernel;
 void * memoria;
 void * cache;
-t_list** overflow;
+
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
@@ -171,13 +171,12 @@ unData->socket = listenningSocket;
 
 bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM)+MARCOS*sizeof(t_marco));
  tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
-iniciarOverlow(MARCOS);
+inicializarOverflow(MARCOS);
 int unaAdmin;
 for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de admin con pid-1 libre y num de pag y el hash
 {
 bloquesAdmin[unaAdmin].estado=LIBRE;
 bloquesAdmin[unaAdmin].pid=-1;
-bloquesAdmin[unaAdmin].frame=unaAdmin;
 bloquesAdmin[unaAdmin].pagina=-1;
 	
 }
@@ -192,7 +191,7 @@ memoriaCache=(t_estructuraCache*)cache;
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
 		marcos[unMarco].numeroPagina=memoria+(unMarco*MARCO_SIZE);
-		marcos[unMarco].estado=0;
+		
 	}
 
 for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
@@ -230,9 +229,9 @@ void * paquete;
 t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
-
+int indice;
 while(1) {
-	paquete=malloc(peticionBytes->size);
+	
 	t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
 	t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
 	t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
@@ -270,8 +269,7 @@ while(1) {
  							memcpy(codigo,solicitud->codigo,solicitud->tamanioCodigo);
  							
  							
- 							buscarPaginas((paginasRequeridas+stackRequeridas),MARCOS,bloquesAdmin,marcos,solicitud->pid);
- 							cargarPaginas(paginasParaUsar,stackRequeridas, codigo, MARCO_SIZE);
+ 							reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE);
  							
  							free(codigo);
  							free(solicitud);
@@ -288,7 +286,7 @@ while(1) {
  		 
  					case SOLICITUDBYTES:
  										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
- 										
+ 										paquete=calloc(1,peticionBytes->size);
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
  											
@@ -300,7 +298,8 @@ while(1) {
  										}
  										else
  										{//lo busco en memoria
- 											entrada=buscarPagina(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS);
+ 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS);
+ 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS);
  											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
  											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
@@ -325,7 +324,9 @@ while(1) {
 								
 								else
  								{//lo busco en memoria
-								entrada=buscarPagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos,MARCOS);
+ 								indice=calcularPosicion(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos,MARCOS);
+ 								entrada=buscarEnOverflow(indice,bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS);
+								
 																	
 								}	
 								almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,(void*)&bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size);

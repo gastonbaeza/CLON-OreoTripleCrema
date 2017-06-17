@@ -118,7 +118,7 @@ typedef struct {
 				 t_pcb;
 
 typedef struct { 
-				int frame;
+				
 				int pid;
 				int pagina;
 				int estado;

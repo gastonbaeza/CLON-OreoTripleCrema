@@ -82,7 +82,7 @@
 #define PCBFINALIZADOPORCONSOLA 56
 #define SOLICITUDSEMWAIT 57
 
-
+t_list** overflow;
 
 void horaYFechaActual (char horaActual[19]) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
@@ -204,22 +204,19 @@ int hayEspacioEnCache(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)// si
 	}return -1;
 	
 }
-void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int offset, int tamanio)// en memoria despues de queme solicitan o almacenan bytes tengo que escribirlos en cache, no los hago aca porque sino esta funcion hace mas de lo que debe
-{	void * buffer=malloc(tamanio);
-	int entrada=buscarPagina(unPid, pagina,  marcos,  MARCOS);
+void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int offset, int tamanio, t_estructuraADM * bloquesAdmin)// en memoria despues de queme solicitan o almacenan bytes tengo que escribirlos en cache, no los hago aca porque sino esta funcion hace mas de lo que debe
+{	void * buffer=malloc(tamanio);	int indice=calcularPosicion(unPid,pagina,MARCOS);
+	int entrada=buscarEnOverflow(indice, unPid, pagina,bloquesAdmin,MARCOS);
 	memcpy(buffer, marcos[entrada].numeroPagina+offset,tamanio);
 	return buffer;
 
 }
-void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio )
-{
-	int entrada=buscarPagina(unPid,pagina,marcos, MARCOS); //agregar retardo por lectura
+void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin )
+{	int indice=calcularPosicion(unPid,pagina,MARCOS);
+	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS); 
 	memcpy(marcos[entrada].numeroPagina+offset,contenido,tamanio); // agregar retardo por escritura
 }
-int buscarPagina(int unPid,int pagina, t_marco * marcos, int MARCOS)
-{
 
-}
 void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)//expandir despues esa funcion para que informe cosas mas lindas
 {
 
@@ -257,7 +254,7 @@ void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 	int unaAdmin;
 	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
 	{fflush(stdout);printf("%s\n","tabla de paginas");
-		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].frame);
+	
 		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pid);
 		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pagina);
 		fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].estado);
@@ -321,23 +318,6 @@ int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS
 return FAIL;
 	
 }
-void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int marco_size)
-{
-int unaPagina;
-
-int paginasRequeridas=list_size(paginasParaUsar)-stackRequeridas;
-for ( unaPagina = 0; unaPagina < paginasRequeridas; unaPagina++)
-{
-memcpy((void *)list_get(paginasParaUsar,unaPagina),codigo,marco_size-1);
-}
-
-for(unaPagina=paginasRequeridas;unaPagina<paginasRequeridas+stackRequeridas;unaPagina++)
-{
-	char * stack=calloc(marco_size,marco_size);
-	memcpy((void *)list_get(paginasParaUsar,unaPagina),stack,marco_size);
-}
-
-}
 
 
 
@@ -352,46 +332,16 @@ int calcularPaginas(int tamanioPagina,int tamanio)
 }
  							
 
-int buscarPaginas(int paginasRequeridas, t_list * paginasParaUsar, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid)
- {	int cantidadPaginas=0;
- 	int paginasRecorridas=0;
- 	int unFrame=0;
- 	int cantidadRestantes;
-    int numeroPagina=0;
-    
-    printf("cantidad de paginas requeridas : %i\n",paginasRequeridas);
-    while(paginasRecorridas+paginasRequeridas<MARCOS){
-    	cantidadRestantes=paginasRequeridas;
-    
-		while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0){
-	    	cantidadRestantes --;
-	    		unFrame++;
-	    }
-    	if(cantidadRestantes==0){
-    		unFrame-=paginasRequeridas;
-    		for(unFrame;unFrame<paginasRequeridas+unFrame;unFrame++){
-	    		list_add(paginasParaUsar,(marcos[unFrame]).numeroPagina); // ACA ES DONDE TENGO QUE EMPEZAR A ENCARAR EL HASHEO INTENSO
-	    		bloquesAdmin[unFrame].estado=OCUPADO;
-	    		bloquesAdmin[unFrame].pid=unPid;
-	    		bloquesAdmin[unFrame].pagina=numeroPagina;
-	    		paginasRequeridas--; numeroPagina++;
-    		}
-    		return OK;
-    	} 
-    	unFrame++;
-    	paginasRecorridas++;
-    }
-    return FAIL;
- }	
-int buscarAdministrativa(int pid,t_pcb * unPcb, t_estructuraADM * bloquesAdministrativas,int MARCOS)
+
+int buscarAdministrativa(int pid,int pagina, t_estructuraADM * bloquesAdministrativas,int MARCOS)
 {
 
 	
-	int marcosRecorridos;
+	int marcosRecorridos=0;
 	while(marcosRecorridos<MARCOS)
 	{
-		if(bloquesAdministrativas->pid==pid)
-			{memcpy((void *)unPcb,&(bloquesAdministrativas->pid),sizeof(t_pcb))	;return OK;}
+		if(bloquesAdministrativas[marcosRecorridos].pid==pid && bloquesAdministrativas[marcosRecorridos].pagina==pagina)
+			{return marcosRecorridos;}
 
 		else{bloquesAdministrativas=bloquesAdministrativas+sizeof(t_estructuraADM);}
 		marcosRecorridos++;
@@ -1161,74 +1111,85 @@ fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++++++++++++
 
 }
 
-int estaLibreMarco(int unMarco)// devuelve 1 si esta libre
+int estaLibreMarco(int unMarco,t_estructuraADM * bloquesAdmin)// devuelve 1 si esta libre
 {
-    if (bloquesAdmin[unMarco].estado=0;)return 1;
+    if (bloquesAdmin[unMarco].estado=0)return 1;
     return 0;
 }
-int buscarMarcoLibre(t_marco *marcos,int MARCOS) //devuelve -1 en falta de memoria o el marco libre
+int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) //devuelve -1 en falta de memoria o el marco libre
 {
     int unMarco=0;
     for(unMarco;unMarco<MARCOS;unMarco++)
     {
-        if(estaLibreMarco(unMarco)) return unMarco;
+        if(estaLibreMarco(unMarco,bloquesAdmin)) return unMarco;
 
     }
     return -1;
 }
 
-int buscarPaginas(int paginasRequeridas, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid)
+int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE)
  {    int indice;
      int unFrame=0;
      int marco;
+     int paginasCargadas=0;
+     int paginasRequeridas=paginasCodigo+paginasStack+1;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
-     {    indice=calcularPosicion(unPid,unFrame);
-         marco=buscarMarcoLibre(marcos,MARCOS);
+     {   indice=calcularPosicion(unPid,unFrame,MARCOS);
+         marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin);
          if(marco!=-1){
          agregarSiguienteEnOverflow(unPid,marco);
          bloquesAdmin[marco].estado=OCUPADO;
         bloquesAdmin[marco].pid=unPid;
-        bloquesAdmin[marco].pagina=unFrame;} else return -1;
+        bloquesAdmin[marco].pagina=unFrame;
+    	if(paginasCargadas<paginasCodigo)
+    		{
+			memcpy(marcos[marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
+    		}
+    	
+    } else return -1;
+
      }
-    
-  
- }
+    }
+
+ 
 
 /* Función Hash */
-unsigned int calcularPosicion(int pid, int num_pagina) {
+unsigned int calcularPosicion(int pid, int num_pagina,int MARCOS) {
     char str1[20];
     char str2[20];
     sprintf(str1, "%d", pid);
     sprintf(str2, "%d", num_pagina);
     strcat(str1, str2);
-    unsigned int indice = atoi(str1) % CANTIDAD_DE_MARCOS;
+    unsigned int indice = atoi(str1) % MARCOS;
     return indice;
 }
 
 /* Inicialización vector overflow. Cada posición tiene una lista enlazada que guarda números de frames.
  * Se llenará a medida que haya colisiones correspondientes a esa posición del vector. */
-void inicializarOverflow(int cantidad_de_marcos) {
-    overflow = malloc(sizeof(t_list*) * cantidad_de_marcos);
+void inicializarOverflow(int MARCOS) {
+    overflow = malloc(sizeof(t_list*) * MARCOS);
     int i;
-    for (i = 0; i < CANTIDAD_DE_MARCOS; ++i) { /* Una lista por frame */
+    for (i = 0; i < MARCOS; ++i) { /* Una lista por frame */
         overflow[i] = list_create();
     }
 }
 
 /* En caso de colisión, busca el siguiente frame en el vector de overflow.
  * Retorna el número de frame donde se encuentra la página. */
-int buscarEnOverflow(int indice, int pid, int pagina) {
+int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAdmin,int MARCOS) {
     int i = 0;
+    int  *miFrame;
     for (i = 0; i < list_size(overflow[indice]); i++) {
-        if (esPaginaCorrecta(list_get(overflow[indice], i), pid, pagina)) {
-            return list_get(overflow[indice], i);
+        if (esPaginaCorrecta(*(int*)list_get(overflow[indice], i), pid, pagina,bloquesAdmin,MARCOS)) {
+            miFrame= (int*)(list_get(overflow[indice], i));
+            return *miFrame;
         }
     }
 }
 
 /* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
 void agregarSiguienteEnOverflow(int pos_inicial, int nro_frame) {
-    list_add(overflow[pos_inicial], nro_frame);
+    list_add(overflow[pos_inicial], &nro_frame);
 }
 
 /* Elimina un frame de la lista enlazada correspondiente a una determinada posición del vector de overflow  */
@@ -1247,7 +1208,8 @@ void borrarDeOverflow(int posicion, int frame) {
 }
 
 /* A implementar por el alumno. Devuelve 1 a fin de cumplir con la condición requerida en la llamada a la función */
-int esPaginaCorrecta(int pos_candidata, int pid, int pagina) {
+int esPaginaCorrecta(int frame, int pid, int pagina,t_estructuraADM * bloquesAdmin, int MARCOS) {
 
-    return 1;
+if((bloquesAdmin[frame].pid)==pid && (bloquesAdmin[frame]).pagina==pagina) return 1;
+	return 0;
 }

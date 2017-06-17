@@ -7,13 +7,13 @@ int strlenConBarraN(char * unString);
 
 t_programaSalida * obtenerPrograma(char * unPath);
 
+int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAdmin,int MARCOS);
+int esPaginaCorrecta(int frame, int pid, int pagina,t_estructuraADM * bloquesAdmin, int MARCOS);
 
 
-
-unsigned int calcularPosicion(int pid, int num_pagina);
-void inicializarOverflow(int cantidad_de_marcos);
+unsigned int calcularPosicion(int pid, int num_pagina,int MARCOS);
+void inicializarOverflow(int MARCOS);
 void agregarSiguienteEnOverflow(int pos_inicial, int nro_frame);
-int buscarEnOverflow(int indice, int pid, int pagina);
 void borrarDeOverflow(int pos_inicial, int frame);
 
 void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int tamaPagina);
