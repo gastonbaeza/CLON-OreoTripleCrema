@@ -415,7 +415,7 @@ void posicionarPC(int pos){
 		solicitudSemaforo->identificadorSemaforo=malloc(solicitudSemaforo->tamanioIdentificador);
 		solicitudSemaforo->identificadorSemaforo=identificador_semaforo;
 		solicitudSemaforo->estadoSemaforo=-1;
-		enviarDinamico(SOLICITUDSEM,socketKernel,solicitudSemaforo);
+		enviarDinamico(SOLICITUDSEMWAIT,socketKernel,solicitudSemaforo);
 		t_semaforo * semaforo=malloc(sizeof(t_semaforo));
 		recibirDinamico(SEMAFORO,socketKernel,semaforo);
 		if(semaforo->estadoSemaforo==0){
@@ -438,9 +438,10 @@ void posicionarPC(int pos){
 
 		t_solicitudSemaforo * solicitudSemaforo;
 		solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
+		solicitudSemaforo->tamanioIdentificador=strlen(identificador_semaforo);
 		solicitudSemaforo->identificadorSemaforo=identificador_semaforo;
 		solicitudSemaforo->estadoSemaforo=-1;
-		enviarDinamico(SOLICITUDSEM,socketKernel,solicitudSemaforo);
+		enviarDinamico(SOLICITUDSEMSIGNAL,socketKernel,solicitudSemaforo);
 		}
 	
 		/*
@@ -460,7 +461,7 @@ void posicionarPC(int pos){
 			reservarEspacioMemoria->espacio=espacio;
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
-			recibirDinamico(RESERVAESPACIO,socketKernel,reservar);
+			recibirDinamico(RESERVARESPACIO,socketKernel,reservar);
 			return reservar->puntero;
 			
 
