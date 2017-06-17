@@ -215,13 +215,13 @@ void posicionarPC(int pos){
 			int offset,pagina,valor;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
-			t_peticionBytes * peticionValor=malloc(sizeof(t_peticionBytes));
-			peticionValor->pid=PID;
-			peticionValor->pagina=pagina;
-			peticionValor->offset=offset;
-			peticionValor->size=SIZE;
-			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticionValor);
-			free(peticionValor);
+			t_peticionBytes * peticion=malloc(sizeof(t_peticionBytes));
+			peticion->pid=PID;
+			peticion->pagina=pagina;
+			peticion->offset=offset;
+			peticion->size=SIZE;
+			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
+			free(peticion);
 			recv(socketMemoria,&valor,sizeof(int),0);
 			return valor;
 		}
@@ -686,13 +686,13 @@ while(1) {
 		case PCB: 
 							recibirDinamico(PCB,socketKernel,pcb);
 							printf("PID: %i\n", pcb->pid);
-							peticionLinea=malloc(sizeof(t_peticionBytes));
-							peticionLinea->pid=PID;
-					 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
-							peticionLinea->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticionLinea->size=pcb->indiceCodigo[pcb->programCounter].offset;			
-							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
-							free(peticionLinea);
+							peticion=malloc(sizeof(t_peticionBytes));
+							peticion->pid=PID;
+					 		peticion->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
+							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
+							free(peticion);
 							linea=malloc(sizeof(t_linea));
 		 					recibirDinamico(LINEA,socketMemoria, linea);
 							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));
@@ -701,13 +701,13 @@ while(1) {
 		 					break;							
 		case CONTINUAR:
 							
-							peticionLinea=malloc(sizeof(t_peticionBytes));
-							peticionLinea->pid=PID;
-					 		peticionLinea->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
-							peticionLinea->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticionLinea->size=pcb->indiceCodigo[pcb->programCounter].offset;			
-							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticionLinea);
-							free(peticionLinea);
+							peticion=malloc(sizeof(t_peticionBytes));
+							peticion->pid=PID;
+					 		peticion->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
+							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
+							free(peticion);
 							linea=malloc(sizeof(t_linea));
 		 					recibirDinamico(LINEA,socketMemoria, linea);
 							linea->linea=realloc(linea->linea,(linea->tamanio+1)*sizeof(char));

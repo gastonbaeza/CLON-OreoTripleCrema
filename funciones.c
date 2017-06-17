@@ -680,53 +680,23 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 		
 	free(buffer);
 }
-void serial_peticionLinea(t_peticionBytes * peticionLinea, int unSocket)
+void serial_peticion(t_peticionBytes * peticionLinea, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	send(unSocket,&(peticionLinea->pid),sizeof(int),0);
+	send(unSocket,&(peticion->pid),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(peticionLinea->pagina),sizeof(int),0);
+	send(unSocket,&(peticion->pagina),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(peticionLinea->offset),sizeof(int),0);
+	send(unSocket,&(peticion->offset),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(peticionLinea->size),sizeof(int),0);
+	send(unSocket,&(peticion->size),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	
 
 	free(buffer);
 }
-void serial_peticionValor(t_peticionBytes * peticionValor, int unSocket)
-{	int * buffer=malloc(sizeof(int));
-	int a=1;
-	memcpy(buffer,&a,sizeof(int));
-	send(unSocket,&(peticionValor->pid),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(peticionValor->pagina),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(peticionValor->offset),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(peticionValor->size),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	
 
-	free(buffer);
-}
-void dserial_peticionValor(t_peticionBytes* peticionValor, int unSocket)
-{	
-	int * buffer=malloc(sizeof(int));
-	int a=1;
-	memcpy(buffer,&a,sizeof(int));
-	while(0>recv(unSocket,&(peticionValor->pid),sizeof(int),0));
-	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(peticionValor->pagina),sizeof(int),0));
-	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(peticionValor->offset),sizeof(int),0));
-	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(peticionValor->size),sizeof(int),0));
-	send(unSocket,buffer, sizeof(int),0);
-	free(buffer);
-}
 void serial_bytes(t_almacenarBytes * bytes, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -763,18 +733,18 @@ void dserial_bytes(t_almacenarBytes * bytes, int unSocket)
 	free(buffer);
 }
 
-void dserial_peticionLinea(t_peticionBytes* peticionLinea, int unSocket)
+void dserial_peticion(t_peticionBytes* peticionLinea, int unSocket)
 {	
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	while(0>recv(unSocket,&(peticionLinea->pid),sizeof(int),0));
+	while(0>recv(unSocket,&(peticion->pid),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(peticionLinea->pagina),sizeof(int),0));
+	while(0>recv(unSocket,&(peticion->pagina),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(peticionLinea->offset),sizeof(int),0));
+	while(0>recv(unSocket,&(peticion->offset),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(peticionLinea->size),sizeof(int),0));
+	while(0>recv(unSocket,&(peticion->size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	free(buffer);
 }
@@ -853,6 +823,14 @@ void dserial_borrarArchivo(t_borrarArchivo * borrarArchivo, int unSocket)
 	dserial_int(borrarArchivo->fdABorrar,unSocket);
 }
 void serial_cerrarArchivo(t_cerrarArchivo * cerrarArchivo, int unSocket)
+{
+	serial_int(cerrarArchivo->descriptorArchivo,unSocket);
+}
+void dserial_cerrarArchivo(t_cerrarArchivo * cerrarArchivo, int unSocket)
+{	
+	dserial_int(cerrarArchivo->descriptorArchivo,unSocket);
+}
+void serial_fdParaLeer(t_fdParaLeer * cerrarArchivo, int unSocket)
 {
 	serial_int(cerrarArchivo->descriptorArchivo,unSocket);
 }
@@ -939,7 +917,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_bytes((t_almacenarBytes *)paquete,unSocket);
 		break;
 		case SOLICITARBYTES:
-			serial_peticionLinea((t_peticionBytes *)paquete,unSocket);
+			serial_peticion((t_peticionBytes *)paquete,unSocket);
 		break;
 		case ARRAYPIDS:
 			serial_arrayPids((int *)paquete,unSocket);
@@ -983,9 +961,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		 case LEERARCHIVO:
 		 	serial_leerArchivo((t_leerArchivo *)paquete,unSocket);
 		 break;
-		 case PETICIONVALOR:
-		 	serial_peticionValor((t_peticionBytes *)paquete,unSocket);
-		 break;
+		 
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
 		// pagaraprata();
 		break;
@@ -1035,7 +1011,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 					dserial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);
 		break;
 		case SOLICITARBYTES:
-			dserial_peticionLinea((t_peticionBytes *)paquete,unSocket);
+			dserial_peticion((t_peticionBytes *)paquete,unSocket);
 		break;
 		case ALMACENARBYTES:
 			dserial_bytes((t_almacenarBytes *)paquete,unSocket);
@@ -1076,9 +1052,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case LEERARCHIVO:
 			dserial_leerArchivo((t_leerArchivo *)paquete,unSocket);
 		break;
-		case PETICIONVALOR:
-			dserial_peticionValor((t_peticionBytes *)paquete,unSocket);
-		break;
+		
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
 		// pagaraprata();
 		break;
