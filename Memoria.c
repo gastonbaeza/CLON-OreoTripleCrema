@@ -311,6 +311,7 @@ while(1) {
 											free(buffer);
  											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
+ 											printf("paquete: %s\n", paquete);
  											free(paquete);
  					break;
  		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
