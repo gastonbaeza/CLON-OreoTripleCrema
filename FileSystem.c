@@ -1,5 +1,4 @@
 #define clear() printf("\033[H\033[J")
-#define VALIDARARCHIVO 0
 #define CREARARCHIVO 1
 #define BORRARARCHIVO 2 
 #define OBTENERDATOS 3
@@ -22,7 +21,9 @@
 #include <stddef.h>
 #include <math.h>
 #include <stdint.h>
+#include <sys/stat.h>
 #include <commons/config.h>
+#include <assert.h>
 #define FILESYSTEM 84
 #define BACKLOG 5
 #define LIBRE 0
@@ -30,7 +31,7 @@
 #define KERNEL 0
 	#define ARRAYPIDS 5
 	#define PIDFINALIZACION 2
-	#define PATH 3
+	#define PATH 10
 	#define PIDINFO 4
 	#define RESPUESTAOKMEMORIA 1
 
@@ -69,11 +70,39 @@
 #define PCB 3
 #define PIDSIZE 1
 #define MEMORIASIZE 0
+#define VALIDARARCHIVO 58
+
+int makeDir(char *fullpath, mode_t permissions){
+int i=0;
+char *arrDirs[20];
+char aggrpaz[255];
+char * path=calloc(1,255);
+memcpy(path,fullpath,strlen(fullpath)+1);
+arrDirs[i] = strtok(path,"/");
+strcpy(aggrpaz, "/");
+while(arrDirs[i]!=NULL)
+{
+    arrDirs[++i] = strtok(NULL,"/");
+    strcat(aggrpaz, arrDirs[i-1]);
+    mkdir(aggrpaz,permissions);
+    strcat(aggrpaz, "/");
+}
+i=0;
+return 0;
+}
+
 
 int main(){
+char* PUERTO,*PUNTO_MONTAJE;
+t_config *CFG;
+CFG = config_create("fileSystemCFG.txt");
+PUERTO= config_get_string_value(CFG ,"PUERTO");
+PUNTO_MONTAJE= config_get_string_value(CFG ,"PUNTO_MONTAJE");
+printf("Configuración:\nPUERTO = %s\nPUNTO_MONTAJE = %s\n",PUERTO,PUNTO_MONTAJE);
+
 struct sockaddr_in addr;
 int addrlen= sizeof(addr);
-int socketNuevaConexion,rv;
+int socketKernel,rv;
 struct addrinfo hints;
 struct addrinfo *serverInfo;
 int listenningSocket;
@@ -85,7 +114,7 @@ hints.ai_family = AF_INET;
 hints.ai_flags = AI_PASSIVE;
 hints.ai_socktype = SOCK_STREAM;
 
-if ((rv =getaddrinfo(NULL, "5003", &hints, &serverInfo)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+if ((rv =getaddrinfo(NULL, PUERTO, &hints, &serverInfo)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 
 listenningSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 sleep(1);
@@ -97,21 +126,39 @@ if(bind(listenningSocket,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1) {perr
 fflush(stdout);
 sleep(1);
 printf("%s \n", "Bind OK\n");
-printf("%s \n", "El Servidor se encuentra OK para escuchar conexiones.");
+
+makeDir("/home/utnso/tp-2017-1c-Oreo-Triple-Crema/hola/chau",S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
 
 freeaddrinfo(serverInfo);
-sleep(1);
 
-while((socketNuevaConexion = accept(listenningSocket, (struct sockaddr *)&addr,&addrlen)) < 0);
-		handshakeServer(socketNuevaConexion,FILESYSTEM,(void*)unBuffer);
+
+if(rv=listen(listenningSocket,BACKLOG)==-1) perror("Error en el listen");
+printf("%s \n", "El Servidor se encuentra OK para escuchar conexiones.");
+
+ while((socketKernel = accept(listenningSocket, (struct sockaddr *)&addr,&addrlen)) < 0);
+ handshakeServer(socketKernel,FILESYSTEM,(void*)unBuffer);
+ t_path *path;
+
+ 
 
 while(1) {
-while(0>recv(socketNuevaConexion,seleccionador,sizeof(t_seleccionador),0));
-	
+
+while(0>=recv(socketKernel,seleccionador,sizeof(t_seleccionador),0));
+
 	switch (seleccionador->tipoPaquete){
-		case VALIDARARCHIVO: printf("%s \n", "Validado, troesma.\n");
-		/*Parámetros: [Path]
-	    validar que el archivo exista*/
+		case VALIDARARCHIVO:
+					path=malloc(sizeof(t_path));
+					path->path=calloc(1,150);
+					recibirDinamico(PATH,socketKernel,path);
+					if( access( path->path, F_OK ) != -1 ) {
+						//FALTA COMUNICARSELO AL KERNEL
+						printf("%s \n", "Validado, troesma.\n");
+					} else {
+						printf("%s \n", "El archivo no existe o no se encuentra disponible\n");
+					}
+					free(path);
+	
 		break;
 		case CREARARCHIVO: printf("%s \n", "Creado, mostro.\n");
 		/*Parámetros: [Path]
@@ -142,6 +189,7 @@ while(0>recv(socketNuevaConexion,seleccionador,sizeof(t_seleccionador),0));
 			}	/*En caso de que se soliciten datos o se intenten guardar datos en un archivo inexistente,
 				 el File System deberá retornar un error de Archivo no encontrado*/
 		}	
+		free(seleccionador);
  		
 return 0;
 }

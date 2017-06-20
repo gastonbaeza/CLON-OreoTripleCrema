@@ -81,7 +81,7 @@
 #define PCBQUANTUM 55
 #define PCBFINALIZADOPORCONSOLA 56
 #define SOLICITUDSEMWAIT 57
-
+#define VALIDARARHIVO 58
 t_list** overflow;
 
 void horaYFechaActual (char horaActual[19]) {
@@ -853,7 +853,6 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	printf("antes seleccionador\n");
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
 	printf("tipoPaquete en enviarDinamico: %i \n", seleccionador->tipoPaquete);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -934,6 +933,9 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		 break;
 		 case LEERARCHIVO:
 		 	serial_leerArchivo((t_leerArchivo *)paquete,unSocket);
+		 break;
+		 case VALIDARARHIVO:
+		 	serial_path((t_path*)paquete,unSocket);
 		 break;
 		 
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
@@ -1025,6 +1027,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case LEERARCHIVO:
 			dserial_leerArchivo((t_leerArchivo *)paquete,unSocket);
+		break;
+		case VALIDARARHIVO:
+		 	dserial_path((t_path*)paquete,unSocket);
 		break;
 		
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
