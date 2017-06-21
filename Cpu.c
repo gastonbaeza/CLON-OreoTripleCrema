@@ -132,8 +132,10 @@ void posicionarPC(int pos){
 		 * @return	Puntero a la variable recien asignada
 		 */
 		t_puntero cpu_definirVariable(t_nombre_variable identificador_variable){
+			printf("en cpu_definirVariable\n");
 			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
+				printf("argumento\n");
 				pthread_mutex_lock(&mutexPcb);
 				pcb->indiceStack[pcb->posicionStack].cantidadArgumentos++;
 				pcb->indiceStack[pcb->posicionStack].argumentos=realloc(pcb->indiceStack->argumentos,pcb->indiceStack[pcb->posicionStack].cantidadArgumentos*sizeof(t_argumento));
@@ -155,9 +157,17 @@ void posicionarPC(int pos){
 			}
 			else // es una variable
 			{
+				printf("variable\n");
 				pthread_mutex_lock(&mutexPcb);
 				pcb->indiceStack[pcb->posicionStack].cantidadVariables++;
+				printf("%i\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables );
+				printf("%i\n",sizeof(t_variable) );
+				printf("%p\n", pcb->indiceStack[pcb->posicionStack].variables);
+				printf("%i\n",pcb->cantidadStack );
+				pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
+				printf("antes realloc\n");
 				pcb->indiceStack[pcb->posicionStack].variables=realloc(pcb->indiceStack[pcb->posicionStack].variables,pcb->indiceStack[pcb->posicionStack].cantidadVariables*sizeof(t_variable));
+				printf("despues realloc\n");
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].id=identificador_variable;
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].pagina=PROXIMAPAG;
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].offset=PROXIMOOFFSET;
@@ -172,6 +182,7 @@ void posicionarPC(int pos){
 					PROXIMOOFFSET+=SIZE;
 				}
 				pthread_mutex_unlock(&mutexPcb);
+				printf("antes return\n");
 				return (pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].offset);
 			}
 		}
@@ -187,6 +198,7 @@ void posicionarPC(int pos){
 		 * @return	Donde se encuentre la variable buscada
 		 */
 		t_puntero cpu_obtenerPosicionVariable (t_nombre_variable identificador_variable){
+			printf("en cpu_obtenerPosicionVariable\n");
 			int i;
 			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
@@ -213,6 +225,7 @@ void posicionarPC(int pos){
 		 * @return	Valor que se encuentra en esa posicion
 		 */
 		t_valor_variable cpu_dereferenciar(t_puntero direccion_variable){
+			printf("en cpu_dereferenciar\n");
 			int offset,pagina,valor;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -238,6 +251,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_asignar(t_puntero direccion_variable, t_valor_variable valor){
+			printf("en cpu_asignar\n");
 			int offset,pagina;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -262,6 +276,7 @@ void posicionarPC(int pos){
 		 * @return	El valor de la variable compartida
 		 */
 		t_valor_variable cpu_obtenerValorCompartida(t_nombre_compartida variable){
+			printf("en cpu_obtenerValorCompartida\n");
 			int valor;
 			t_solicitudValorVariable * solicitudValorVariable;
 			solicitudValorVariable=malloc(sizeof(t_solicitudValorVariable));
@@ -285,6 +300,7 @@ void posicionarPC(int pos){
 		 * @return	Valor que se asigno
 		 */
 		t_valor_variable cpu_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+			printf("en cpu_asignarValorCompartida\n");
 			t_asignarVariableCompartida * asignarVariableCompartida;
 			asignarVariableCompartida=malloc(sizeof(t_asignarVariableCompartida));
 			asignarVariableCompartida->tamanioNombre=strlen(variable);
@@ -305,6 +321,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
+			printf("en cpu_irAlLabel\n");
 			int i,pos;
 			pos=metadata_buscar_etiqueta(t_nombre_etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
 			posicionarPC(pos);
@@ -323,6 +340,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_llamarSinRetorno(t_nombre_etiqueta etiqueta){
+			printf("en cpu_llamarSinRetorno\n");
 			int i,pos;
 			nuevoNivelStack();
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
@@ -343,6 +361,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+			printf("en cpu_llamarConRetorno\n");
 			nuevoNivelStack();
 			int pos;
 			pthread_mutex_lock(&mutexPcb);
@@ -367,6 +386,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_finalizar(void){
+			printf("en cpu_finalizar\n");
 			if (pcb->posicionStack==0)
 			{	
 				enviarDinamico(PCBFINALIZADO,socketKernel,pcb);
@@ -387,6 +407,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_retornar(t_valor_variable retorno){
+			printf("en cpu_retornar\n");
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
 			bytes->pid=PID;
 			bytes->pagina=pcb->paginasCodigo+pcb->indiceStack[pcb->posicionStack].varRetorno.pagina;
@@ -409,6 +430,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_wait(t_nombre_semaforo identificador_semaforo){
+			printf("en cpu_wait\n");
 		t_solicitudSemaforo * solicitudSemaforo;
 		void * paquete;
 		solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
@@ -436,7 +458,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_signal(t_nombre_semaforo identificador_semaforo){
-
+			printf("en cpu_signal\n");
 		t_solicitudSemaforo * solicitudSemaforo;
 		solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
 		solicitudSemaforo->tamanioIdentificador=strlen(identificador_semaforo);
@@ -456,7 +478,7 @@ void posicionarPC(int pos){
 		 * @return	puntero a donde esta reservada la memoria
 		 */
 		t_puntero cpu_reservar(t_valor_variable espacio)
-		{
+		{	printf("en cpu_reservar\n");
 			t_reservarEspacioMemoria * reservarEspacioMemoria;
 			reservarEspacioMemoria=malloc(sizeof(t_reservarEspacioMemoria));
 			reservarEspacioMemoria->espacio=espacio;
@@ -482,6 +504,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_liberar(t_puntero puntero){
+			printf("en cpu_liberar\n");
 			t_liberarMemoria * liberarMemoria;
 			liberarMemoria=malloc(sizeof(t_liberarMemoria));
 			liberarMemoria->direccionMemoria=puntero;
@@ -499,6 +522,7 @@ void posicionarPC(int pos){
 		 * @return	El valor del descriptor de archivo abierto por el sistema
 		 */
 		t_descriptor_archivo cpu_abrir(t_direccion_archivo direccion, t_banderas flags){
+			printf("en cpu_abrir\n");
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
 					abrirArchivo->direccionArchivo=direccion;
@@ -519,6 +543,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_borrar(t_descriptor_archivo descriptor_archivo){
+			printf("en cpu_borrar\n");
 			t_borrarArchivo * borrarArchivo;
 			borrarArchivo=malloc(sizeof(t_borrarArchivo));
 			borrarArchivo->fdABorrar=descriptor_archivo;
@@ -537,6 +562,7 @@ void posicionarPC(int pos){
 		 */
 
 		void cpu_cerrar(t_descriptor_archivo descriptor_archivo){
+			printf("en cpu_cerrar\n");
 					t_cerrarArchivo * cerrarArchivo;
 					cerrarArchivo=malloc(sizeof(t_cerrarArchivo));
 					cerrarArchivo->descriptorArchivo=descriptor_archivo;
@@ -553,6 +579,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
+			printf("en moverCursor\n");
 			t_moverCursor * moverCursor;
 			moverCursor=malloc(sizeof(t_moverCursor));
 			moverCursor->descriptorArchivo=descriptor_archivo;
@@ -574,6 +601,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
+			printf("en cpu_escribir\n");
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
@@ -597,7 +625,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
-
+			printf("en cpu_leer\n");
 			t_leerArchivo * leerArchivo;
 			leerArchivo=malloc(sizeof(t_leerArchivo));
 			leerArchivo->descriptor=descriptor_archivo;
@@ -632,16 +660,17 @@ AnSISOP_kernel kernel_functions = {
 		.AnSISOP_leer=cpu_leer,
 };
 
-void iniciarEjecucion(char * linea){
+void iniciarEjecucion(char * const linea){
 
 		
-		printf("\t Evaluando -> %s", linea);
 
 		pthread_mutex_lock(&mutexPcb);
 		pcb->programCounter++;
 		pthread_mutex_unlock(&mutexPcb);
 		
+		printf("\t Evaluando -> %s", linea);
 		analizadorLinea(linea, &functions, &kernel_functions);
+		printf("ya esta?\n");
 		free(linea);
 
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
@@ -674,6 +703,7 @@ void conectarKernel(void){
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	char * linea;
 	int primerAcceso=1;
+	int j;
 
 t_peticionBytes * peticion;
 while(1) {
@@ -687,14 +717,29 @@ while(1) {
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
 							recibirDinamico(PCB,socketKernel,pcb);
-							printf("PID: %i\n", pcb->pid);
+
+							printf("Proceso %i:\n", pcb->pid);
+							printf("\tEstado: %i\n", pcb->estado);
+							printf("\tPC: %i\n", pcb->programCounter);
+							// printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
+							printf("\tPaginas de codigo: %i\n", pcb->paginasCodigo);
+							printf("\tPosicion stack: %i\n", pcb->posicionStack);
+							printf("\tCantidad de instrucciones: %i\n", pcb->cantidadInstrucciones);
+							printf("\tIndice Codigo:\n");
+							for (j = 0; j < pcb->cantidadInstrucciones; j++)
+							{
+								printf("\t\tInstruccion: %i,\tOffset: %i.\n", pcb->indiceCodigo[j].start, pcb->indiceCodigo[j].offset);
+							}
+							printf("\tCantidad de stack: %i\n", pcb->cantidadStack);
+							printf("\tExit Code: %i\n", pcb->exitCode);
+
 							peticion=malloc(sizeof(t_peticionBytes));
 							peticion->pid=PID;
-					 		peticion->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
-							linea=malloc(peticion->size);
+							linea=calloc(1,peticion->size);
 							buffer=malloc(sizeof(int));
 							memcpy(buffer,&a,sizeof(int));
 							send(socketMemoria,buffer, sizeof(int),0);
@@ -703,19 +748,20 @@ while(1) {
 							while(0>recv(socketMemoria,linea,peticion->size,0)){
 								perror("asd:");
 							}
-							printf("%s\n",linea );
 		 					iniciarEjecucion(linea);
 							free(peticion);
 		 					break;							
 		case CONTINUAR:
-							
+							printf("en continuar\n");
+							getchar();
+							getchar();
 							peticion=malloc(sizeof(t_peticionBytes));
 							peticion->pid=PID;
-					 		peticion->pagina=calcularPaginas(TAMPAGINA,pcb->indiceCodigo[pcb->programCounter].start);
+					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
-							linea=malloc(peticion->size);
+							linea=calloc(1,peticion->size);
 							while(0>recv(socketMemoria,linea,peticion->size,0));
 		 					iniciarEjecucion(linea);
 							free(peticion);

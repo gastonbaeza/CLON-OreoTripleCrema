@@ -61,7 +61,7 @@ char * PUERTO_KERNEL;
 char* IP;
 char* PUERTO;
 
-void programa(t_path * path_ansisop){
+void programa(t_path * path_ansisop){ 
 	struct addrinfo hints;
 	struct addrinfo *kernel;
 	int * unBuffer=malloc(sizeof(int));
@@ -75,8 +75,10 @@ void programa(t_path * path_ansisop){
 
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
 	handshakeCliente(serverSocket,2,unBuffer);
-	
 	enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
+	free(path_ansisop->path);
+	free(path_ansisop);
+							
 	
 	freeaddrinfo(kernel);
 	
@@ -167,7 +169,10 @@ int unPid;
 int * PID;
 PID=malloc(sizeof(int));
 t_path * path_ansisop;
+char * path;
 
+	int * instruccionConsola=malloc(sizeof(int));
+	t_programaSalida * prog;
 
 while(cancelarThread==0){
 	
@@ -179,19 +184,21 @@ while(cancelarThread==0){
 	
 	
 
-	int * instruccionConsola=malloc(sizeof(int));
 	
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 	case INICIARPROGRAMA: //Recibe el path del ansisop y lo envia al kernel
 							path_ansisop=malloc(sizeof(t_path));
-							path_ansisop->path=malloc(150*sizeof(char));
+							path_ansisop->path=calloc(1,150);
+							path=calloc(1,150);
 							printf ("path: \n");
-							scanf("%s",path_ansisop->path);
+							scanf("%s",path);
 							 //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
-							path_ansisop->tamanio=strlen(path_ansisop->path)+1;
-							path_ansisop->path=realloc(path_ansisop->path,(path_ansisop->tamanio)*sizeof(char));
+							prog= obtenerPrograma(path);
+							path_ansisop->path=prog->elPrograma;
+							path_ansisop->tamanio=strlen(path_ansisop->path);
 							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
+							free(path);
 							
 							
 		break;
@@ -229,7 +236,7 @@ while(cancelarThread==0){
 							clear();
 		break;
 
-	default:	printf("%s\n",mensajeError);//error no se declara
+	default:	printf("%s\n","habia una veez un barco chicquito");//error no se declara
 	
 	}
 }

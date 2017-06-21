@@ -91,6 +91,7 @@ int ULTIMOPID=0;
 int STACK_SIZE;
 int GRADO_MULTIPROG;
 int * COLAREADY;
+int CANTIDADREADYS=0;
 int * COLANEW;
 int CANTIDADNEWS=0;
 int * COLAEXEC;
@@ -143,44 +144,45 @@ int hayProcesosReady(){
 void getPcbAndRemovePid(int pid, t_pcb * pcb){
 	int i=0;
 	//BUSCO EL PCB
-	pcb=&PCBS[pid];
+	memcpy(pcb,&(PCBS[pid]),sizeof(t_pcb));
 	// LO SACO DE LA COLA DE READYS
-	for (i; i < GRADO_MULTIPROG; i++){
-		if (i+1==GRADO_MULTIPROG) {
 			pthread_mutex_lock(&mutexColaReady);
+	for (i; i < CANTIDADREADYS; i++){
+		if (i+1==CANTIDADREADYS) {
 			COLAREADY[i]=-1;
-			pthread_mutex_unlock(&mutexColaReady);
 		}
 		else {
-			pthread_mutex_lock(&mutexColaReady);
 			COLAREADY[i]=COLAREADY[i+1];
-			pthread_mutex_unlock(&mutexColaReady);
 		}
 	}
+			pthread_mutex_unlock(&mutexColaReady);
 }
 
 void rellenarColaReady(){
 	int i=0,cantVacios=0;
-	for (; i < GRADO_MULTIPROG; i++)
-		if (COLAREADY[i]==-1)
-			cantVacios++;
-	int primerReadyLibre;
-	primerReadyLibre=GRADO_MULTIPROG-cantVacios;
-	for (i=0; i<cantVacios; i++){
-		if (CANTIDADNEWS>0)
-		{
-			printf("%i\n",CANTIDADNEWS );
-			pthread_mutex_lock(&mutexColaReady);
-			COLAREADY[primerReadyLibre+i]=COLANEW[0];
-			pthread_mutex_unlock(&mutexColaReady);
-			pthread_mutex_lock(&mutexColaNew);
-			CANTIDADNEWS--;
+	if (GRADO_MULTIPROG>=CANTIDADREADYS)
+	{
+		for (; i < GRADO_MULTIPROG; i++)
+			if (COLAREADY[i]==-1)
+				cantVacios++;
+		int primerReadyLibre;
+		primerReadyLibre=GRADO_MULTIPROG-cantVacios;
+		for (i=0; i<cantVacios; i++){
 			if (CANTIDADNEWS>0)
 			{
-				COLANEW+=sizeof(int);
+				pthread_mutex_lock(&mutexColaReady);
+				COLAREADY[primerReadyLibre+i]=COLANEW[0];
+				CANTIDADREADYS++;
+				pthread_mutex_unlock(&mutexColaReady);
+				pthread_mutex_lock(&mutexColaNew);
+				CANTIDADNEWS--;
+				if (CANTIDADNEWS>0)
+				{
+					COLANEW+=sizeof(int);
+				}
+				COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(int));
+				pthread_mutex_unlock(&mutexColaNew);
 			}
-			COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(int));
-			pthread_mutex_unlock(&mutexColaNew);
 		}
 	}
 }
@@ -221,18 +223,16 @@ int finalizarPid(int pid){
 		break;
 		case READY:
 			// LO SACO DE LA COLA DE READYS
-			for (i=0; i < GRADO_MULTIPROG; i++){
-				if (i+1==GRADO_MULTIPROG) {
 					pthread_mutex_lock(&mutexColaReady);
+			for (i=0; i < CANTIDADREADYS; i++){
+				if (i+1==CANTIDADREADYS) {
 					COLAREADY[i]=-1;
-					pthread_mutex_unlock(&mutexColaReady);
 				}
 				else {
-					pthread_mutex_lock(&mutexColaReady);
 					COLAREADY[i]=COLAREADY[i+1];
-					pthread_mutex_unlock(&mutexColaReady);
 				}
 			}
+					pthread_mutex_unlock(&mutexColaReady);
 		break;
 		case EXEC:
 			// BUSCO LA POSICION EN LA COLA DE EXEC
@@ -555,6 +555,7 @@ void quantum(int * flagQuantum){
 }
 
 void planificar(dataParaComunicarse * dataDePlanificacion){
+	printf("estoy en planificar\n");
 	int pid;
 	t_pcb * pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
@@ -575,6 +576,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_escribirArchivo * escribirArchivo;
 	t_leerArchivo * leerArchivo;
 	t_mensaje * mensaje;
+	printf("antes while\n");
 	while(PLANIFICACIONHABILITADA)
 	{
 		while(PLANIFICACIONPAUSADA);// SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
@@ -599,6 +601,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						while(!hayProcesosReady()){
 							rellenarColaReady();
 						}
+						printf("hay ready\n");
 						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 						pid = COLAREADY[0];
 						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
@@ -615,6 +618,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						cambiarEstado(pid,EXEC);
 						// LE MANDO EL PCB AL CPU
 						printf("socket: %i\n", dataDePlanificacion->socket);
+						printf("%i\n", pcb->indiceStack[0].cantidadVariables);
 						enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
 						printf("Despues\n");
 						cpuLibre=0;
@@ -788,9 +792,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
 					// RECIBO EL PATH
 					path = malloc (sizeof(t_path));
-					path->path=malloc(150*sizeof(char));
+					path->path=calloc(1,150);
 					recibirDinamico(PATH, dataDeConexion->socket, path);
-					path->path=realloc(path->path,(path->tamanio+1)*sizeof(char));
+					printf("%s\n",path->path );
 					// GENERO EL PID
 					pid = ULTIMOPID;
 					pthread_mutex_lock(&mutexPid);
@@ -803,14 +807,10 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA]=dataDeConexion->socket;
 					CANTIDADSOCKETSCONSOLA++;
 					pthread_mutex_unlock(&mutexSocketsConsola);
-					// RECUPERO EL PROGRAMA DEL PATH
-					t_programaSalida * programa;
-					programa= obtenerPrograma(path->path);
-					
 					// CALCULO LA CANTIDAD DE PAGINAS
-					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,programa->tamanio);
+					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,path->tamanio);
 					// GENERO LA METADATA DEL SCRIPT
-					metadata=metadata_desde_literal(programa->elPrograma);
+					metadata=metadata_desde_literal(path->path);
 					// CREO EL PCB
 					t_pcb * pcb;
 					pcb=malloc(sizeof(t_pcb));
@@ -825,8 +825,10 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pcb->indiceEtiquetas.etiquetas_size=metadata->etiquetas_size;
 					pcb->indiceEtiquetas.etiquetas=malloc(metadata->etiquetas_size);
 					pcb->indiceEtiquetas.etiquetas=metadata->etiquetas;
-					pcb->cantidadStack=0;
+					pcb->cantidadStack=1;
 					pcb->indiceStack=malloc(sizeof(t_stack));
+					pcb->indiceStack[0].cantidadVariables=0;
+					pcb->indiceStack[0].cantidadArgumentos=0;
 					pcb->exitCode=1;
 					// LO AGREGO A LA TABLA
 					metadata_destruir(metadata);
@@ -839,8 +841,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					// SOLICITUD DE MEMORIA
 					t_solicitudMemoria * solicitudMemoria;
 					solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
-					solicitudMemoria->tamanioCodigo=programa->tamanio;
-					solicitudMemoria->codigo=programa->elPrograma;
+					solicitudMemoria->tamanioCodigo=path->tamanio;
+					solicitudMemoria->codigo=path->path;
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 					solicitudMemoria->pid=pid;
@@ -1050,8 +1052,11 @@ getaddrinfo(IP_FS,PUERTO_FS,&hints,&fs);
 int socketFS=socket(fs->ai_family, fs->ai_socktype, fs->ai_protocol);
 if ((rv = connect(socketFS,fs->ai_addr,fs->ai_addrlen)) == -1) 
 	perror("No se pudo conectar con filesystem.\n");
-else if (rv == 0)
+else if (rv == 0){
 	printf("Se conectó con filesystem correctamente.\n");
+	handshakeCliente(socketFS,KERNEL,buffer);
+	free(buffer);
+}
 SOCKETFS=socketFS;
 freeaddrinfo(fs);
 // CONFIGURACION DEL SERVIDOR

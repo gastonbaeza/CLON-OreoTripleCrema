@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <commons/txt.h>
 #include <errno.h>
-#define clear() printf("\033[H\033[J")
 #include <sys/time.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -21,7 +20,6 @@
 #include <math.h>
 #include <stdint.h>
 #include <commons/config.h>
-#define clear() printf("\033[H\033[J")
 #define BACKLOG 5
 #define LIBRE 0
 #define OCUPADO 1
@@ -93,6 +91,7 @@ t_estructuraCache* memoriaCache;
 int socketKernel;
 void * memoria;
 void * cache;
+t_list**overflow;
 
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +159,7 @@ freeaddrinfo(serverInfo);
 sleep(1);
 fflush(stdout);
 config_destroy(CFG);
-clear();
+system("clear");
 printf("%s \n", "El Servidor se encuentra listo para escuchar conexiones.");
 pthread_t hiloAceptador;
 dataParaComunicarse *unData;
@@ -170,12 +169,13 @@ unData->socket = listenningSocket;
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
 
 bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM)+MARCOS*sizeof(t_marco));
- tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
-inicializarOverflow(MARCOS);
+tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
+overflow = malloc(sizeof(t_list*) * MARCOS);
+inicializarOverflow(MARCOS,overflow);
 int unaAdmin;
 for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de admin con pid-1 libre y num de pag y el hash
 {
-bloquesAdmin[unaAdmin].estado=LIBRE;
+bloquesAdmin[unaAdmin].estado=0;
 bloquesAdmin[unaAdmin].pid=-1;
 bloquesAdmin[unaAdmin].pagina=-1;
 	
@@ -254,7 +254,7 @@ while(1) {
  							paginasRequeridas=solicitud->cantidadPaginasCodigo;
  							stackRequeridas=solicitud->cantidadPaginasStack;
  							printf("hay x canatidad paginas libres %i\n",hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS));
- 							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==FAIL) 
+ 							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==-1) 
  							{ 
  							solicitud->respuesta=FAIL;
  							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitud);
@@ -270,7 +270,7 @@ while(1) {
  							memcpy(codigo,solicitud->codigo,solicitud->tamanioCodigo);
  							
  							
- 							reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE);
+ 							reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE,overflow);
  							
  							free(codigo);
  							free(solicitud);
@@ -288,9 +288,14 @@ while(1) {
  					case SOLICITUDBYTES:
  										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
  										paquete=calloc(1,peticionBytes->size);
+ 										printf("pid: %i\n", peticionBytes->pid);
+ 										printf("pagina: %i\n",peticionBytes->pagina );
+ 										printf("size: %i\n", peticionBytes->size);
+ 										printf("offset: %i\n", peticionBytes->offset);
+ 										
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
- 											
+ 											printf("entre a cache\n");
  											memcpy(paquete,memoriaCache[entrada].contenido+peticionBytes->offset,peticionBytes->size);
  											
  											memoriaCache[entrada].antiguedad=0;
@@ -299,9 +304,10 @@ while(1) {
  										}
  										else
  										{//lo busco en memoria
- 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS);
- 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS);
- 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
+ 											printf("estoy buscando la cosa en memoria porque no estaba en cache%s\n"," " );
+ 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS); printf("el indice en memoria: %i\n",indice );
+ 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
+ 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
  											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
  										}	
@@ -311,7 +317,7 @@ while(1) {
 											free(buffer);
  											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
- 											printf("paquete: %s\n", paquete);
+ 											printf("paquete: %s\n", (char*)paquete);
  											free(paquete);
  					break;
  		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
@@ -331,7 +337,7 @@ while(1) {
 								else
  								{//lo busco en memoria
  								indice=calcularPosicion(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos,MARCOS);
- 								entrada=buscarEnOverflow(indice,bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS);
+ 								entrada=buscarEnOverflow(indice,bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS,overflow);
 								
 																	
 								}	
@@ -365,7 +371,7 @@ void consolaMemoria()
 	
 	int cancelarThread=0;
 	while(cancelarThread==0)
-	{ clear();
+	{ system("clear");
 	int * instruccionConsola=malloc(sizeof(int));
 	int bloquesOcupados, bloquesLibre;
 	printf("%s\n","**********************");
@@ -377,12 +383,13 @@ void consolaMemoria()
 	printf("%s\n","**********************");
 	printf("%s\n", "ingrese 3 para obtener informacion acerca del tamaño");
 	printf("%s\n","**********************");
+
 	
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 
 	case DELAY: 		
-						clear();
+						system("clear");
 						printf("%s\n","Ingrese el nuevo valor de retardo: " );
 						getchar();
 						scanf("%d",&retardo);
@@ -391,36 +398,39 @@ void consolaMemoria()
 						retardo=retardo;
 						printf("El nuevo retardo ha sido actualizado a: %i %s\n", retardo,"milisegundos" );printf("%s\n", "presione una tecla para volver al menu de la consola");getchar(); getchar();
 		break;
-	case DUMP:		clear();
+	case DUMP:		system("clear");
 					fflush(stdout);printf("%s\n", "Para realizar un dump de cache ingrese 0"); 
 					fflush(stdout);printf("%s\n", "Para realizar un dump de memoria ingrese 1"); 
 					fflush(stdout);printf("%s\n", "Para realizar un dump de administrativas ingrese 2"); 
 					fflush(stdout);printf("%s\n", "Para realizar un dump de un proceso ingrese 3"); 
-
+					fflush(stdout);printf("%s\n","para realizar un dump de overflow ingrese 4" );
 
 
 					scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
 					switch(*instruccionConsola)
 					{
 						case CACHE:
-									clear();
+									system("clear");
 									generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						case MEMORIA:
-										clear();
+										system("clear");
 										generarDumpMemoria(asignador,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						case TABLA:
-										clear();
+										system("clear");
 										generarDumpAdministrativas(bloquesAdmin, MARCOS);	printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
-						case PID:		clear();
+						case PID:		system("clear");
 										printf("%s\n","ingrese un pid para realizar dump" );
 										getchar();
 										scanf("%d",&pid);
 										printf("%i",pid);
 										generarDumpProceso(bloquesAdmin,MARCOS,pid,marcos); printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
+						case 4 : system("clear");
+									generarDumpOverflow(overflow,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+									break;
 						default: pagaraprata();
 						break;
 					}
@@ -428,7 +438,7 @@ void consolaMemoria()
 							
 	
 		break;
-	case FLUSH:	clear();
+	case FLUSH:	system("clear");
 					
 					for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
 					{
@@ -438,13 +448,13 @@ void consolaMemoria()
 					}	printf("%s\n","la memoria cache ha sido reinicializada" );	
 						printf("%s\n", "presione una tecla para volver al menu de la consola");getchar(); getchar();
 		break;
-	case SIZE:	clear();		fflush(stdout);printf("%s\n", "para conocer el tamaño de la memoria ingrese 0");
+	case SIZE:	system("clear");		fflush(stdout);printf("%s\n", "para conocer el tamaño de la memoria ingrese 0");
 
 								fflush(stdout);printf("%s\n", "para conocer el tamaño de un proceso ingrese 1");getchar();
 			 					scanf("%d",instruccionConsola);
 			switch(*instruccionConsola)
 			{
-				case MEMORIASIZE:	clear();
+				case MEMORIASIZE:	system("clear");
 								fflush(stdout);printf("cantidadDePaginas: %i\n", MARCOS);
 								bloquesLibre=cantidadBloquesLibres(MARCOS,bloquesAdmin);
 								fflush(stdout);printf("cantidadBloquesLibres: %i\n", bloquesLibre);
@@ -454,7 +464,7 @@ void consolaMemoria()
 								fflush(stdout);
 								getchar();getchar();
 				break;
-				case PIDSIZE:clear(); printf("%s\n","ingrese un pid" );
+				case PIDSIZE:system("clear"); printf("%s\n","ingrese un pid" );
 				getchar(); scanf("%d",&pid);
 				 calcularTamanioProceso(pid,bloquesAdmin,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola"); getchar();getchar();
 				break;

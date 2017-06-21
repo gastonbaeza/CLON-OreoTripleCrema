@@ -82,7 +82,6 @@
 #define PCBFINALIZADOPORCONSOLA 56
 #define SOLICITUDSEMWAIT 57
 #define VALIDARARHIVO 58
-t_list** overflow;
 
 void horaYFechaActual (char horaActual[19]) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
@@ -204,16 +203,16 @@ int hayEspacioEnCache(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)// si
 	}return -1;
 	
 }
-void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int offset, int tamanio, t_estructuraADM * bloquesAdmin)// en memoria despues de queme solicitan o almacenan bytes tengo que escribirlos en cache, no los hago aca porque sino esta funcion hace mas de lo que debe
+void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int offset, int tamanio, t_estructuraADM * bloquesAdmin, t_list**overflow)// en memoria despues de queme solicitan o almacenan bytes tengo que escribirlos en cache, no los hago aca porque sino esta funcion hace mas de lo que debe
 {	void * buffer=malloc(tamanio);	int indice=calcularPosicion(unPid,pagina,MARCOS);
-	int entrada=buscarEnOverflow(indice, unPid, pagina,bloquesAdmin,MARCOS);
+	int entrada=buscarEnOverflow(indice, unPid, pagina,bloquesAdmin,MARCOS,overflow);
 	memcpy(buffer, marcos[entrada].numeroPagina+offset,tamanio);
 	return buffer;
 
 }
-void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin )
+void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin , t_list**overflow)
 {	int indice=calcularPosicion(unPid,pagina,MARCOS);
-	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS); 
+	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); 
 	memcpy(marcos[entrada].numeroPagina+offset,contenido,tamanio); // agregar retardo por escritura
 }
 
@@ -305,7 +304,7 @@ int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS
  	while(paginasRecorridas+unaCantidad<MARCOS){ 
  	 	cantidadRestantes=unaCantidad;
     	encontradas=0;
-		while(bloquesAdmin[unFrame].estado==LIBRE && cantidadRestantes!=0){
+		while(bloquesAdmin[unFrame].estado==0 && cantidadRestantes!=0){
 			cantidadRestantes --;
     		unFrame++;encontradas++;
     	}
@@ -315,7 +314,7 @@ int hayPaginasLibres(int unaCantidad, t_estructuraADM * bloquesAdmin, int MARCOS
     	unFrame++;	
     	paginasRecorridas++;
     }
-return FAIL;
+return -1;
 	
 }
 
@@ -458,6 +457,7 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 	serial_string(pcb->indiceEtiquetas.etiquetas,pcb->indiceEtiquetas.etiquetas_size,unSocket);
 	send(unSocket,&(pcb->cantidadStack),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	printf("%i\n", pcb->cantidadStack);
 	for (i= 0; i < pcb->cantidadStack; i++)
 	{	
 		send(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0);
@@ -469,6 +469,8 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 		}
 		send(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0);
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		printf("%i\n",pcb->indiceStack[i].cantidadVariables );
+		printf("asd\n");
 		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
 		{
 			send(unSocket, &(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0);
@@ -514,6 +516,7 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	dserial_string(pcb->indiceEtiquetas.etiquetas,unSocket);
 	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
+	printf("%i\n", pcb->cantidadStack);
 	pcb->indiceStack=malloc(pcb->cantidadStack*sizeof(t_stack));
 	for (i = 0; i < pcb->cantidadStack; i++)
 	{
@@ -528,6 +531,8 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
 		pcb->indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
+		printf("%i\n", pcb->indiceStack[i].cantidadVariables);
+	printf("asd\n");
 		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
 		{
 			while(0>recv(unSocket,&(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0));
@@ -855,87 +860,113 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
 	printf("tipoPaquete en enviarDinamico: %i \n", seleccionador->tipoPaquete);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_solicitudMemoria((t_solicitudMemoria *)paquete,unSocket);
 		break;
 
-		case PROGRAMASALIDA:	//este tambien sirve cuando queremos mandar un string con su tamaño
+		case PROGRAMASALIDA:	
+	while(0>=recv(unSocket,buffer, sizeof(int),0));//este tambien sirve cuando queremos mandar un string con su tamaño
 			serial_programaSalida((t_programaSalida * )paquete,unSocket);			
 		break;
 
 		case PATH:	
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_path((t_path * )paquete,unSocket);			
 		break;
 
 		case FINALIZARPROGRAMA: 
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_int((int*)paquete,unSocket);
 			
 		break;
 
 		case MENSAJE:	
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
 
 		case LINEA:	
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_linea((t_linea * )paquete,unSocket);			
 		break;
 
 		case PCB:
-			printf("case pcb de enviar\n");	
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case ALMACENARBYTES:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_bytes((t_almacenarBytes *)paquete,unSocket);
 		break;
 		case SOLICITUDBYTES:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_peticion((t_peticionBytes *)paquete,unSocket);
 		break;
 		case ARRAYPIDS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_arrayPids((int *)paquete,unSocket);
 		break;
 		case RESULTADOINICIARPROGRAMA:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);
 		break;
 		case SOLICITUDVALORVARIABLE:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_solicitudValorVariable((t_solicitudValorVariable *)paquete,unSocket);
 		break;
 		case ASIGNARVARIABLECOMPARTIDA:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_asignarVariableCompartida((t_asignarVariableCompartida *)paquete,unSocket);
 		break;
 		case SOLICITUDSEMWAIT:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_solicitudSemaforo((t_solicitudSemaforo *)paquete,unSocket);
 		break;
 		case SOLICITUDSEMSIGNAL:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_solicitudSemaforo((t_solicitudSemaforo *)paquete,unSocket);
 		break;
 		case RESERVARESPACIO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_reservarEspacioMemoria((t_reservarEspacioMemoria *)paquete, unSocket);
 		break;
 		case LIBERARESPACIOMEMORIA:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_liberarMemoria((t_liberarMemoria *)paquete,unSocket);
 		break;
 		case ABRIRARCHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_abrirArchivo((t_abrirArchivo *)paquete,unSocket);
 		break;
 		case BORRARARCHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_borrarArchivo((t_borrarArchivo *)paquete,unSocket);
 		break;
 		case CERRARARCHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_cerrarArchivo((t_cerrarArchivo *)paquete,unSocket);
 		 break;
 		 case MOVERCURSOR:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_moverCursor((t_moverCursor *)paquete,unSocket);
 		 break;
 		 case ESCRIBIRARCHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_escribirArchivo((t_escribirArchivo *)paquete,unSocket);
 		 break;
 		 case LEERARCHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_leerArchivo((t_leerArchivo *)paquete,unSocket);
 		 break;
 		 case VALIDARARHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path*)paquete,unSocket);
+		 break;
+		 case ESPERONOVEDADES: 
+		 break;
+		 case CONTINUAR:
 		 break;
 		 
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
@@ -980,7 +1011,6 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 
 		case PCB:	
-		printf("case pcb de recibir\n");
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case RESULTADOINICIARPROGRAMA:
@@ -1030,6 +1060,10 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case VALIDARARHIVO:
 		 	dserial_path((t_path*)paquete,unSocket);
+		break;
+		case ESPERONOVEDADES: 
+		break;
+		case CONTINUAR:
 		break;
 		
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
@@ -1118,8 +1152,8 @@ fflush(stdout);printf("%s\n","++++++++++++++++++++++++++++++++++++++++++++++++++
 
 int estaLibreMarco(int unMarco,t_estructuraADM * bloquesAdmin)// devuelve 1 si esta libre
 {
-    if (bloquesAdmin[unMarco].estado=0)return 1;
-    return 0;
+    if (bloquesAdmin[unMarco].estado==0){return 1;}
+    else {return 0; }
 }
 int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) //devuelve -1 en falta de memoria o el marco libre
 {
@@ -1132,23 +1166,23 @@ int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) 
     return -1;
 }
 
-int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE)
+int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE, t_list**overflow)
  {    int indice;
      int unFrame=0;
-     int marco;
+     int * marco=malloc(sizeof(int));
      int paginasCargadas=0;
      int paginasRequeridas=paginasCodigo+paginasStack+1;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
-     {   indice=calcularPosicion(unPid,unFrame,MARCOS);
-         marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin);
-         if(marco!=-1){
-         agregarSiguienteEnOverflow(unPid,marco);
-         bloquesAdmin[marco].estado=OCUPADO;
-        bloquesAdmin[marco].pid=unPid;
-        bloquesAdmin[marco].pagina=unFrame;
+     {   indice=calcularPosicion(unPid,unFrame,MARCOS);printf("el indice es: %i\n", indice);
+         *marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); printf("marco fallo si es -1: %i\n",*marco );
+         if(*marco!=-1){
+         agregarSiguienteEnOverflow(indice,marco,overflow);
+         bloquesAdmin[*marco].estado=1;
+        bloquesAdmin[*marco].pid=unPid;
+        bloquesAdmin[*marco].pagina=unFrame;
     	if(paginasCargadas<paginasCodigo)
     		{
-			memcpy(marcos[marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
+			memcpy(marcos[*marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
     		}
     	
     } else return -1;
@@ -1157,7 +1191,17 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
     }
 
  
-
+void generarDumpOverflow(t_list**overflow, int MARCOS)
+{	int i,j;
+	for (i = 0; i < MARCOS; i++)
+	{
+		printf("Indice: %i.\n",i);
+		for (j = 0; j < list_size(overflow[i]); j++)
+		{
+			printf("\t\tFrame: %i.\n", *(int*)list_get(overflow[i],j));
+		}
+	}
+}
 /* Función Hash */
 unsigned int calcularPosicion(int pid, int num_pagina,int MARCOS) {
     char str1[20];
@@ -1171,34 +1215,38 @@ unsigned int calcularPosicion(int pid, int num_pagina,int MARCOS) {
 
 /* Inicialización vector overflow. Cada posición tiene una lista enlazada que guarda números de frames.
  * Se llenará a medida que haya colisiones correspondientes a esa posición del vector. */
-void inicializarOverflow(int MARCOS) {
-    overflow = malloc(sizeof(t_list*) * MARCOS);
+void inicializarOverflow(int MARCOS, t_list**overflow) {
     int i;
-    for (i = 0; i < MARCOS; ++i) { /* Una lista por frame */
+    for (i = 0; i < MARCOS; i++) { /* Una lista por frame */
         overflow[i] = list_create();
     }
 }
 
 /* En caso de colisión, busca el siguiente frame en el vector de overflow.
  * Retorna el número de frame donde se encuentra la página. */
-int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAdmin,int MARCOS) {
+int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAdmin,int MARCOS, t_list**overflow) {
+    printf("%s\n","estoy en buscarEnOverlow" );
     int i = 0;
-    int  *miFrame;
-    for (i = 0; i < list_size(overflow[indice]); i++) {
-        if (esPaginaCorrecta(*(int*)list_get(overflow[indice], i), pid, pagina,bloquesAdmin,MARCOS)) {
-            miFrame= (int*)(list_get(overflow[indice], i));
+    int frameDelIndice;printf("el indice que entra es :%i\n", indice);
+    int  *miFrame=malloc(sizeof(int)); printf("%s\n","declare miFrame" );
+    for (i = 0; i < list_size(overflow[indice]); i++) { printf("%s\n","mira mama un for" );
+    	frameDelIndice=*(int*)list_get(overflow[indice], i);printf("frameDelIndice es: %i\n",frameDelIndice );
+        if ((esPaginaCorrecta(frameDelIndice, pid, pagina,bloquesAdmin,MARCOS))!=-1) { printf("%s\n","pase el casteo chamanico ultraduper" );
+            miFrame= (int*)(list_get(overflow[indice], i)); printf("el señor frame es : %i\n",*miFrame );
             return *miFrame;
         }
-    }
+    }return -1;
 }
 
 /* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
-void agregarSiguienteEnOverflow(int pos_inicial, int nro_frame) {
-    list_add(overflow[pos_inicial], &nro_frame);
+void agregarSiguienteEnOverflow(int pos_inicial, int * nro_frame, t_list**overflow) {
+	int * aux=malloc(4);
+	memcpy(aux,nro_frame,sizeof(int));
+    list_add(overflow[pos_inicial], aux);
 }
 
 /* Elimina un frame de la lista enlazada correspondiente a una determinada posición del vector de overflow  */
-void borrarDeOverflow(int posicion, int frame) {
+void borrarDeOverflow(int posicion, int frame, t_list**overflow) {
     int i = 0;
     int index_frame;
 
@@ -1214,7 +1262,7 @@ void borrarDeOverflow(int posicion, int frame) {
 
 /* A implementar por el alumno. Devuelve 1 a fin de cumplir con la condición requerida en la llamada a la función */
 int esPaginaCorrecta(int frame, int pid, int pagina,t_estructuraADM * bloquesAdmin, int MARCOS) {
-
-if((bloquesAdmin[frame].pid)==pid && (bloquesAdmin[frame]).pagina==pagina) return 1;
-	return 0;
+printf("%s\n","no puede haber seg fault" );printf("dime que frame eres :%i\n", frame);
+if(((bloquesAdmin[frame].pid)==pid) && ((bloquesAdmin[frame]).pagina==pagina)) {printf("%s\n","claramente esto no puede tener segfaultx2" );return 1;}
+	else {return -1;}
 }
