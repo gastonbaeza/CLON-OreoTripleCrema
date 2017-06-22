@@ -1168,7 +1168,7 @@ int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) 
     return -1;
 }
 
-int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE, t_list**overflow)
+int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE, t_list**overflow,int ENTRADAS_CACHE,t_estructuraCache * memoriaCache)
  {    int indice;
      int unFrame=0;
      int * marco=malloc(sizeof(int));
@@ -1183,13 +1183,15 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
         bloquesAdmin[*marco].pid=unPid;
         bloquesAdmin[*marco].pagina=unFrame;
     	if(paginasCargadas<paginasCodigo)
-    		{
+    		{ printf("el frame que esta en la tabla de hash es : %i\n", *(int*)list_get(overflow[indice],0));
+    			printf("%s\n","estoy antes del memcpy");
 			memcpy(marcos[*marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
+			escribirEnCache(unPid,unFrame,marcos[*marco].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
     		}
-    	
+    	paginasCargadas++;
     } else return -1;
 
-     }
+     }return 1;
     }
 
  
