@@ -184,9 +184,9 @@ bloquesAdmin[unaAdmin].pagina=-1;
 marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
 int unMarco=0;
 
- memoria=calloc(MARCOS*MARCO_SIZE,MARCOS*MARCO_SIZE);
+ memoria=calloc(MARCOS,MARCO_SIZE);
  cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
-memoriaCache=(t_estructuraCache*)cache;
+memoriaCache=(t_estructuraCache*)malloc(sizeof(t_estructuraCache)*ENTRADAS_CACHE);
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
@@ -197,9 +197,9 @@ for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada regio
 for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
 	{
 		memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
-		memoriaCache[unMarco].frame=-unMarco; //para distinguir  una pagina real de una virgen
+		memoriaCache[unMarco].frame=-666; //para distinguir  una pagina real de una virgen
 		memoriaCache[unMarco].pid=-1;
-		memoriaCache[unMarco].antiguedad=0;
+		memoriaCache[unMarco].antiguedad=-1;
 			}
 	
 	asignador=&marcos[0];
@@ -233,11 +233,11 @@ int stackRequeridas;
 int indice;
 while(1) {
 	
+	
+	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
 	t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
 	t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
 	t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
-	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
-	
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 							 //esto lo vi en stack overflow no me peguen
@@ -287,7 +287,7 @@ while(1) {
  		 
  					case SOLICITUDBYTES:
  										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
- 										paquete=calloc(1,peticionBytes->size);
+ 										paquete=calloc(1,peticionBytes->size+1);
  										printf("pid: %i\n", peticionBytes->pid);
  										printf("pagina: %i\n",peticionBytes->pagina );
  										printf("size: %i\n", peticionBytes->size);
@@ -296,10 +296,8 @@ while(1) {
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
  											printf("entre a cache\n");
- 											memcpy(paquete,memoriaCache[entrada].contenido+peticionBytes->offset,peticionBytes->size);
  											
- 											memoriaCache[entrada].antiguedad=0;
- 											
+ 											paquete=solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
 
  										}
  										else
