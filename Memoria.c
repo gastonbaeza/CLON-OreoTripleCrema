@@ -231,6 +231,7 @@ t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
 int indice;
+int test;
 while(1) {
 	
 	
@@ -270,8 +271,9 @@ while(1) {
  							memcpy(codigo,solicitud->codigo,solicitud->tamanioCodigo);
  							
  							
- 							reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE,overflow);
- 							
+ 							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
+ 							if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
+ 							else printf("%s\n","algo malo paso en la reserva" );
  							free(codigo);
  							free(solicitud);
  							
@@ -298,7 +300,7 @@ while(1) {
  											printf("entre a cache\n");
  											
  											paquete=solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
-
+ 											printf("%s\n","cargue el paquete con la solicitud" );
  										}
  										else
  										{//lo busco en memoria
