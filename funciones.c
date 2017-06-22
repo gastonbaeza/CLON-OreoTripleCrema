@@ -125,9 +125,10 @@ void generarDumpCache( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int 
 	for(unFrame=0;unFrame<ENTRADAS_CACHE;unFrame++)
 	{
 
-		printf("%i\n",memoriaCache[unFrame].frame);
-		printf("%i\n",memoriaCache[unFrame].pid);
-		printf("%p\n",memoriaCache[unFrame].contenido);
+		printf("el numero de pagina  es:%i\n",memoriaCache[unFrame].frame);
+		printf("el pid del proceso es:%i\n",memoriaCache[unFrame].pid);
+		printf("su antiguedad es :%i\n", memoriaCache[unFrame].antiguedad);
+		printf("el contenido en cache es: %s\n",(char*)memoriaCache[unFrame].contenido);
 	}
 }
 void generarDumpMemoria(t_marco * marcos, int MARCOS)
@@ -143,15 +144,14 @@ int estaEnCache(int unPid,int pagina, t_estructuraCache * memoriaCache, int  ENT
 	int paginasRecorridas=0;
 	for(paginasRecorridas;paginasRecorridas<ENTRADAS_CACHE;paginasRecorridas++)
 	{
-		if(memoriaCache[paginasRecorridas].pid == unPid && memoriaCache[paginasRecorridas].frame==pagina) return paginasRecorridas;
+		if((memoriaCache[paginasRecorridas].pid == unPid )&& (memoriaCache[paginasRecorridas].frame==pagina)) return paginasRecorridas;
 	}return -1;
 }
 void incrementarAntiguedadPorAcceso(t_estructuraCache* memoriaCache, int ENTRADAS_CACHE)//cada vez que hago un acceso tengo que cambiar la antiguedad de todos
 {
 	int unaEntrada=0;
 	for (unaEntrada; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
-	{
-			memoriaCache[unaEntrada].antiguedad+=1;
+	{		if(memoriaCache[unaEntrada].antiguedad!=-1)	memoriaCache[unaEntrada].antiguedad+=1;
 	}
 }
 int buscarEntradaMasAntigua(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)
@@ -164,31 +164,33 @@ int buscarEntradaMasAntigua(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE
 	}
 return entradaMasAntigua;
 }
-void escribirEnCache(int unPid, int pagina,void * contenido,t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+void escribirEnCache(int unPid, int pagina,void * buffer,t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
 {	
 	int entrada;
-	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)))
-	{		
+	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)));
 			
-			memcpy(memoriaCache[entrada].contenido+offset,contenido,tamanio);
-	}
+	
+	
 	else
-	{
-		if(-1!=(entrada=hayEspacioEnCache(memoriaCache, ENTRADAS_CACHE)))
-		{
-			
-			memcpy(memoriaCache[entrada].contenido+offset,contenido,tamanio);
-		}
+	{	printf("%s\n","el buffer no estaba en cache" );
+		if(-1!=(entrada=hayEspacioEnCache(memoriaCache, ENTRADAS_CACHE)));
+		
 		else //este es el LRU
-		{
+		{	printf("%s\n","no habia espacio en la cache" );
 			entrada=buscarEntradaMasAntigua(memoriaCache,ENTRADAS_CACHE);
-			memcpy(memoriaCache[entrada].contenido+offset,contenido,tamanio);
+			
 		}
-	}
+	} 
+	printf("este es el strlen %i\n", strlen((char*)buffer) );
+	printf("este es el tamanio que recibo por parametro %i\n", tamanio );
+	printf("lo que tiene el buffer antes de meter en cache es %s\n",(char*)buffer );
+	strcpy((char*)memoriaCache[entrada].contenido,buffer);
 	memoriaCache[entrada].antiguedad=0;
+	memoriaCache[entrada].pid=unPid;
+	memoriaCache[entrada].frame=pagina;
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 }
-void * solicitarBytescache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+void * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
 {	void * buffer=malloc(tamanio);
 	int entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE);
 	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio);
@@ -199,7 +201,7 @@ int hayEspacioEnCache(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)// si
 {	int unaEntrada=0;
 	for (unaEntrada; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
 	{
-			if(memoriaCache[unaEntrada].pid!=-1) return unaEntrada;
+			if(memoriaCache[unaEntrada].pid==-1) return unaEntrada;
 	}return -1;
 	
 }
