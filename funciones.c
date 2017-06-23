@@ -172,18 +172,16 @@ void escribirEnCache(int unPid, int pagina,void * buffer,t_estructuraCache * mem
 	
 	
 	else
-	{	printf("%s\n","el buffer no estaba en cache" );
+	{	
 		if(-1!=(entrada=hayEspacioEnCache(memoriaCache, ENTRADAS_CACHE)));
 		
 		else //este es el LRU
-		{	printf("%s\n","no habia espacio en la cache" );
+		{	
 			entrada=buscarEntradaMasAntigua(memoriaCache,ENTRADAS_CACHE);
 			
 		}
 	} 
-	printf("este es el strlen %i\n", strlen((char*)buffer) );
-	printf("este es el tamanio que recibo por parametro %i\n", tamanio );
-	printf("lo que tiene el buffer antes de meter en cache es %s\n",(char*)buffer );
+	
 	strcpy((char*)memoriaCache[entrada].contenido,buffer);
 	memoriaCache[entrada].antiguedad=0;
 	memoriaCache[entrada].pid=unPid;
@@ -376,6 +374,7 @@ int dserial_string(char * unString,int unSocket)
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
+	
 	unString=realloc(unString,tamanio);
 	send(unSocket,buffer1, sizeof(int),0);
 	for (unChar= 0; unChar <tamanio; unChar++)
@@ -1090,10 +1089,11 @@ t_programaSalida * obtenerPrograma( char * unPath){
 	else{
 		t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
 		fseek (punteroAlArchivo, 0, SEEK_END);
-		estructuraPrograma->tamanio = ftell (punteroAlArchivo);
+		estructuraPrograma->tamanio = ftell (punteroAlArchivo); printf("el tamanio adentro dfel programa%i\n", estructuraPrograma->tamanio );
 		fseek (punteroAlArchivo, 0, SEEK_SET);
-		estructuraPrograma->elPrograma = malloc (estructuraPrograma->tamanio);
+		estructuraPrograma->elPrograma = calloc(1,estructuraPrograma->tamanio);
 		fread (estructuraPrograma->elPrograma, 1, estructuraPrograma->tamanio, punteroAlArchivo);
+		printf("codigo despues del fread %s\n",estructuraPrograma->elPrograma ); printf("tamaño del string de fread %i\n",strlen(estructuraPrograma->elPrograma) );
 		fclose (punteroAlArchivo);
 		return estructuraPrograma;
 	
@@ -1176,8 +1176,8 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      int paginasCargadas=0;
      int paginasRequeridas=paginasCodigo+paginasStack+1;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
-     {   indice=calcularPosicion(unPid,unFrame,MARCOS);printf("el indice es: %i\n", indice);
-         *marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); printf("marco fallo si es -1: %i\n",*marco );
+     {   indice=calcularPosicion(unPid,unFrame,MARCOS);
+         *marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); 
          if(*marco!=-1)
          {
          	agregarSiguienteEnOverflow(indice,marco,overflow);
@@ -1185,8 +1185,8 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
         	bloquesAdmin[*marco].pid=unPid;
         	bloquesAdmin[*marco].pagina=unFrame;
     		if(paginasCargadas<paginasCodigo)
-    		{ printf("el frame que esta en la tabla de hash es : %i\n", *(int*)list_get(overflow[indice],0));
-    			printf("%s\n","estoy antes del memcpy");
+    		{ 
+    			
 			memcpy(marcos[*marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
 			escribirEnCache(unPid,unFrame,marcos[*marco].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
     		}
