@@ -238,6 +238,7 @@ while(1) {
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
 	t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
 	t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
+	bytesAAlmacenar->valor=calloc(1,20);
 	t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
@@ -314,11 +315,12 @@ while(1) {
  											buffer=malloc(sizeof(int));
 											memcpy(buffer,&a,sizeof(int));
 											while(0>=recv(unData,buffer, sizeof(int),0));
-											free(buffer);
+											
  											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
  											printf("paquete: %s\n", (char*)paquete);
  											free(paquete);
+ 											free(buffer);
  					break;
  		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
@@ -332,18 +334,13 @@ while(1) {
 							 	
  					break;
  		case ALMACENARBYTES:	recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
- 								if((entrada=estaEnCache(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,memoriaCache,ENTRADAS_CACHE))!=-1);
+ 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
+ 								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
+ 								printf("el valor es %s\n",bytesAAlmacenar->valor );
 								
-								else
- 								{//lo busco en memoria
- 								indice=calcularPosicion(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos,MARCOS);
- 								entrada=buscarEnOverflow(indice,bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS,overflow);
 								
-																	
-								}	
-								almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,(void*)&bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size);
-								escribirEnCache(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
- 								
+								almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
+								
  					break;
  		case LIBERARMEMORIA:
  							 
