@@ -118,6 +118,14 @@ pthread_mutex_t mutexProcesosReady;
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
 
+
+int estaBlocked(int pid){
+	int i;
+	for (i = 0; i < CANTIDADBLOCKS; i++)
+		if (COLABLOCK[i]==pid)
+			return 1;
+	return 0;
+}
 int gradoMultiprogAlcanzado(){
 	int contador=0;
 	while(COLAREADY[contador]!=-1)
@@ -599,12 +607,15 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 		switch(seleccionador->tipoPaquete)
 		{
 			case ESPERONOVEDADES:
-				if (!estaExec(pid)) // SI ESTA BLOQUEADO MANDO PARAREJECUCION
+				if (estaBlocked(pid)) // SI ESTA BLOQUEADO MANDO PARAREJECUCION
 					enviarDinamico(PARAREJECUCION,dataDePlanificacion->socket, NULL);
-				if (flagQuantum) // SI TERMINO QUANTUM MANDO FINQUANTUM
+				else if (flagQuantum) // SI TERMINO QUANTUM MANDO FINQUANTUM
 					enviarDinamico(FINQUANTUM, dataDePlanificacion->socket,NULL);
-				if (PCBS[pid].estado==EXIT) // SI FINALIZO EL PROCESO FORZADAMENTE MANDO FINALIZARPROCESO
+				else if (PCBS[pid].estado==EXIT && (PCBS[pid].exitCode==-7 || PCBS[pid].exitCode==-6)) // SI FINALIZO EL PROCESO FORZADAMENTE MANDO FINALIZARPROCESO
 				 	enviarDinamico(FINALIZARPROCESO, dataDePlanificacion->socket,NULL);
+				else if (PCBS[pid].estado==EXIT && PCBS[pid].exitCode==0)
+					{seleccionador->tipoPaquete=PCB;
+					primerAcceso=1;}
 				else // SI NO HAY NOVEDADES MANDO CONTINUAR
 					enviarDinamico(CONTINUAR, dataDePlanificacion->socket,NULL);
 				break;
@@ -747,6 +758,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						CANTIDADEXECS--;
 						COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
 						pthread_mutex_unlock(&mutexColaExec);
+						// LE MANDO EL FINALIZADO A CONSOLA
+						
 			break;
 			case PCBFINALIZADOPORCONSOLA:
 				// RECIBO EL PCB

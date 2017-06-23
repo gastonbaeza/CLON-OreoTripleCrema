@@ -300,7 +300,7 @@ while(1) {
  										{//lo busco en cache
  											printf("entre a cache\n");
  											
- 											paquete=solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
+ 											paquete=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
  											printf("%s\n","cargue el paquete con la solicitud" );
  										}
  										else

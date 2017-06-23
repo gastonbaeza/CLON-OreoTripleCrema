@@ -236,7 +236,7 @@ void posicionarPC(int pos){
 			peticion->size=SIZE;
 			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
 			free(peticion);
-			recv(socketMemoria,&valor,sizeof(int),0);
+			while(0>recv(socketMemoria,&valor,sizeof(int),0));
 			return valor;
 		}
 
@@ -749,9 +749,6 @@ while(1) {
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							linea=calloc(1,peticion->size);
-							buffer=malloc(sizeof(int));
-							memcpy(buffer,&a,sizeof(int));
-							send(socketMemoria,buffer, sizeof(int),0);
 							free(buffer);
 							printf("esperandoLinea\n");
 							while(0>recv(socketMemoria,linea,peticion->size,0)){
@@ -770,9 +767,6 @@ while(1) {
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							linea=calloc(1,peticion->size);
-							buffer=malloc(sizeof(int));
-							memcpy(buffer,&a,sizeof(int));
-							send(socketMemoria,buffer, sizeof(int),0);
 							free(buffer);
 							while(0>recv(socketMemoria,linea,peticion->size,0));
 		 					iniciarEjecucion(linea);

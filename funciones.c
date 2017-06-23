@@ -877,9 +877,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		break;
 
 		case MENSAJE:	
-		printf("aca\n");
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	printf("kk\n");
 			serial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
 
@@ -897,8 +895,9 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_bytes((t_almacenarBytes *)paquete,unSocket);
 		break;
 		case SOLICITUDBYTES:
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
+			while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_peticion((t_peticionBytes *)paquete,unSocket);
+			send(unSocket,buffer, sizeof(int),0);
 		break;
 		case ARRAYPIDS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -965,6 +964,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		 break;
 		 case CONTINUAR:
 		 break;
+		 case PCBFINALIZADO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+			serial_pcb((t_pcb *)paquete,unSocket);
+		 break;
 		 
 		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
 		// pagaraprata();
@@ -981,9 +984,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 	int * buffer=malloc(sizeof(int));
 	int b=1;
 	memcpy(buffer,&b,sizeof(int));int error;
-	printf("aca\n");sleep(2);
-	error=send(unSocket,buffer, sizeof(int),0); printf("%i\n",error );
-	printf("kk\n");
+	error=send(unSocket,buffer, sizeof(int),0);
 	t_path * path;
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
@@ -1010,6 +1011,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 
 		case PCB:	
+					dserial_pcb((t_pcb *)paquete,unSocket);
+		break;
+		case PCBFINALIZADO:	
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case RESULTADOINICIARPROGRAMA:
