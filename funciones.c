@@ -389,9 +389,7 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-
 	send(unSocket,&tamanio,sizeof(int),0);
-
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	for (unChar= 0; unChar < tamanio; unChar++)
 	{
@@ -459,7 +457,6 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 	serial_string(pcb->indiceEtiquetas.etiquetas,pcb->indiceEtiquetas.etiquetas_size,unSocket);
 	send(unSocket,&(pcb->cantidadStack),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	printf("%i\n", pcb->cantidadStack);
 	for (i= 0; i < pcb->cantidadStack; i++)
 	{	
 		send(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0);
@@ -471,8 +468,6 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 		}
 		send(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0);
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
-		printf("%i\n",pcb->indiceStack[i].cantidadVariables );
-		printf("asd\n");
 		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
 		{
 			send(unSocket, &(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0);
@@ -518,7 +513,6 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	dserial_string(pcb->indiceEtiquetas.etiquetas,unSocket);
 	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	printf("%i\n", pcb->cantidadStack);
 	pcb->indiceStack=malloc(pcb->cantidadStack*sizeof(t_stack));
 	for (i = 0; i < pcb->cantidadStack; i++)
 	{
@@ -533,8 +527,6 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
 		pcb->indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
-		printf("%i\n", pcb->indiceStack[i].cantidadVariables);
-	printf("asd\n");
 		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
 		{
 			while(0>recv(unSocket,&(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0));
@@ -588,7 +580,7 @@ void dserial_mensaje(t_mensaje * mensaje, int unSocket)
 
 void serial_mensaje(t_mensaje * mensaje, int unSocket)
 {
-	
+	printf("serial\n");
 	serial_string(mensaje->mensaje,mensaje->tamanio,unSocket); 
 }
 void dserial_linea(t_linea * linea, int unSocket)
@@ -831,7 +823,6 @@ void dserial_moverCursor(t_moverCursor * moverCursor, int unSocket)
 }
 void serial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {
-	
 	serial_string(escribirArchivo->informacion,escribirArchivo->tamanio,unSocket); 
 	serial_int(&(escribirArchivo->fdArchivo),unSocket);
 }
@@ -885,7 +876,9 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		break;
 
 		case MENSAJE:	
+		printf("aca\n");
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	printf("kk\n");
 			serial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
 
@@ -957,6 +950,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		 case ESCRIBIRARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_escribirArchivo((t_escribirArchivo *)paquete,unSocket);
+
 		 break;
 		 case LEERARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -986,7 +980,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 	int * buffer=malloc(sizeof(int));
 	int b=1;
 	memcpy(buffer,&b,sizeof(int));
+	printf("aca\n");
 	send(unSocket,buffer, sizeof(int),0);
+	printf("kk\n");
 	t_path * path;
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:

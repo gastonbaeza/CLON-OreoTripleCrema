@@ -228,7 +228,7 @@ typedef struct {
 
 typedef struct {
 				int fdArchivo;
-				void * informacion;
+				char * informacion;
 				int tamanio;
 				
 				}__attribute__((packed))

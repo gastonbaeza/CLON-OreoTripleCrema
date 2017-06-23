@@ -37,7 +37,7 @@
 	#define DESCONECTARCONSOLA 2
 	#define LIMPIARMENSAJES 3
 	//------------------------------	
-	#define MENSAJE 0
+	#define MENSAJE 7
 	#define PIDNUEVO 1
 #define PATH 10
 #define CPU 3
@@ -96,11 +96,10 @@ while(1) {
 switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
-						unMensaje->mensaje=malloc(1);
-						
+						unMensaje->mensaje=calloc(1,1);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
 						
-						printf("%s",unMensaje->mensaje);
+						printf("mensaje: %s\n",unMensaje->mensaje);
 		break;
 
 		case RESULTADOINICIARPROGRAMA:
@@ -131,8 +130,6 @@ int main(){
 	PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
 	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
 	
-	printf("Presione enter para continuar.\n");
-	getchar();
 
 	////////////////////////////////////////
 
