@@ -135,8 +135,8 @@ void generarDumpMemoria(t_marco * marcos, int MARCOS)
 {
 	int unMarco=0;
 	for(unMarco;unMarco<MARCOS;unMarco++)
-	{
-		printf("%p\n",marcos[unMarco].numeroPagina);
+	{	printf("el numero de frame es: %i\n", unMarco);
+		printf("el contenido del frame es :%s\n",(char*)marcos[unMarco].numeroPagina);
 	}
 }
 int estaEnCache(int unPid,int pagina, t_estructuraCache * memoriaCache, int  ENTRADAS_CACHE)// si esta presente en cache me devuelve la posicion de la entrada, sino devuelve -1
@@ -212,10 +212,13 @@ void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int of
 	return buffer;
 
 }
-void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin , t_list**overflow)
-{	int indice=calcularPosicion(unPid,pagina,MARCOS);
-	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); 
-	memcpy(marcos[entrada].numeroPagina+offset,contenido,tamanio); // agregar retardo por escritura
+void almacenarBytes(int unPid, int pagina,char * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin , t_list**overflow,t_estructuraCache * memoriaCache,int ENTRADAS_CACHE, int MARCO_SIZE)
+{	
+	int indice=calcularPosicion(unPid,pagina,MARCOS); printf("el indice en almacenar bytes es: %i\n",indice );
+	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); printf("la entrada en almacenarbytes de buscar overflow : %i\n",entrada );
+	strcpy((char*)(marcos[entrada].numeroPagina+offset),contenido);
+	escribirEnCache(unPid,pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+ 								
 }
 
 void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)//expandir despues esa funcion para que informe cosas mas lindas
@@ -682,9 +685,8 @@ void serial_bytes(t_almacenarBytes * bytes, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(bytes->size),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(bytes->valor),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	
+	serial_string(bytes->valor,20,unSocket);
+	printf("estoy mandando de valor %s\n", bytes->valor);
 
 	free(buffer);
 }
@@ -701,8 +703,7 @@ void dserial_bytes(t_almacenarBytes * bytes, int unSocket)
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(bytes->size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(bytes->valor),sizeof(int),0));
-	send(unSocket,buffer, sizeof(int),0);
+	dserial_string(bytes->valor,unSocket);
 	free(buffer);
 }
 
@@ -979,9 +980,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 {	
 	int * buffer=malloc(sizeof(int));
 	int b=1;
-	memcpy(buffer,&b,sizeof(int));
-	printf("aca\n");
-	send(unSocket,buffer, sizeof(int),0);
+	memcpy(buffer,&b,sizeof(int));int error;
+	printf("aca\n");sleep(2);
+	error=send(unSocket,buffer, sizeof(int),0); printf("%i\n",error );
 	printf("kk\n");
 	t_path * path;
 	switch(tipoPaquete){
@@ -1173,20 +1174,21 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   indice=calcularPosicion(unPid,unFrame,MARCOS);printf("el indice es: %i\n", indice);
          *marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); printf("marco fallo si es -1: %i\n",*marco );
-         if(*marco!=-1){
-         agregarSiguienteEnOverflow(indice,marco,overflow);
-         bloquesAdmin[*marco].estado=1;
-        bloquesAdmin[*marco].pid=unPid;
-        bloquesAdmin[*marco].pagina=unFrame;
-    	if(paginasCargadas<paginasCodigo)
+         if(*marco!=-1)
+         {
+         	agregarSiguienteEnOverflow(indice,marco,overflow);
+        	 bloquesAdmin[*marco].estado=1;
+        	bloquesAdmin[*marco].pid=unPid;
+        	bloquesAdmin[*marco].pagina=unFrame;
+    		if(paginasCargadas<paginasCodigo)
     		{ printf("el frame que esta en la tabla de hash es : %i\n", *(int*)list_get(overflow[indice],0));
     			printf("%s\n","estoy antes del memcpy");
 			memcpy(marcos[*marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
 			escribirEnCache(unPid,unFrame,marcos[*marco].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
     		}
+    		
+    	} else {return -1;}
     	paginasCargadas++;
-    } else return -1;
-
      }return 1;
     }
 
@@ -1228,7 +1230,7 @@ int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAd
     printf("%s\n","estoy en buscarEnOverlow" );
     int i = 0;
     int frameDelIndice;printf("el indice que entra es :%i\n", indice);
-    int  *miFrame=malloc(sizeof(int)); printf("%s\n","declare miFrame" );
+    int  *miFrame=malloc(sizeof(int)); printf("%s\n","declare miFrame" );printf("size %i\n", list_size(overflow[indice]));
     for (i = 0; i < list_size(overflow[indice]); i++) { printf("%s\n","mira mama un for" );
     	frameDelIndice=*(int*)list_get(overflow[indice], i);printf("frameDelIndice es: %i\n",frameDelIndice );
         if ((esPaginaCorrecta(frameDelIndice, pid, pagina,bloquesAdmin,MARCOS))!=-1) { printf("%s\n","pase el casteo chamanico ultraduper" );
