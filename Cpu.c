@@ -252,6 +252,7 @@ void posicionarPC(int pos){
 		 */
 		void cpu_asignar(t_puntero direccion_variable, t_valor_variable valor){
 			printf("en cpu_asignar\n");
+			char buffer[20];
 			int offset,pagina;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -260,9 +261,12 @@ void posicionarPC(int pos){
 			bytes->pagina=pagina;
 			bytes->offset=offset;
 			bytes->size=SIZE;
-			bytes->valor=valor;
+			sprintf (buffer, "%d",valor);
+			bytes->valor=buffer;
+			printf("este es el valor estringeado %s\n", bytes->valor);
+			printf("este es el buffer : %s\n",buffer );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
-			printf("%i\n", bytes->valor);
+			printf("%s\n", bytes->valor);
 			free(bytes);
 		}
 
@@ -408,12 +412,17 @@ void posicionarPC(int pos){
 		 */
 		void cpu_retornar(t_valor_variable retorno){
 			printf("en cpu_retornar\n");
+
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
+			char buffer[20];
+			sprintf(buffer,"%d",retorno);
+			bytes->valor=buffer;
 			bytes->pid=PID;
 			bytes->pagina=pcb->paginasCodigo+pcb->indiceStack[pcb->posicionStack].varRetorno.pagina;
 			bytes->offset=pcb->indiceStack[pcb->posicionStack].varRetorno.offset;
 			bytes->size=pcb->indiceStack[pcb->posicionStack].varRetorno.size;
-			bytes->valor=retorno;
+			printf("este es el valor estringeado %s\n", bytes->valor);
+			printf("este es el buffer : %s\n",buffer );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			free(bytes);
 			finalizarNivelStack();
@@ -753,8 +762,7 @@ while(1) {
 		 					break;							
 		case CONTINUAR:
 							printf("en continuar\n");
-							getchar();
-							getchar();
+							
 							peticion=malloc(sizeof(t_peticionBytes));
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
