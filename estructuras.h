@@ -158,7 +158,7 @@ typedef struct {
 				int pagina;
 				int offset;
 				int size;
-				int valor; 
+				char * valor; 
 
 				}__attribute__((packed))
 				 t_almacenarBytes;
