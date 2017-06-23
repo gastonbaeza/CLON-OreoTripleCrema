@@ -149,6 +149,16 @@ int hayProcesosReady(){
 	return 0;
 }
 
+int cantidadDigitos(int numero){
+	int i;
+	while(numero != 0)
+    {
+        numero /= 10;
+        i++;
+    }
+    return i;
+}
+
 void getPcbAndRemovePid(int pid, t_pcb * pcb){
 	int i=0;
 	//BUSCO EL PCB
@@ -581,6 +591,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_pcb * pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
 	int flagQuantum;
+	char* aux;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	seleccionador->tipoPaquete=PCB;
 	pthread_t hiloQuantum;
@@ -759,7 +770,16 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
 						pthread_mutex_unlock(&mutexColaExec);
 						// LE MANDO EL FINALIZADO A CONSOLA
-						
+						aux=calloc(1,100);
+						sprintf(aux,"Finalizo correctamente el proceso PID=%i",pid);
+						mensaje=malloc(sizeof(t_mensaje));
+						mensaje->tamanio=strlen(aux);
+						mensaje->mensaje=calloc(1,mensaje->tamanio);
+						mensaje->mensaje=aux;
+						enviarDinamico(MENSAJE,SOCKETSCONSOLA[pid],mensaje);
+						// free(mensaje->mensaje);
+						free(mensaje);
+						free(aux);
 			break;
 			case PCBFINALIZADOPORCONSOLA:
 				// RECIBO EL PCB
