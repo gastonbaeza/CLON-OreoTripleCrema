@@ -117,6 +117,8 @@ pthread_mutex_t mutexProcesosReady;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
+int primerIngreso=1;
+int socketConsolaMensaje;
 
 
 int estaBlocked(int pid){
@@ -776,7 +778,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						mensaje->tamanio=strlen(aux);
 						mensaje->mensaje=calloc(1,mensaje->tamanio);
 						mensaje->mensaje=aux;
-						enviarDinamico(MENSAJE,SOCKETSCONSOLA[pid],mensaje);
+						enviarDinamico(MENSAJE,socketConsolaMensaje,mensaje);
 						// free(mensaje->mensaje);
 						free(mensaje);
 						free(aux);
@@ -1002,6 +1004,11 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 			interfaz = malloc(sizeof(int));
 			// ME INFORMO SOBRE LA INTERFAZ QUE SE CONECTÓ
 			handshakeServer(socketNuevaConexion,KERNEL,interfaz);
+			if (interfaz==CONSOLA && primerIngreso==1)
+			{
+				socketConsolaMensaje=socketNuevaConexion;
+				primerIngreso=0;
+			}
 			// CONFIGURACION E INICIO DE HILO COMUNICADOR
 			dataParaConexion = malloc(sizeof(dataParaComunicarse));
 			dataParaConexion->interfaz=*interfaz; 
