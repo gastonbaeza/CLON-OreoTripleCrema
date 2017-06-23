@@ -374,12 +374,14 @@ int dserial_string(char * unString,int unSocket)
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
-	
+
 	unString=realloc(unString,tamanio);
 	send(unSocket,buffer1, sizeof(int),0);
+	printf("%s\n","voy a mostrar caracter a caracter lo que recibo" );
 	for (unChar= 0; unChar <tamanio; unChar++)
 	{
 		while(0>=recv(unSocket, &unString[unChar],sizeof(char),0));
+		printf("%c",unString[unChar] );
 		send(unSocket,buffer1, sizeof(int),0);
 
 	}
@@ -393,9 +395,11 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,&tamanio,sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	printf("%s\n","voy a mostrar caracter a caracter lo que envio" );
 	for (unChar= 0; unChar < tamanio; unChar++)
 	{
 		send(unSocket, &unString[unChar],sizeof(char),0);
+		printf("%c",unString[unChar] );
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
 	}
 	free(buffer);
@@ -1093,7 +1097,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 		fseek (punteroAlArchivo, 0, SEEK_SET);
 		estructuraPrograma->elPrograma = calloc(1,estructuraPrograma->tamanio);
 		fread (estructuraPrograma->elPrograma, 1, estructuraPrograma->tamanio, punteroAlArchivo);
-		printf("codigo despues del fread %s\n",estructuraPrograma->elPrograma ); printf("tamaño del string de fread %i\n",strlen(estructuraPrograma->elPrograma) );
+		 printf("tamaño del string de fread %i\n",strlen(estructuraPrograma->elPrograma) );
 		fclose (punteroAlArchivo);
 		return estructuraPrograma;
 	

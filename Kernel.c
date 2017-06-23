@@ -845,6 +845,8 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					path = malloc (sizeof(t_path));
 					path->path=calloc(1,150);
 					recibirDinamico(PATH, dataDeConexion->socket, path);
+					printf("mira te cuento que el tamanio que recibi del programa en kernele es de %i\n",path->tamanio );
+					printf("path del kerenele %s\n",path->path );
 					// GENERO EL PID
 					pid = ULTIMOPID;
 					pthread_mutex_lock(&mutexPid);
@@ -896,6 +898,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 					solicitudMemoria->pid=pid;
+					printf("el pathpath es %s\n",path->path );
+					printf("la solicitud mnemoria codigo a enviar es%s\n",solicitudMemoria->codigo );
+					printf("sin embargo el tamanio que envio es de  %i\n",solicitudMemoria->tamanioCodigo );
 					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
 					// LO AGREGO A LA LISTA DE JOBS
 					if (cantidadJobs % BLOQUE == 0)
