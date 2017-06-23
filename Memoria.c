@@ -255,7 +255,7 @@ while(1) {
  							
  							paginasRequeridas=solicitud->cantidadPaginasCodigo;
  							stackRequeridas=solicitud->cantidadPaginasStack;
- 							printf("hay x canatidad paginas libres %i\n",hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS));
+ 							
  							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==-1) 
  							{ 
  							solicitud->respuesta=FAIL;
@@ -267,9 +267,9 @@ while(1) {
  							solicitud->respuesta=OK;
  						
  							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitud);
- 							printf("Despues de enviar\n");
- 							char * codigo=malloc(solicitud->tamanioCodigo);
- 							memcpy(codigo,solicitud->codigo,solicitud->tamanioCodigo);
+ 							
+ 							char * codigo=calloc(1,solicitud->tamanioCodigo+1);
+ 							strcpy(codigo,solicitud->codigo);
  							
  							
  							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
@@ -439,9 +439,10 @@ void consolaMemoria()
 					
 					for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
 					{
-					memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
-					memoriaCache[unMarco].frame=-unMarco; //para distinguir  una pagina real de una virgen
+					memset(memoriaCache[unMarco].contenido,0,MARCO_SIZE);
+					memoriaCache[unMarco].frame=-666; //para distinguir  una pagina real de una virgen
 					memoriaCache[unMarco].pid=-1;
+					memoriaCache[unMarco].antiguedad=-1;
 					}	printf("%s\n","la memoria cache ha sido reinicializada" );	
 						printf("%s\n", "presione una tecla para volver al menu de la consola");getchar(); getchar();
 		break;
