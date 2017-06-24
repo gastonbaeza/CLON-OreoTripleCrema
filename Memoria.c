@@ -143,20 +143,16 @@ if ((rv =getaddrinfo(NULL, PUERTO, &hints, &serverInfo)) != 0) fprintf(stderr, "
 
 fflush(stdout);
 printf("%s \n", "El Servidor esta configurado.\n");
-sleep(1);
 listenningSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-sleep(1);
 fflush(stdout);
 printf("%s \n", "Socket Listo.");
 
 if(bind(listenningSocket,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1) {perror("Error en el bind."); exit(1);}
 
 fflush(stdout);
-sleep(1);
 printf("%s \n", "Bind Listo.\n");
 
 freeaddrinfo(serverInfo);
-sleep(1);
 fflush(stdout);
 config_destroy(CFG);
 system("clear");
@@ -184,8 +180,8 @@ bloquesAdmin[unaAdmin].pagina=-1;
 marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
 int unMarco=0;
 
- memoria=calloc(MARCOS,MARCO_SIZE);
- cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
+ memoria=calloc(MARCOS,MARCO_SIZE+1);
+ cache=calloc(ENTRADAS_CACHE,MARCO_SIZE+1);
 memoriaCache=(t_estructuraCache*)malloc(sizeof(t_estructuraCache)*ENTRADAS_CACHE);
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
@@ -218,16 +214,14 @@ pthread_join(hiloConsolaMemoria,NULL);
 
 void comunicarse(dataParaComunicarse * estructura){ // aca tenemos que agregar toda la wea que es "global"
 fflush(stdout); 
- int unData=estructura->socket;
-
+ int unData=0;
+ unData=estructura->socket;
+free(estructura);
 int * buffer;
 int a=1;
-int recibir;
-t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+t_seleccionador * seleccionador=calloc(1,sizeof(t_seleccionador));
 int entrada;
-t_pcb * unPcb;
 void * paquete;
-t_actualizacion * actualizacion;
 int paginasRequeridas;
 int stackRequeridas;
 int indice;
@@ -236,14 +230,13 @@ while(1) {
 	
 	
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
-	t_peticionBytes * peticionBytes=malloc(sizeof(t_peticionBytes));
-	t_almacenarBytes * bytesAAlmacenar=malloc(sizeof(t_almacenarBytes));
-	bytesAAlmacenar->valor=calloc(1,20);
-	t_solicitudMemoria * solicitud=malloc(sizeof(t_solicitudMemoria));
+	t_peticionBytes * peticionBytes;
+	t_almacenarBytes * bytesAAlmacenar;
+	t_solicitudMemoria * solicitud;
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 							 //esto lo vi en stack overflow no me peguen
-							solicitud->codigo=calloc(1,solicitud->tamanioCodigo+sizeof(char));
+							solicitud=calloc(1,sizeof(t_solicitudMemoria));
 							recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
 							
 							fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);
@@ -268,14 +261,11 @@ while(1) {
  						
  							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitud);
  							
- 							char * codigo=calloc(1,solicitud->tamanioCodigo+1);
- 							strcpy(codigo,solicitud->codigo);
  							
- 							
- 							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,codigo,MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
+ 							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,solicitud->codigo,MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
  							if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
  							else printf("%s\n","algo malo paso en la reserva" );
- 							free(codigo);
+ 							free(solicitud->codigo);
  							free(solicitud);
  							
  							
@@ -289,6 +279,7 @@ while(1) {
  					break;
  		 
  					case SOLICITUDBYTES:
+ 										peticionBytes=calloc(1,sizeof(t_peticionBytes));
  										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
  										paquete=calloc(1,peticionBytes->size+1);
  										printf("pid: %i\n", peticionBytes->pid);
@@ -309,18 +300,19 @@ while(1) {
  											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS); printf("el indice en memoria: %i\n",indice );
  											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
  											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
- 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+ 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,&marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
  										}	
- 											buffer=malloc(sizeof(int));
+ 											buffer=calloc(1,sizeof(int));
 											memcpy(buffer,&a,sizeof(int));
-											while(0>=recv(unData,buffer, sizeof(int),0));
+											while(0>recv(unData,buffer, sizeof(int),0));
 											
  											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
  											printf("paquete: %s\n", (char*)paquete);
  											free(paquete);
  											free(buffer);
+ 											free(peticionBytes);
  					break;
  		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
@@ -333,14 +325,17 @@ while(1) {
 							 free(unPcb);*/
 							 	
  					break;
- 		case ALMACENARBYTES:	recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
+ 		case ALMACENARBYTES:	bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
+								bytesAAlmacenar->valor=calloc(1,20);
+ 								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
  								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
  								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
  								printf("el valor es %s\n",bytesAAlmacenar->valor );
 								
 								
 								almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
-								
+								free(bytesAAlmacenar->valor);
+								free(bytesAAlmacenar);
  					break;
  		case LIBERARMEMORIA:
  							 
@@ -412,7 +407,7 @@ void consolaMemoria()
 						break;
 						case MEMORIA:
 										system("clear");
-										generarDumpMemoria(asignador,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+										generarDumpMemoria(asignador,MARCOS,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						case TABLA:
 										system("clear");
@@ -483,8 +478,8 @@ void consolaMemoria()
 
 void aceptar(dataParaComunicarse * unData){
 dataParaComunicarse * dataNuevo;
-int * unBuffer=malloc(sizeof(int));
-dataNuevo = malloc(sizeof(dataParaComunicarse));
+int * unBuffer=calloc(1,sizeof(int));
+dataNuevo = calloc(1,sizeof(dataParaComunicarse));
 int socketNuevaConexion,rv;
 pthread_t hiloComunicador;
 struct sockaddr_in addr;

@@ -104,6 +104,7 @@ void handshakeServer(int unSocket,int unServer, void * unBuffer)
 	memcpy(otroBuffer,&unServer,sizeof(int));
 
 	send(unSocket,otroBuffer,sizeof(int),0);
+	free(otroBuffer);
 	
 
 }
@@ -128,15 +129,15 @@ void generarDumpCache( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int 
 		printf("el numero de pagina  es:%i\n",memoriaCache[unFrame].frame);
 		printf("el pid del proceso es:%i\n",memoriaCache[unFrame].pid);
 		printf("su antiguedad es :%i\n", memoriaCache[unFrame].antiguedad);
-		printf("el contenido en cache es: %s\n",(char*)memoriaCache[unFrame].contenido);
+		printf("el contenido en cache es: %.*s\n",MARCO_SIZE,(char*)memoriaCache[unFrame].contenido);
 	}
 }
-void generarDumpMemoria(t_marco * marcos, int MARCOS)
+void generarDumpMemoria(t_marco * marcos, int MARCOS,int MARCO_SIZE)
 {
 	int unMarco=0;
 	for(unMarco;unMarco<MARCOS;unMarco++)
 	{	printf("el numero de frame es: %i\n", unMarco);
-		printf("el contenido del frame es :%s\n",(char*)marcos[unMarco].numeroPagina);
+		printf("el contenido del frame es :%.*s\n",MARCO_SIZE,(char*)marcos[unMarco].numeroPagina);
 	}
 }
 int estaEnCache(int unPid,int pagina, t_estructuraCache * memoriaCache, int  ENTRADAS_CACHE)// si esta presente en cache me devuelve la posicion de la entrada, sino devuelve -1
@@ -164,7 +165,7 @@ int buscarEntradaMasAntigua(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE
 	}
 return entradaMasAntigua;
 }
-void escribirEnCache(int unPid, int pagina,void * buffer,t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+void escribirEnCache(int unPid, int pagina,void **buffer,t_estructuraCache *memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
 {	
 	int entrada;
 	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)));
@@ -178,14 +179,19 @@ void escribirEnCache(int unPid, int pagina,void * buffer,t_estructuraCache * mem
 		else //este es el LRU
 		{	
 			entrada=buscarEntradaMasAntigua(memoriaCache,ENTRADAS_CACHE);
-			
+			printf("aca no tiene que entrar\n");
 		}
 	} 
-	
-	strcpy((char*)memoriaCache[entrada].contenido,buffer);
-	memoriaCache[entrada].antiguedad=0;
-	memoriaCache[entrada].pid=unPid;
-	memoriaCache[entrada].frame=pagina;
+	printf("antes sttrcpy\n");
+	printf("entrada: %i.\n", entrada);
+	printf("*buffer: %s.\n", (char*)*buffer);
+	memmove((memoriaCache[entrada]).contenido,*buffer,tamanio+1);
+	printf("qwe\n");
+	// printf("memoriaCache[entrada].contenido: %s.\n",(char*)(memoriaCache[entrada]).contenido );
+	printf("despues strcpy\n");
+	(memoriaCache[entrada]).antiguedad=0;
+	(memoriaCache[entrada]).pid=unPid;
+	(memoriaCache[entrada]).frame=pagina;
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 }
 void * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
@@ -215,7 +221,7 @@ void almacenarBytes(int unPid, int pagina,char * contenido,t_marco * marcos, int
 	int indice=calcularPosicion(unPid,pagina,MARCOS); printf("el indice en almacenar bytes es: %i\n",indice );
 	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); printf("la entrada en almacenarbytes de buscar overflow : %i\n",entrada );
 	strcpy((char*)(marcos[entrada].numeroPagina+offset),contenido);
-	escribirEnCache(unPid,pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+	escribirEnCache(unPid,pagina,&marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  								
 }
 
@@ -374,7 +380,7 @@ int dserial_string(char ** unString,int unSocket)
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
-	*unString=calloc(1,tamanio);
+	*unString=calloc(1,tamanio+1);
 	send(unSocket,buffer1, sizeof(int),0);
 	// for (unChar= 0; unChar <tamanio; unChar++)
 	// {
@@ -636,14 +642,12 @@ free(buffer);
 
 void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 {
-	char * code=malloc(sizeof(char)*100);
 	int * buffer=malloc(sizeof(int));
 	int b=1;
 	memcpy(buffer,&b,sizeof(int));
 
 	while(0>=recv(unSocket,&(solicitud->tamanioCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	solicitud->codigo=malloc(solicitud->tamanioCodigo*sizeof(char));
 	dserial_string(&(solicitud->codigo),unSocket);
 	send(unSocket,buffer, sizeof(int),0);
 
@@ -847,9 +851,9 @@ void dserial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
 
 void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 { 	
-	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+	t_seleccionador * seleccionador=calloc(2,4);
 	seleccionador->tipoPaquete=tipoPaquete;
-	int * buffer=malloc(sizeof(int));
+	int * buffer=calloc(1,4);
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
@@ -1173,11 +1177,17 @@ int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) 
 int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE, t_list**overflow,int ENTRADAS_CACHE,t_estructuraCache * memoriaCache)
  {    int indice;
      int unFrame=0;
-     int * marco=malloc(sizeof(int));
+     int * marco=calloc(1,sizeof(int));
+     char * copiador=calloc(1,MARCO_SIZE*sizeof(char)+1); 
      int paginasCargadas=0;
+     int tamanioCodigo=strlen(codigo);
+     int tamanioAPegar=MARCO_SIZE*sizeof(char);
+     int acumulador=0;
+     printf("tamanio cod en reservar %i\n",tamanioCodigo );
      int paginasRequeridas=paginasCodigo+paginasStack+1;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
-     {   indice=calcularPosicion(unPid,unFrame,MARCOS);
+     {   
+     	indice=calcularPosicion(unPid,unFrame,MARCOS);
          *marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); 
          if(*marco!=-1)
          {
@@ -1185,16 +1195,30 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
         	 bloquesAdmin[*marco].estado=1;
         	bloquesAdmin[*marco].pid=unPid;
         	bloquesAdmin[*marco].pagina=unFrame;
+        	printf("despues de bloquesAdmin\n");
     		if(paginasCargadas<paginasCodigo)
-    		{ 
-    			
-			memcpy(marcos[*marco].numeroPagina,codigo+(unFrame*MARCO_SIZE),MARCO_SIZE);
-			escribirEnCache(unPid,unFrame,marcos[*marco].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
-    		}
+	    		{ if(acumulador+(MARCO_SIZE*sizeof(char))>tamanioCodigo) 
+	    				{
+	    				tamanioAPegar=tamanioCodigo-acumulador;
+	    				}
+	    			memcpy(copiador,codigo+acumulador,tamanioAPegar);
+	    			printf("quisimama\n");
+	    			printf("tamanioAPegar: %i.\n", tamanioAPegar);
+	    			printf("marco: %i.\n", *marco);
+					printf("el contenido del frame es :%.*s\n",MARCO_SIZE,(char*)marcos[*marco].numeroPagina);
+					memcpy((char*)marcos[*marco].numeroPagina,copiador,tamanioAPegar);
+					printf("antes escribirEnCache\n");
+					escribirEnCache(unPid,unFrame,(void**)&copiador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar);
+					printf("despues escribirEnCache\n");
+					acumulador+=tamanioAPegar*sizeof(char);
+	    		}
     		
     	} else {return -1;}
     	paginasCargadas++;
-     }return 1;
+     }
+     free(copiador);
+     free(marco);
+     return 1;
     }
 
  

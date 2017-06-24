@@ -814,15 +814,15 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	int PidAFinalizar;
 	t_metadata_program * metadata;
 	t_resultadoIniciarPrograma * resultado;
+	int socket=dataDeConexion->socket;
+	int interfaz=dataDeConexion->interfaz;
+	free(dataDeConexion);
 	// RETURN VALUES
 	int pid;
 	int rv;
 	// NUMERO DE BYTES
 	int nbytes;
-	// JOBS
-	int * jobs;
-	int cantidadJobs=0;
-					t_solicitudMemoria * solicitudMemoria;
+	t_solicitudMemoria * solicitudMemoria;
 	// FLAG DE ESTE HILO
 	int estaComunicacion=1;
 	// SELECCIONADOR
@@ -835,15 +835,15 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	while(COMUNICACIONHABILITADA && estaComunicacion){
 		// RECIBO EL SELECCIONADOR (SI ES CPU, DIRECTAMENTE LE MANDO PCBS)
 		seleccionador=malloc(sizeof(t_seleccionador));
-		if (dataDeConexion->interfaz==CPU)
+		if (interfaz==CPU)
 			seleccionador->tipoPaquete=SOLICITUDPCB;
 		else
-			while(0>recv(dataDeConexion->socket, seleccionador, sizeof(t_seleccionador), 0));
+			while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
 		switch(seleccionador->tipoPaquete){
 				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
 					// RECIBO EL PATH
 					path = malloc (sizeof(t_path));
-					recibirDinamico(PATH, dataDeConexion->socket, path);
+					recibirDinamico(PATH, socket, path);
 					// GENERO EL PID
 					pid = ULTIMOPID;
 					pthread_mutex_lock(&mutexPid);
@@ -853,7 +853,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pthread_mutex_lock(&mutexSocketsConsola);
 					if (CANTIDADSOCKETSCONSOLA%BLOQUE==0)
 						SOCKETSCONSOLA = realloc (SOCKETSCONSOLA,(CANTIDADSOCKETSCONSOLA+BLOQUE) * sizeof(SOCKETSCONSOLA[0]));
-					SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA]=dataDeConexion->socket;
+					SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA]=socket;
 					CANTIDADSOCKETSCONSOLA++;
 					pthread_mutex_unlock(&mutexSocketsConsola);
 					// CALCULO LA CANTIDAD DE PAGINAS
@@ -888,18 +888,13 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					CANTIDADPCBS++;
 					pthread_mutex_unlock(&mutexPcbs);
 					// SOLICITUD DE MEMORIA
-					solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
+					solicitudMemoria=calloc(1,sizeof(t_solicitudMemoria));
 					solicitudMemoria->tamanioCodigo=path->tamanio;
 					solicitudMemoria->codigo=path->path;
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 					solicitudMemoria->pid=pid;
 					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
-					// LO AGREGO A LA LISTA DE JOBS
-					if (cantidadJobs % BLOQUE == 0)
-						jobs = realloc (jobs, (cantidadJobs+BLOQUE) * sizeof(jobs[0]));
-					jobs[cantidadJobs]=pid;
-					cantidadJobs++;
 					//LIBERO MEMORIA
 					free(path);
 					free(solicitudMemoria);
@@ -938,26 +933,14 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 						cambiarEstado(pid,EXIT);
 						resultado->resultado=1;
 					}
-					// ELIMINO EL PID DE MI COLA DE JOBS
-					int j=0;
-					while(jobs[j]!=pid)
-						j++;
-					for (j; j < cantidadJobs; j++){
-						if (j+1==cantidadJobs)
-							jobs[j]=-1;
-						else
-							jobs[j]=jobs[j+1];
-					}
-					cantidadJobs--;
-					jobs=realloc(jobs,cantidadJobs*sizeof(jobs[0]));
 					// ENVIO RESPUESTA A CONSOLA
-					enviarDinamico(RESULTADOINICIARPROGRAMA,dataDeConexion->socket,resultado);
+					enviarDinamico(RESULTADOINICIARPROGRAMA,socket,resultado);
 					// LIBERO MEMORIA
 					free(respuestaSolicitud);
 					free(resultado);
 				break;
 				case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
-					recibirDinamico(FINALIZARPROGRAMA,dataDeConexion->socket,&PidAFinalizar);
+					recibirDinamico(FINALIZARPROGRAMA,socket,&PidAFinalizar);
 					finalizarPid(PidAFinalizar);
 				break;
 				case DESCONECTARCONSOLA: // SE DESCONECTA ESTA CONSOLA
@@ -965,7 +948,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 				case SOLICITUDPCB:
 					// INICIO DE HILO PLANIFICADOR
 					dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
-        			dataDePlanificacion->socket=dataDeConexion->socket;
+        			dataDePlanificacion->socket=socket;
         			pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDePlanificacion);
 					estaComunicacion=0;
         		break;
@@ -977,7 +960,6 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	}
 	// LIBERO MEMORIA
 	free(dataDeConexion);
-	free(jobs);
 }
 
 void aceptar(dataParaComunicarse * dataParaAceptar){
