@@ -367,25 +367,24 @@ void dserial_int(int * numero,int unSocket)
 	while(0>=recv(unSocket,numero,sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 }
-int dserial_string(char * unString,int unSocket)
+int dserial_string(char ** unString,int unSocket)
 {	int tamanio;
 	int  unChar;
 	int * buffer1=malloc(sizeof(int));
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
-
-	unString=realloc(unString,tamanio);
+	*unString=calloc(1,tamanio);
 	send(unSocket,buffer1, sizeof(int),0);
-	printf("%s\n","voy a mostrar caracter a caracter lo que recibo" );
-	for (unChar= 0; unChar <tamanio; unChar++)
-	{
-		while(0>=recv(unSocket, &unString[unChar],sizeof(char),0));
-		printf("%c",unString[unChar] );
-		send(unSocket,buffer1, sizeof(int),0);
+	// for (unChar= 0; unChar <tamanio; unChar++)
+	// {
+	// 	while(0>=recv(unSocket, &unString[unChar],sizeof(char),0));
+	// 	send(unSocket,buffer1, sizeof(int),0);
 
-	}
-free(buffer1);
+	// }
+	while(0>recv(unSocket,*unString,tamanio,0));
+	send(unSocket,buffer1, sizeof(int),0);
+	free(buffer1);
 return tamanio;
 }
 void serial_string(char * unString,int tamanio,int unSocket)
@@ -395,13 +394,13 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,&tamanio,sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	printf("%s\n","voy a mostrar caracter a caracter lo que envio" );
-	for (unChar= 0; unChar < tamanio; unChar++)
-	{
-		send(unSocket, &unString[unChar],sizeof(char),0);
-		printf("%c",unString[unChar] );
-		while(0>=recv(unSocket,buffer, sizeof(int),0));
-	}
+	// for (unChar= 0; unChar < tamanio; unChar++)
+	// {
+	// 	send(unSocket, &unString[unChar],sizeof(char),0);
+	// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	// }
+	send(unSocket,unString,tamanio,0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	free(buffer);
 }
 void dserial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
@@ -423,7 +422,7 @@ void dserial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, in
 	memcpy(buffer,&a,sizeof(int));
 	while(0>recv(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	dserial_string(tablaGlobalArchivos->path,unSocket); free(buffer);
+	dserial_string(&(tablaGlobalArchivos->path),unSocket); free(buffer);
 }
 
 void serial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
@@ -516,7 +515,7 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	while(0>recv(unSocket,&(pcb->indiceEtiquetas.etiquetas_size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	pcb->indiceEtiquetas.etiquetas=malloc(pcb->indiceEtiquetas.etiquetas_size);
-	dserial_string(pcb->indiceEtiquetas.etiquetas,unSocket);
+	dserial_string(&(pcb->indiceEtiquetas.etiquetas),unSocket);
 	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	pcb->indiceStack=malloc(pcb->cantidadStack*sizeof(t_stack));
@@ -548,7 +547,7 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 }
 void dserial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 {	
-	programaSalida->tamanio=dserial_string(programaSalida->elPrograma,unSocket);}
+	programaSalida->tamanio=dserial_string(&(programaSalida->elPrograma),unSocket);}
 
 void dserial_resultadoIniciarPrograma(t_resultadoIniciarPrograma* resultadoIniciarPrograma, int unSocket){
 
@@ -573,25 +572,24 @@ void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
 }
 void dserial_path(t_path * path, int unSocket)
 {	
-	path->tamanio=dserial_string(path->path,unSocket);}
+	path->tamanio=dserial_string(&(path->path),unSocket);
+}
 
 void serial_path(t_path * path, int unSocket)
 {
-	
 	serial_string(path->path,path->tamanio,unSocket); 
 }
 void dserial_mensaje(t_mensaje * mensaje, int unSocket)
 {	
-	mensaje->tamanio=dserial_string(mensaje->mensaje,unSocket);}
+	mensaje->tamanio=dserial_string(&(mensaje->mensaje),unSocket);}
 
 void serial_mensaje(t_mensaje * mensaje, int unSocket)
 {
-	printf("serial\n");
 	serial_string(mensaje->mensaje,mensaje->tamanio,unSocket); 
 }
 void dserial_linea(t_linea * linea, int unSocket)
 {	
-	linea->tamanio=dserial_string(linea->linea,unSocket);}
+	linea->tamanio=dserial_string(&(linea->linea),unSocket);}
 
 void serial_linea(t_linea * linea, int unSocket)
 {
@@ -646,7 +644,7 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 	while(0>=recv(unSocket,&(solicitud->tamanioCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	solicitud->codigo=malloc(solicitud->tamanioCodigo*sizeof(char));
-	dserial_string(solicitud->codigo,unSocket);
+	dserial_string(&(solicitud->codigo),unSocket);
 	send(unSocket,buffer, sizeof(int),0);
 
 	while(0>=recv(unSocket,&(solicitud->cantidadPaginasCodigo),sizeof(int),0));
@@ -689,7 +687,6 @@ void serial_bytes(t_almacenarBytes * bytes, int unSocket)
 	send(unSocket,&(bytes->size),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	serial_string(bytes->valor,20,unSocket);
-	printf("estoy mandando de valor %s\n", bytes->valor);
 
 	free(buffer);
 }
@@ -706,7 +703,7 @@ void dserial_bytes(t_almacenarBytes * bytes, int unSocket)
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(bytes->size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	dserial_string(bytes->valor,unSocket);
+	dserial_string(&(bytes->valor),unSocket);
 	free(buffer);
 }
 
@@ -734,7 +731,7 @@ void serial_solicitudValorVariable(t_solicitudValorVariable * solicitudValorVari
 
 void dserial_solicitudValorVariable(t_solicitudValorVariable * solicitudValorVariable, int unSocket)
 {	
-	solicitudValorVariable->tamanioNombre=dserial_string(solicitudValorVariable->variable,unSocket);}
+	solicitudValorVariable->tamanioNombre=dserial_string(&(solicitudValorVariable->variable),unSocket);}
 
 void serial_asignarVariableCompartida(t_asignarVariableCompartida * asignarVariableCompartida, int unSocket)
 {
@@ -744,7 +741,7 @@ void serial_asignarVariableCompartida(t_asignarVariableCompartida * asignarVaria
 }
 void dserial_asignarValorCompartida(t_asignarVariableCompartida * asignarVariableCompartida, int unSocket)
 {	
-	asignarVariableCompartida->tamanioNombre=dserial_string(asignarVariableCompartida->variable,unSocket);
+	asignarVariableCompartida->tamanioNombre=dserial_string(&(asignarVariableCompartida->variable),unSocket);
 	dserial_int(&(asignarVariableCompartida->valor),unSocket);}
 
 void serial_solicitudSemaforo(t_solicitudSemaforo * solicitudSemaforo, int unSocket)
@@ -755,7 +752,7 @@ void serial_solicitudSemaforo(t_solicitudSemaforo * solicitudSemaforo, int unSoc
 }
 void dserial_solicitudSemaforo(t_solicitudSemaforo * solicitudSemaforo, int unSocket)
 {	
-	solicitudSemaforo->tamanioIdentificador=dserial_string(solicitudSemaforo->identificadorSemaforo,unSocket);
+	solicitudSemaforo->tamanioIdentificador=dserial_string(&(solicitudSemaforo->identificadorSemaforo),unSocket);
 	dserial_int(&(solicitudSemaforo->estadoSemaforo),unSocket);}
 
 void serial_reservarEspacioMemoria(t_reservarEspacioMemoria * reservarEspacioMemoria, int unSocket)
@@ -787,7 +784,7 @@ void dserial_abrirArchivo(t_abrirArchivo * abrirArchivo,int unSocket){
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	abrirArchivo->tamanio=dserial_string(abrirArchivo->direccionArchivo,unSocket);
+	abrirArchivo->tamanio=dserial_string(&(abrirArchivo->direccionArchivo),unSocket);
 	while(0>recv(unSocket,&(abrirArchivo->flags),sizeof(t_banderas),0));
 	send(unSocket,buffer, sizeof(int),0);
 }
@@ -832,7 +829,7 @@ void serial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 }
 void dserial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {	
-	escribirArchivo->tamanio=dserial_string(escribirArchivo->informacion,unSocket);
+	escribirArchivo->tamanio=dserial_string(&(escribirArchivo->informacion),unSocket);
 	dserial_int(&(escribirArchivo->fdArchivo),unSocket);
 }
 void serial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
@@ -986,8 +983,8 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 {	
 	int * buffer=malloc(sizeof(int));
 	int b=1;
-	memcpy(buffer,&b,sizeof(int));int error;
-	error=send(unSocket,buffer, sizeof(int),0);
+	memcpy(buffer,&b,sizeof(int));
+	send(unSocket,buffer, sizeof(int),0);
 	t_path * path;
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:

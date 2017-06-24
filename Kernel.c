@@ -725,7 +725,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				recibirDinamico(ESCRIBIRARCHIVO,dataDePlanificacion->socket,escribirArchivo);
 				if (escribirArchivo->fdArchivo==1)
 				{
-					printf("%s\n", escribirArchivo->informacion);
 					mensaje=malloc(sizeof(t_mensaje));
 					mensaje->mensaje=calloc(1,escribirArchivo->tamanio);
 					mensaje->tamanio=escribirArchivo->tamanio;
@@ -823,6 +822,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	// JOBS
 	int * jobs;
 	int cantidadJobs=0;
+					t_solicitudMemoria * solicitudMemoria;
 	// FLAG DE ESTE HILO
 	int estaComunicacion=1;
 	// SELECCIONADOR
@@ -843,10 +843,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
 					// RECIBO EL PATH
 					path = malloc (sizeof(t_path));
-					path->path=calloc(1,150);
 					recibirDinamico(PATH, dataDeConexion->socket, path);
-					printf("mira te cuento que el tamanio que recibi del programa en kernele es de %i\n",path->tamanio );
-					printf("path del kerenele %s\n",path->path );
 					// GENERO EL PID
 					pid = ULTIMOPID;
 					pthread_mutex_lock(&mutexPid);
@@ -891,16 +888,12 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					CANTIDADPCBS++;
 					pthread_mutex_unlock(&mutexPcbs);
 					// SOLICITUD DE MEMORIA
-					t_solicitudMemoria * solicitudMemoria;
 					solicitudMemoria=malloc(sizeof(t_solicitudMemoria));
 					solicitudMemoria->tamanioCodigo=path->tamanio;
 					solicitudMemoria->codigo=path->path;
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 					solicitudMemoria->pid=pid;
-					printf("el pathpath es %s\n",path->path );
-					printf("la solicitud mnemoria codigo a enviar es%s\n",solicitudMemoria->codigo );
-					printf("sin embargo el tamanio que envio es de  %i\n",solicitudMemoria->tamanioCodigo );
 					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
 					// LO AGREGO A LA LISTA DE JOBS
 					if (cantidadJobs % BLOQUE == 0)
@@ -1009,7 +1002,7 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 			interfaz = malloc(sizeof(int));
 			// ME INFORMO SOBRE LA INTERFAZ QUE SE CONECTÓ
 			handshakeServer(socketNuevaConexion,KERNEL,interfaz);
-			if (interfaz==CONSOLA && primerIngreso==1)
+			if (*interfaz==CONSOLA && primerIngreso==1)
 			{
 				socketConsolaMensaje=socketNuevaConexion;
 				primerIngreso=0;
