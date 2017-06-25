@@ -72,7 +72,6 @@ t_estructuraADM * bloquesAdmin;
 int tamPagina;
 t_list * paginasLiberadas;
 t_marco * asignador;
-int hayQueCambiarDeAlgoritmo=0;
 unsigned int tamanioAdministrativas;
 char * mensajeError="la instruccion solicitada no existe, gracias vuelvas prontos";
 char * mensajeFinalizacionHilo="el hilo no esta, el hilo se fue, el hilo se escapa de mi vida";
@@ -119,20 +118,14 @@ printf("Configuración:\nPUERTO = %s,\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s,\nMAR
 		,PUERTO,IP_KERNEL,PUERTO_KERNEL,MARCOS,MARCO_SIZE,ENTRADAS_CACHE,CACHE_X_PROC,REEMPLAZO_CACHE,RETARDO_MEMORIA);
 
 
-int tamanioFrame = 1024 * 1024;
-void * frame = malloc(tamanioFrame);
-char * bienvenida="Bienvenido, soy la memoria. \n";
+
+
 int nbytes;
-fd_set fdParaConectar, fdParaLeer;
-char package[100];
-int fdMayor;
-int a,listenningSocket,rv,iof,i;
+
+int a,listenningSocket,rv,i;
 struct addrinfo hints;
 struct addrinfo *serverInfo;
 
-for(i=0;i<100;i++){
-	package[i]='\0';
-}
 
 memset(&hints, 0, sizeof(hints));
 hints.ai_family = AF_INET;
@@ -164,9 +157,9 @@ unData->socket = listenningSocket;
 
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
 
-bloquesAdmin=malloc(MARCOS*sizeof(t_estructuraADM)+MARCOS*sizeof(t_marco));
+bloquesAdmin=calloc(1,MARCOS*sizeof(t_estructuraADM)+MARCOS*sizeof(t_marco));
 tamanioAdministrativas=MARCOS*sizeof(t_estructuraADM);
-overflow = malloc(sizeof(t_list*) * MARCOS);
+overflow = calloc(1,sizeof(t_list*) * MARCOS);
 inicializarOverflow(MARCOS,overflow);
 int unaAdmin;
 for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) //inicializo los bloques de admin con pid-1 libre y num de pag y el hash
@@ -180,9 +173,9 @@ bloquesAdmin[unaAdmin].pagina=-1;
 marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
 int unMarco=0;
 
-memoria=calloc(MARCOS,MARCO_SIZE+1);
-cache=calloc(ENTRADAS_CACHE,MARCO_SIZE+1);
-memoriaCache=(t_estructuraCache*)malloc(sizeof(t_estructuraCache)*ENTRADAS_CACHE);
+memoria=calloc(MARCOS,MARCO_SIZE);
+cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
+memoriaCache=(t_estructuraCache*)calloc(1,sizeof(t_estructuraCache)*ENTRADAS_CACHE);
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
@@ -208,6 +201,14 @@ pthread_t hiloConsolaMemoria;
 pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
 pthread_join(hiloAceptador,NULL);
 pthread_join(hiloConsolaMemoria,NULL);
+free(memoria);free(cache);
+free(bloquesAdmin); 
+free(asignador);
+free(marcos);
+free(memoriaCache); 
+free(overflow); 
+free(unData);
+
 }
 
 
@@ -216,6 +217,7 @@ void comunicarse(int  * socket){ // aca tenemos que agregar toda la wea que es "
 fflush(stdout); 
 int * buffer;
 int unData=*socket;
+
 int a=1;
 t_seleccionador * seleccionador;
 int entrada;
@@ -229,10 +231,11 @@ t_almacenarBytes * bytesAAlmacenar;
 t_solicitudMemoria * solicitud;
 while(1) {
 	
-	seleccionador=calloc(1,sizeof(t_seleccionador));
-	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
-	switch (seleccionador->tipoPaquete){
-		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
+			seleccionador=calloc(1,8);
+			while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
+			switch (seleccionador->tipoPaquete)
+			{
+					case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 							 //esto lo vi en stack overflow no me peguen
 							solicitud=calloc(1,sizeof(t_solicitudMemoria));
 							recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
@@ -311,7 +314,7 @@ while(1) {
  											free(buffer);
  											free(peticionBytes);
  					break;
- 		/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
+ 					/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
 							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
 							 
 							 unPcb=(t_pcb *)paquete;
@@ -321,8 +324,8 @@ while(1) {
 							 free(paquete);
 							 free(unPcb);*/
 							 	
- 					break;
- 		case ALMACENARBYTES:	bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
+ 					//break;
+ 					case ALMACENARBYTES:	bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
 								bytesAAlmacenar->valor=calloc(1,20);
  								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
  								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
@@ -334,20 +337,20 @@ while(1) {
 								free(bytesAAlmacenar->valor);
 								free(bytesAAlmacenar);
  					break;
- 		case LIBERARMEMORIA:
+ 					case LIBERARMEMORIA:
  							 
  					break;
- 		/*case ACTUALIZARPCB:
+ 					/*case ACTUALIZARPCB:
  								recibirDinamico(PCB,unData,paquete);
  								unPcb=(t_pcb *)paquete;
  								free(paquete);
 								free(unPcb);
 
- 		break;*/
- 				}
-}//switch
-free(seleccionador);
-}//while	
+ 					break;*/
+ 				}free(seleccionador);
+}//while
+
+}	
 
 
 
@@ -474,18 +477,17 @@ void consolaMemoria()
 
 
 void aceptar(dataParaComunicarse * unData){
-dataParaComunicarse * dataNuevo;
-int * unBuffer=calloc(1,sizeof(int));
-dataNuevo = calloc(1,sizeof(dataParaComunicarse));
+
 int socketNuevaConexion,rv;
 pthread_t hiloComunicador;
 struct sockaddr_in addr;
 int addrlen = sizeof(addr);
 if(rv=listen(unData->socket,BACKLOG)==-1) perror("Error en el listen");
 while(1){
+	int * unBuffer=calloc(1,sizeof(int));
 	if ((socketNuevaConexion = accept(unData->socket, (struct sockaddr *)&addr,&addrlen)) == -1) perror("Error con conexion entrante");
 	else {
-		memcpy(dataNuevo,unData,sizeof(dataParaComunicarse));
+		
 		handshakeServer(socketNuevaConexion,MEMORIA,(void*)unBuffer);
 		
 		if(*unBuffer==KERNEL)
@@ -502,8 +504,9 @@ while(1){
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
 					
 			}
+			free(unBuffer);
 		pthread_create(&hiloComunicador,NULL,(void *) comunicarse,(void*)&socketNuevaConexion);
 	}
-}
+} pthread_join(hiloComunicador,NULL);
 }
 
