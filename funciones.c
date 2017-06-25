@@ -415,19 +415,19 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	}
 	free(buffer);
 }
-void dserial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
-{
-	int  unChar;
-	int * buffer1=malloc(sizeof(int));
-	int b=1;
-	memcpy(buffer1,&b,sizeof(int));
+// void dserial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
+// {
+// 	int  unChar;
+// 	int * buffer1=malloc(sizeof(int));
+// 	int b=1;
+// 	memcpy(buffer1,&b,sizeof(int));
 
-	while(0>recv(unSocket, &(tablaProcesos->descriptor),sizeof(int),0));
-	send(unSocket,buffer1, sizeof(int),0);
-	while(0>recv(unSocket, &(tablaProcesos->flag),sizeof(int),0));
-	send(unSocket,buffer1, sizeof(int),0);
-	while(0>recv(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0));free(buffer1);
-}
+// 	while(0>recv(unSocket, &(tablaProcesos->descriptor),sizeof(int),0));
+// 	send(unSocket,buffer1, sizeof(int),0);
+// 	while(0>recv(unSocket, &(tablaProcesos->flag),sizeof(int),0));
+// 	send(unSocket,buffer1, sizeof(int),0);
+// 	while(0>recv(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0));free(buffer1);
+// }
 void dserial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -456,8 +456,29 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(pcb->estado),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket,&(pcb->referenciaATabla),sizeof(int),0);
+	send(unSocket,&(pcb->rafagasEjecutadas),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->privilegiadasEjecutadas),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->paginasHeap),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->alocaciones),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->bytesAlocados),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->liberaciones),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->bytesLiberados),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	send(unSocket,&(pcb->cantidadArchivos),sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	for (i = 0; i < pcb->cantidadArchivos; i++)
+	{
+		send(unSocket,&(pcb->referenciaATabla[i].flags),sizeof(t_banderas),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		send(unSocket,&(pcb->referenciaATabla[i].globalFd),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
 	send(unSocket,&(pcb->paginasCodigo),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(pcb->posicionStack),sizeof(int),0);
@@ -510,8 +531,30 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(pcb->estado),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->referenciaATabla),sizeof(int),0));
+	while(0>recv(unSocket,&(pcb->rafagasEjecutadas),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->privilegiadasEjecutadas),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->paginasHeap),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->alocaciones),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->bytesAlocados),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->liberaciones),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->bytesLiberados),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	while(0>recv(unSocket,&(pcb->cantidadArchivos),sizeof(int),0));
+	send(unSocket,buffer, sizeof(int),0);
+	pcb->referenciaATabla=malloc(sizeof(t_tablaArchivosDeProcesos)*pcb->cantidadArchivos);
+	for (i = 0; i < pcb->cantidadArchivos; i++)
+	{
+		while(0>recv(unSocket,&(pcb->referenciaATabla[i].flags),sizeof(t_banderas),0));
+		send(unSocket,buffer, sizeof(int),0);
+		while(0>recv(unSocket,&(pcb->referenciaATabla[i].globalFd),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);		
+	}
 	while(0>recv(unSocket,&(pcb->paginasCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(pcb->posicionStack),sizeof(int),0));
@@ -607,19 +650,19 @@ void serial_linea(t_linea * linea, int unSocket)
 	
 	serial_string(linea->linea,linea->tamanio,unSocket); 
 }
-void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
-{
-	int  unChar;
-	int * buffer=malloc(sizeof(int));
-	int b=1;
-	memcpy(buffer,&b,sizeof(int));
-	send(unSocket, &(tablaProcesos->descriptor),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket, &(tablaProcesos->flag),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	send(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0);
-	free(buffer);
-}
+// void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
+// {
+// 	int  unChar;
+// 	int * buffer=malloc(sizeof(int));
+// 	int b=1;
+// 	memcpy(buffer,&b,sizeof(int));
+// 	send(unSocket, &(tablaProcesos->descriptor),sizeof(int),0);
+// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+// 	send(unSocket, &(tablaProcesos->flag),sizeof(int),0);
+// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+// 	send(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0);
+// 	free(buffer);
+// }
 void serial_solicitudMemoria(t_solicitudMemoria * solicitud,int  unSocket)
 	{	int * buffer=malloc(sizeof(int));
 	int a=1;

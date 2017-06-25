@@ -540,7 +540,7 @@ void posicionarPC(int pos){
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
 					abrirArchivo->direccionArchivo=direccion;
-					abrirArchivo->flags=flags;
+					memcpy(&(abrirArchivo->flags),&flags,sizeof(t_banderas));
 					enviarDinamico(ABRIRARCHIVO,socketKernel,abrirArchivo);
 					t_fdParaLeer * fdParaLeer= malloc(sizeof(t_fdParaLeer));
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);

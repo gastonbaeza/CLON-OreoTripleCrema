@@ -31,9 +31,8 @@ typedef struct {
 				  t_tablaGlobalArchivos;
 
 typedef struct {
-				int descriptor;
-				int flag;
-				int posicionTablaGlobal;
+				t_banderas flags;
+				int globalFd;
 				}__attribute__((packed))
 				  t_tablaArchivosDeProcesos;
 
@@ -105,7 +104,15 @@ typedef struct {
 				int pid;
 				int programCounter;
 				int estado;
-				int referenciaATabla;
+				int rafagasEjecutadas;
+				int privilegiadasEjecutadas;
+				int paginasHeap;
+				int alocaciones;
+				int bytesAlocados;
+				int liberaciones;
+				int bytesLiberados;
+				int cantidadArchivos;
+				t_tablaArchivosDeProcesos * referenciaATabla;
 				int paginasCodigo; // estaba en el TP pero no lo habiamos puesto
 				int posicionStack;
 				int cantidadInstrucciones;

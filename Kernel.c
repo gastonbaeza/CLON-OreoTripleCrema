@@ -494,7 +494,29 @@ void consola(){
 					printf("Proceso: %i\n", pid);
 					printf("\tEstado: %i\n", PCBS[i].estado);
 					printf("\tPC: %i\n", PCBS[i].programCounter);
-					printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
+					printf("\tRafagas Ejecutadas: %i\n", PCBS[i].rafagasEjecutadas);
+					printf("\tPriviliegiadas Ejecutadas: %i\n", PCBS[i].privilegiadasEjecutadas);
+					printf("\tPaginas Heap: %i\n", PCBS[i].paginasHeap);
+					printf("\tAlocaciones: %i\n", PCBS[i].alocaciones);
+					printf("\tBytes Alocados:: %i\n", PCBS[i].bytesAlocados);
+					printf("\tLiberaciones: %i\n", PCBS[i].liberaciones);
+					printf("\tBytes Liberados: %i\n", PCBS[i].bytesLiberados);
+					printf("\tCantidad de archivos: %i\n", PCBS[i].cantidadArchivos);
+					if (PCBS[i].cantidadArchivos!=0)
+					{
+						printf("\tReferencia a tabla de archivos:\n");
+						for (j = 0; j < PCBS[i].cantidadArchivos; j++)
+						{
+							printf("\t\tFD[%i]:\tPermisos: '", j+3);
+							if (PCBS[i].referenciaATabla[j].flags.creacion)
+								printf("c");
+							if (PCBS[i].referenciaATabla[j].flags.lectura)
+								printf("r");
+							if (PCBS[i].referenciaATabla[j].flags.escritura)
+								printf("w");
+							printf("'\tFD Global: %i\n",PCBS[i].referenciaATabla[j].globalFd);
+						}	
+					}
 					printf("\tPaginas de codigo: %i\n", PCBS[i].paginasCodigo);
 					printf("\tCantidad de instrucciones: %i\n", PCBS[i].cantidadInstrucciones);
 					printf("\tIndice Codigo:\n");
@@ -503,29 +525,40 @@ void consola(){
 						printf("\t\tInstruccion: %i,\tOffset: %i.\n", PCBS[i].indiceCodigo[j].start, PCBS[i].indiceCodigo[j].offset);
 					}
 					printf("\tEtiquetas Size: %i\n", PCBS[i].indiceEtiquetas.etiquetas_size);
-					printf("\tEtiquetas: %s\n", PCBS[i].indiceEtiquetas.etiquetas);
+					if (PCBS[i].indiceEtiquetas.etiquetas_size!=0)
+					{
+						printf("\tEtiquetas: \n\t%s\n", PCBS[i].indiceEtiquetas.etiquetas);
+					}
 					printf("\tPosicion stack: %i\n", PCBS[i].posicionStack);
 					printf("\tCantidad de stack: %i\n", PCBS[i].cantidadStack);
 					printf("\tIndice Stack:\n");
 					for (j = 0; j < PCBS[i].cantidadStack; j++)
 					{
-						printf("\tCantidad Args: %i\n", PCBS[i].indiceStack[j].cantidadArgumentos);
-						printf("\tArgumentos:\n");
-						for (k = 0; k < PCBS[i].indiceStack[j].cantidadArgumentos; k++)
+						printf("\t[%i]\n", j);
+						printf("\t\tCantidad Args: %i\n", PCBS[i].indiceStack[j].cantidadArgumentos);
+						if (PCBS[i].indiceStack[j].cantidadArgumentos!=0)
 						{
-							printf("\t\tId: %c,\t",PCBS[i].indiceStack[j].argumentos[k].id);printf("Pagina: %i,\t",PCBS[i].indiceStack[j].argumentos[k].pagina);printf("Offset: %i,\t",PCBS[i].indiceStack[j].argumentos[k].offset);printf("Size: %i.\n",PCBS[i].indiceStack[j].argumentos[k].size);
+							printf("\t\tArgumentos:\n");
+							for (k = 0; k < PCBS[i].indiceStack[j].cantidadArgumentos; k++)
+							{
+								printf("\t\tId: %c,\t",PCBS[i].indiceStack[j].argumentos[k].id);printf("Pagina: %i,\t",PCBS[i].indiceStack[j].argumentos[k].pagina);printf("Offset: %i,\t",PCBS[i].indiceStack[j].argumentos[k].offset);printf("Size: %i.\n",PCBS[i].indiceStack[j].argumentos[k].size);
+							}
 						}
-						printf("\tCantidad Vars: %i\n", PCBS[i].indiceStack[j].cantidadVariables);
-						printf("\tVariables:\n");
-						for (k = 0; k < PCBS[i].indiceStack[j].cantidadVariables; k++)
+						printf("\t\tCantidad Vars: %i\n", PCBS[i].indiceStack[j].cantidadVariables);
+						if (PCBS[i].indiceStack[j].cantidadVariables!=0)
 						{
-							printf("\t\tId: %c,\t",PCBS[i].indiceStack[j].variables[k].id);printf("Pagina: %i,\t",PCBS[i].indiceStack[j].variables[k].pagina);printf("Offset: %i,\t",PCBS[i].indiceStack[j].variables[k].offset);printf("Size: %i.\n",PCBS[i].indiceStack[j].variables[k].size);
+							printf("\t\tVariables:\n");
+							for (k = 0; k < PCBS[i].indiceStack[j].cantidadVariables; k++)
+							{
+								printf("\t\tId: %c,\t",PCBS[i].indiceStack[j].variables[k].id);printf("Pagina: %i,\t",PCBS[i].indiceStack[j].variables[k].pagina);printf("Offset: %i,\t",PCBS[i].indiceStack[j].variables[k].offset);printf("Size: %i.\n",PCBS[i].indiceStack[j].variables[k].size);
+							}
 						}
-						printf("\tPosicion Retorno: %i\n", PCBS[i].indiceStack[j].posRetorno);
-						printf("\tVariable Retorno:\n");
-						printf("Pagina: %i,\t",PCBS[i].indiceStack[j].varRetorno.pagina);printf("Offset: %i,\t",PCBS[i].indiceStack[j].varRetorno.offset);printf("Size: %i.\n",PCBS[i].indiceStack[j].varRetorno.size);
-						
-						
+						if (j!=0)
+						{
+							printf("\t\tPosicion Retorno: %i\n", PCBS[i].indiceStack[j].posRetorno);
+							printf("\t\tVariable Retorno:\n");
+							printf("\t\t\tPagina: %i,\t",PCBS[i].indiceStack[j].varRetorno.pagina);printf("Offset: %i,\t",PCBS[i].indiceStack[j].varRetorno.offset);printf("Size: %i.\n",PCBS[i].indiceStack[j].varRetorno.size);
+						}	
 					}
 					printf("\tExit Code: %i\n", PCBS[i].exitCode);
 				}
@@ -703,7 +736,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			// FILE SYSTEM
 			case ABRIRARCHIVO: // CPU ABRE ARCHIVO
 				abrirArchivo=malloc(sizeof(t_abrirArchivo));
-				abrirArchivo->direccionArchivo=calloc(1,1);
 				recibirDinamico(ABRIRARCHIVO,dataDePlanificacion->socket,abrirArchivo);
 				free(abrirArchivo);
 			break;
@@ -724,7 +756,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			break;
 			case ESCRIBIRARCHIVO: // CPU ESCRIBE EN UN ARCHIVO
 				escribirArchivo=malloc(sizeof(t_escribirArchivo));
-				escribirArchivo->informacion=calloc(1,1);
 				recibirDinamico(ESCRIBIRARCHIVO,dataDePlanificacion->socket,escribirArchivo);
 				if (escribirArchivo->fdArchivo==1)
 				{
@@ -868,6 +899,14 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pcb=malloc(sizeof(t_pcb));
 					pcb->pid = pid;
 					pcb->estado = NEW;
+					pcb->rafagasEjecutadas=0;
+					pcb->privilegiadasEjecutadas=0;
+					pcb->paginasHeap=0;
+					pcb->alocaciones=0;
+					pcb->bytesAlocados=0;
+					pcb->liberaciones=0;
+					pcb->bytesLiberados=0;
+					pcb->cantidadArchivos=0;
 					pcb->programCounter=0;
 					pcb->paginasCodigo=cantPaginasCodigo;
 					pcb->posicionStack=0;
