@@ -60,6 +60,7 @@ char *IP_KERNEL;
 char * PUERTO_KERNEL;
 char* IP;
 char* PUERTO;
+int receptorListo=0;
 
 void programa(t_path * path_ansisop){ 
 	struct addrinfo hints;
@@ -74,7 +75,7 @@ void programa(t_path * path_ansisop){
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
-	handshakeCliente(serverSocket,2,unBuffer);
+	handshakeCliente(serverSocket,CONSOLA,unBuffer);
 	enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
 	free(path_ansisop->path);
 	free(path_ansisop);
@@ -84,11 +85,26 @@ void programa(t_path * path_ansisop){
 	
 	
 	
-void * paquete;
-int recibir;
+}
+
+
+void receptor(){
+	struct addrinfo hints;
+	struct addrinfo *kernel;
+	int * unBuffer=malloc(sizeof(int));
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	int  serverSocket;
+	int rv; 
+	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
+	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
+
+	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
+	handshakeCliente(serverSocket,CONSOLA,unBuffer);
+	receptorListo=1;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 t_mensaje * unMensaje;
-int * unPid;
 t_resultadoIniciarPrograma * resultado;
 while(1) {
 	resultado=malloc(sizeof(t_resultadoIniciarPrograma));
@@ -115,7 +131,11 @@ switch (seleccionador->tipoPaquete){
 		default: ; break;
 
 
-}}}
+}}
+
+}
+
+
 
 
 
@@ -133,12 +153,14 @@ int main(){
 
 	////////////////////////////////////////
 
-	pthread_t  hiloPrograma;
+	pthread_t  hiloPrograma,hiloReceptor;
 	int rv;
-IP=malloc(13);
-PUERTO=malloc(10);
-strcpy(IP,IP_KERNEL);
-strcpy(PUERTO,PUERTO_KERNEL);
+	IP=malloc(13);
+	PUERTO=malloc(10);
+	strcpy(IP,IP_KERNEL);
+	strcpy(PUERTO,PUERTO_KERNEL);
+	pthread_create(&hiloReceptor,NULL,(void*)receptor,NULL);
+	while(!receptorListo);
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 	memset(&hints, 0, sizeof(hints));
@@ -158,7 +180,6 @@ strcpy(PUERTO,PUERTO_KERNEL);
 	int * buffer=malloc(sizeof(int));
 	handshakeCliente(serverSocket,CONSOLA,buffer);
 	
-
 pthread_mutex_init(&semaforoProcesos,NULL);
 int cancelarThread=0;
 int PIDS[list_size(procesos)];
@@ -193,7 +214,7 @@ while(cancelarThread==0){
 							 //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
 							prog= obtenerPrograma(path);
 							path_ansisop->path=prog->elPrograma;
-							path_ansisop->tamanio=strlen(path_ansisop->path);
+							path_ansisop->tamanio=prog->tamanio;
 							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
 							free(path);
 							

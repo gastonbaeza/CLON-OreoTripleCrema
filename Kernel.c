@@ -589,6 +589,7 @@ void quantum(int * flagQuantum){
 }
 
 void planificar(dataParaComunicarse * dataDePlanificacion){
+	printf("en planificar\n");
 	int pid;
 	t_pcb * pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
@@ -637,6 +638,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						while(!hayProcesosReady()){
 							rellenarColaReady();
 						}
+						printf("ya hay ready\n");
 						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 						pid = COLAREADY[0];
 						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
@@ -652,6 +654,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						// CAMBIO ESTADO A EJECUTANDO
 						cambiarEstado(pid,EXEC);
 						// LE MANDO EL PCB AL CPU
+						printf("para enviar\n");
 						enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
 						cpuLibre=0;
 						if (ALGORITMO == "RR")
@@ -729,7 +732,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 					mensaje->mensaje=calloc(1,escribirArchivo->tamanio);
 					mensaje->tamanio=escribirArchivo->tamanio;
 					mensaje->mensaje=escribirArchivo->informacion;
-					enviarDinamico(MENSAJE,SOCKETSCONSOLA[pcb->pid],mensaje);
+					enviarDinamico(MENSAJE,socketConsolaMensaje,mensaje);
 					free(mensaje);
 				}
 				free(escribirArchivo);
@@ -934,7 +937,7 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 						resultado->resultado=1;
 					}
 					// ENVIO RESPUESTA A CONSOLA
-					enviarDinamico(RESULTADOINICIARPROGRAMA,socket,resultado);
+					enviarDinamico(RESULTADOINICIARPROGRAMA,socketConsolaMensaje,resultado);
 					// LIBERO MEMORIA
 					free(respuestaSolicitud);
 					free(resultado);
@@ -958,8 +961,6 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 		    }
 		free(seleccionador);
 	}
-	// LIBERO MEMORIA
-	free(dataDeConexion);
 }
 
 void aceptar(dataParaComunicarse * dataParaAceptar){
@@ -989,12 +990,14 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 				socketConsolaMensaje=socketNuevaConexion;
 				primerIngreso=0;
 			}
-			// CONFIGURACION E INICIO DE HILO COMUNICADOR
-			dataParaConexion = malloc(sizeof(dataParaComunicarse));
-			dataParaConexion->interfaz=*interfaz; 
-			dataParaConexion->socket=socketNuevaConexion;
-			pthread_create(&hiloComunicador,NULL,(void *)comunicarse,dataParaConexion);
-			free(interfaz);
+			// CONFIGURACION E INICIO DE HILO 
+			else {
+						dataParaConexion = malloc(sizeof(dataParaComunicarse));
+						dataParaConexion->interfaz=*interfaz; 
+						dataParaConexion->socket=socketNuevaConexion;
+						pthread_create(&hiloComunicador,NULL,(void *)comunicarse,dataParaConexion);
+						}
+						free(interfaz);
 		}
 	}
 	// LIBERO MEMORIA

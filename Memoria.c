@@ -101,7 +101,7 @@ t_config *CFG;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
 void consolaMemoria();
-void comunicarse(dataParaComunicarse * estructura);
+void comunicarse(int * socket);
 void aceptar(dataParaComunicarse * unData);
 int main(){
 
@@ -180,8 +180,8 @@ bloquesAdmin[unaAdmin].pagina=-1;
 marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
 int unMarco=0;
 
- memoria=calloc(MARCOS,MARCO_SIZE+1);
- cache=calloc(ENTRADAS_CACHE,MARCO_SIZE+1);
+memoria=calloc(MARCOS,MARCO_SIZE+1);
+cache=calloc(ENTRADAS_CACHE,MARCO_SIZE+1);
 memoriaCache=(t_estructuraCache*)malloc(sizeof(t_estructuraCache)*ENTRADAS_CACHE);
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
@@ -212,27 +212,25 @@ pthread_join(hiloConsolaMemoria,NULL);
 
 
 
-void comunicarse(dataParaComunicarse * estructura){ // aca tenemos que agregar toda la wea que es "global"
+void comunicarse(int  * socket){ // aca tenemos que agregar toda la wea que es "global"
 fflush(stdout); 
- int unData=0;
- unData=estructura->socket;
-free(estructura);
 int * buffer;
+int unData=*socket;
 int a=1;
-t_seleccionador * seleccionador=calloc(1,sizeof(t_seleccionador));
+t_seleccionador * seleccionador;
 int entrada;
 void * paquete;
 int paginasRequeridas;
 int stackRequeridas;
 int indice;
 int test;
+t_peticionBytes * peticionBytes;
+t_almacenarBytes * bytesAAlmacenar;
+t_solicitudMemoria * solicitud;
 while(1) {
 	
-	
+	seleccionador=calloc(1,sizeof(t_seleccionador));
 	while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
-	t_peticionBytes * peticionBytes;
-	t_almacenarBytes * bytesAAlmacenar;
-	t_solicitudMemoria * solicitud;
 	switch (seleccionador->tipoPaquete){
 		case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 							 //esto lo vi en stack overflow no me peguen
@@ -261,8 +259,7 @@ while(1) {
  						
  							enviarDinamico(SOLICITUDMEMORIA,socketKernel, (void *) solicitud);
  							
- 							
- 							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,marcos,solicitud->pid,solicitud->codigo,MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
+ 							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
  							if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
  							else printf("%s\n","algo malo paso en la reserva" );
  							free(solicitud->codigo);
@@ -300,7 +297,7 @@ while(1) {
  											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS); printf("el indice en memoria: %i\n",indice );
  											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
  											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
- 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,&marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+ 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
  										}	
  											buffer=calloc(1,sizeof(int));
@@ -349,7 +346,7 @@ while(1) {
  		break;*/
  				}
 }//switch
-
+free(seleccionador);
 }//while	
 
 
@@ -505,8 +502,7 @@ while(1){
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
 					
 			}
-		dataNuevo->socket=socketNuevaConexion;
-		pthread_create(&hiloComunicador,NULL,(void *) comunicarse,dataNuevo);
+		pthread_create(&hiloComunicador,NULL,(void *) comunicarse,(void*)&socketNuevaConexion);
 	}
 }
 }

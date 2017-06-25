@@ -165,7 +165,7 @@ int buscarEntradaMasAntigua(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE
 	}
 return entradaMasAntigua;
 }
-void escribirEnCache(int unPid, int pagina,void **buffer,t_estructuraCache *memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
 {	
 	int entrada;
 	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)));
@@ -184,8 +184,8 @@ void escribirEnCache(int unPid, int pagina,void **buffer,t_estructuraCache *memo
 	} 
 	printf("antes sttrcpy\n");
 	printf("entrada: %i.\n", entrada);
-	printf("*buffer: %s.\n", (char*)*buffer);
-	memmove((memoriaCache[entrada]).contenido,*buffer,tamanio+1);
+	printf("buffer: %s.\n", (char*)buffer);
+	memmove((memoriaCache[entrada]).contenido,buffer,tamanio+1);
 	printf("qwe\n");
 	// printf("memoriaCache[entrada].contenido: %s.\n",(char*)(memoriaCache[entrada]).contenido );
 	printf("despues strcpy\n");
@@ -221,7 +221,7 @@ void almacenarBytes(int unPid, int pagina,char * contenido,t_marco * marcos, int
 	int indice=calcularPosicion(unPid,pagina,MARCOS); printf("el indice en almacenar bytes es: %i\n",indice );
 	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); printf("la entrada en almacenarbytes de buscar overflow : %i\n",entrada );
 	strcpy((char*)(marcos[entrada].numeroPagina+offset),contenido);
-	escribirEnCache(unPid,pagina,&marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+	escribirEnCache(unPid,pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
  								
 }
 
@@ -388,8 +388,11 @@ int dserial_string(char ** unString,int unSocket)
 	// 	send(unSocket,buffer1, sizeof(int),0);
 
 	// }
+	if (tamanio>0)
+	{
 	while(0>recv(unSocket,*unString,tamanio,0));
 	send(unSocket,buffer1, sizeof(int),0);
+	}
 	free(buffer1);
 return tamanio;
 }
@@ -405,8 +408,11 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	// 	send(unSocket, &unString[unChar],sizeof(char),0);
 	// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	// }
+	if (tamanio>0)
+	{
 	send(unSocket,unString,tamanio,0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
 	free(buffer);
 }
 void dserial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
@@ -520,7 +526,6 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	}
 	while(0>recv(unSocket,&(pcb->indiceEtiquetas.etiquetas_size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	pcb->indiceEtiquetas.etiquetas=malloc(pcb->indiceEtiquetas.etiquetas_size);
 	dserial_string(&(pcb->indiceEtiquetas.etiquetas),unSocket);
 	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
@@ -1094,11 +1099,10 @@ t_programaSalida * obtenerPrograma( char * unPath){
 	else{
 		t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
 		fseek (punteroAlArchivo, 0, SEEK_END);
-		estructuraPrograma->tamanio = ftell (punteroAlArchivo); printf("el tamanio adentro dfel programa%i\n", estructuraPrograma->tamanio );
+		estructuraPrograma->tamanio = ftell (punteroAlArchivo);
 		fseek (punteroAlArchivo, 0, SEEK_SET);
 		estructuraPrograma->elPrograma = calloc(1,estructuraPrograma->tamanio);
 		fread (estructuraPrograma->elPrograma, 1, estructuraPrograma->tamanio, punteroAlArchivo);
-		 printf("tamaño del string de fread %i\n",strlen(estructuraPrograma->elPrograma) );
 		fclose (punteroAlArchivo);
 		return estructuraPrograma;
 	
@@ -1174,13 +1178,11 @@ int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) 
     return -1;
 }
 
-int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco * marcos,int unPid,char* codigo, int  MARCO_SIZE, t_list**overflow,int ENTRADAS_CACHE,t_estructuraCache * memoriaCache)
+int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco ** marcos,int tamanioCodigo,int unPid,char** codigo, int  MARCO_SIZE, t_list**overflow,int ENTRADAS_CACHE,t_estructuraCache * memoriaCache)
  {    int indice;
      int unFrame=0;
      int * marco=calloc(1,sizeof(int));
-     char * copiador=calloc(1,MARCO_SIZE*sizeof(char)+1); 
      int paginasCargadas=0;
-     int tamanioCodigo=strlen(codigo);
      int tamanioAPegar=MARCO_SIZE*sizeof(char);
      int acumulador=0;
      printf("tamanio cod en reservar %i\n",tamanioCodigo );
@@ -1188,7 +1190,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   
      	indice=calcularPosicion(unPid,unFrame,MARCOS);
-         *marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); 
+         *marco=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); 
          if(*marco!=-1)
          {
          	agregarSiguienteEnOverflow(indice,marco,overflow);
@@ -1201,14 +1203,13 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 	    				{
 	    				tamanioAPegar=tamanioCodigo-acumulador;
 	    				}
-	    			memcpy(copiador,codigo+acumulador,tamanioAPegar);
 	    			printf("quisimama\n");
 	    			printf("tamanioAPegar: %i.\n", tamanioAPegar);
 	    			printf("marco: %i.\n", *marco);
-					printf("el contenido del frame es :%.*s\n",MARCO_SIZE,(char*)marcos[*marco].numeroPagina);
-					memcpy((char*)marcos[*marco].numeroPagina,copiador,tamanioAPegar);
+					memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador,tamanioAPegar);
+					printf("qwedsa\n");
 					printf("antes escribirEnCache\n");
-					escribirEnCache(unPid,unFrame,(void**)&copiador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar);
+					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar);
 					printf("despues escribirEnCache\n");
 					acumulador+=tamanioAPegar*sizeof(char);
 	    		}
@@ -1216,7 +1217,6 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
     	} else {return -1;}
     	paginasCargadas++;
      }
-     free(copiador);
      free(marco);
      return 1;
     }
