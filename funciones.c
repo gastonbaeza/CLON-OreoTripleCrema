@@ -82,6 +82,8 @@
 #define PCBFINALIZADOPORCONSOLA 56
 #define SOLICITUDSEMWAIT 57
 #define VALIDARARHIVO 58
+#define FINALIZARPORERROR 59
+#define PCBERROR 60
 
 void horaYFechaActual (char horaActual[19]) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
@@ -428,23 +430,23 @@ void serial_string(char * unString,int tamanio,int unSocket)
 // 	send(unSocket,buffer1, sizeof(int),0);
 // 	while(0>recv(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0));free(buffer1);
 // }
-void dserial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
-{	int * buffer=malloc(sizeof(int));
-	int a=1;
-	memcpy(buffer,&a,sizeof(int));
-	while(0>recv(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0));
-	send(unSocket,buffer, sizeof(int),0);
-	dserial_string(&(tablaGlobalArchivos->path),unSocket); free(buffer);
-}
+// void dserial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
+// {	int * buffer=malloc(sizeof(int));
+// 	int a=1;
+// 	memcpy(buffer,&a,sizeof(int));
+// 	while(0>recv(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0));
+// 	send(unSocket,buffer, sizeof(int),0);
+// 	dserial_string(&(tablaGlobalArchivos->path),unSocket); free(buffer);
+// }
 
-void serial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
-{	int * buffer=malloc(sizeof(int));
-	int a=1;
-	memcpy(buffer,&a,sizeof(int));
-	send(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	serial_string(tablaGlobalArchivos->path,tablaGlobalArchivos->tamanioPath,unSocket); free(buffer);
-}
+// void serial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
+// {	int * buffer=malloc(sizeof(int));
+// 	int a=1;
+// 	memcpy(buffer,&a,sizeof(int));
+// 	send(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0);
+// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+// 	serial_string(tablaGlobalArchivos->path,tablaGlobalArchivos->tamanioPath,unSocket); free(buffer);
+// }
 void serial_pcb(t_pcb * pcb, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -477,6 +479,8 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 		send(unSocket,&(pcb->referenciaATabla[i].flags),sizeof(t_banderas),0);
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
 		send(unSocket,&(pcb->referenciaATabla[i].globalFd),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		send(unSocket,&(pcb->referenciaATabla[i].cursor),sizeof(int),0);
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
 	}
 	send(unSocket,&(pcb->paginasCodigo),sizeof(int),0);
@@ -553,7 +557,9 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 		while(0>recv(unSocket,&(pcb->referenciaATabla[i].flags),sizeof(t_banderas),0));
 		send(unSocket,buffer, sizeof(int),0);
 		while(0>recv(unSocket,&(pcb->referenciaATabla[i].globalFd),sizeof(int),0));
-		send(unSocket,buffer, sizeof(int),0);		
+		send(unSocket,buffer, sizeof(int),0);
+		while(0>recv(unSocket,&(pcb->referenciaATabla[i].cursor),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);			
 	}
 	while(0>recv(unSocket,&(pcb->paginasCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
@@ -1012,11 +1018,11 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path*)paquete,unSocket);
 		 break;
-		 case ESPERONOVEDADES: 
+		 case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION:
 		 break;
 		 case CONTINUAR:
 		 break;
-		 case PCBFINALIZADO:
+		 case PCBFINALIZADO: case PCBFINALIZADOPORCONSOLA: case PCBERROR: case PCBQUANTUM: case PCBBLOQUEADO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_pcb((t_pcb *)paquete,unSocket);
 		 break;
@@ -1065,7 +1071,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case PCB:	
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
-		case PCBFINALIZADO:	
+		case PCBFINALIZADO:	case PCBFINALIZADOPORCONSOLA: case PCBERROR: case PCBQUANTUM: case PCBBLOQUEADO:
 					dserial_pcb((t_pcb *)paquete,unSocket);
 		break;
 		case RESULTADOINICIARPROGRAMA:
@@ -1116,7 +1122,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case VALIDARARHIVO:
 		 	dserial_path((t_path*)paquete,unSocket);
 		break;
-		case ESPERONOVEDADES: 
+		case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION:
 		break;
 		case CONTINUAR:
 		break;
