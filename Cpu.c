@@ -50,6 +50,8 @@
 #define PCBQUANTUM 55
 #define PCBFINALIZADOPORCONSOLA 56
 #define SOLICITUDSEMWAIT 57
+#define FINALIZARPORERROR 59
+#define PCBERROR 60
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -542,6 +544,8 @@ void posicionarPC(int pos){
 					abrirArchivo->direccionArchivo=direccion;
 					memcpy(&(abrirArchivo->flags),&flags,sizeof(t_banderas));
 					enviarDinamico(ABRIRARCHIVO,socketKernel,abrirArchivo);
+					enviarDinamico(PCB,socketKernel,pcb);
+					recibirDinamico(PCB,socketKernel,pcb);
 					t_fdParaLeer * fdParaLeer= malloc(sizeof(t_fdParaLeer));
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
 					
@@ -580,8 +584,9 @@ void posicionarPC(int pos){
 					t_cerrarArchivo * cerrarArchivo;
 					cerrarArchivo=malloc(sizeof(t_cerrarArchivo));
 					cerrarArchivo->descriptorArchivo=descriptor_archivo;
-					
-					enviarDinamico(CERRARARCHIVO,socketKernel,cerrarArchivo);}
+					enviarDinamico(CERRARARCHIVO,socketKernel,cerrarArchivo);
+					enviarDinamico(PCB,socketKernel,pcb);
+				}
 		/*
 		 * MOVER CURSOR DE ARCHIVO
 		 *
@@ -730,6 +735,8 @@ while(1) {
 	
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
+							liberarContenidoPcb();
+ 		
 							recibirDinamico(PCB,socketKernel,pcb);
 
 							printf("Proceso %i:\n", pcb->pid);
@@ -780,6 +787,10 @@ while(1) {
 
  		case FINALIZARPROCESO: 
  								enviarDinamico(PCBFINALIZADOPORCONSOLA,socketKernel,pcb);
+ 								liberarContenidoPcb();
+ 		break;
+ 		case FINALIZARPORERROR: 
+ 								enviarDinamico(PCBERROR,socketKernel,pcb);
  								liberarContenidoPcb();
  		break;
  		case FINQUANTUM: 

@@ -47,6 +47,8 @@
 #define FINALIZARPROCESO 53
 #define PCBBLOQUEADO 54
 #define PCBQUANTUM 55
+#define FINALIZARPORERROR 59
+#define PCBERROR 60
 #define PCBFINALIZADOPORCONSOLA 56
 
 	#define ARRAYPIDS 51
@@ -65,11 +67,10 @@
 #define FALSE 0
 #define OK 1
 #define FAIL 0
-#define BLOQUE 5
 #define NEW 0
 #define READY 1
 #define EXEC 2
-#define BLOCK 3
+#define BLOCKED 3
 #define EXIT 4
 	#define MENSAJE 7
 
@@ -78,6 +79,12 @@
 #define SOLICITUDSEMWAIT 57
 // VARIABLES GLOBALES
 char * ALGORITMO;
+char ** SEM_IDS;
+char ** SEM_INIT;
+char ** SHARED_VARS;
+int * SHARED_VALUES;
+int ** BLOQUEADOSPORSEM;
+int * CANTIDADBLOCKPORSEM;
 int PLANIFICACIONHABILITADA=1;
 int PLANIFICACIONPAUSADA=0;
 int COMUNICACIONHABILITADA=1;
@@ -102,6 +109,8 @@ int * COLABLOCK;
 int CANTIDADEXITS=0;
 int * SOCKETSCONSOLA;
 int CANTIDADSOCKETSCONSOLA=0;
+int CANTIDADVARS=0;
+int CANTIDADSEM=0;
 // SEMAFOROS
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
@@ -114,11 +123,16 @@ pthread_mutex_t mutexSocketsConsola;
 pthread_mutex_t mutexGradoMultiprog;
 pthread_mutex_t mutexPausaPlanificacion;
 pthread_mutex_t mutexProcesosReady;
+pthread_mutex_t mutexTablaArchivos;
+pthread_mutex_t mutexCompartidas;
+pthread_mutex_t mutexSemaforos;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
 int primerIngreso=1;
 int socketConsolaMensaje;
+int proximoFd=0;
+t_tablaGlobalArchivos * tablaArchivos;
 
 
 int estaBlocked(int pid){
@@ -192,8 +206,9 @@ void rellenarColaReady(){
 			if (CANTIDADNEWS>0)
 			{
 				pthread_mutex_lock(&mutexColaReady);
-				COLAREADY[primerReadyLibre+i]=COLANEW[0];
 				CANTIDADREADYS++;
+				COLAREADY=realloc(COLAREADY,CANTIDADREADYS);
+				COLAREADY[primerReadyLibre+i]=COLANEW[0];
 				pthread_mutex_unlock(&mutexColaReady);
 				pthread_mutex_lock(&mutexColaNew);
 				for (j = 0; j < CANTIDADNEWS; j++)
@@ -274,7 +289,7 @@ int finalizarPid(int pid){
 			COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
 			pthread_mutex_unlock(&mutexColaExec);
 		break;
-		case BLOCK:
+		case BLOCKED:
 			// BUSCO LA POSICION EN LA COLA DE BLOCK
 			while(COLABLOCK[index]!=pid)
 				index++;
@@ -300,10 +315,9 @@ int finalizarPid(int pid){
 	pthread_mutex_unlock(&mutexPcbs);
 	// LO AGREGO A LA COLA DE EXIT
 	pthread_mutex_lock(&mutexColaExit);
-	if (CANTIDADEXITS % BLOQUE == 0)
-		COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
-	COLAEXIT[CANTIDADEXITS]=pid;
 	CANTIDADEXITS++;
+	COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS) * sizeof(COLAEXIT[0]));
+	COLAEXIT[CANTIDADEXITS-1]=pid;
 	pthread_mutex_unlock(&mutexColaExit);
 	return 1;
 }
@@ -623,7 +637,8 @@ void quantum(int * flagQuantum){
 
 void planificar(dataParaComunicarse * dataDePlanificacion){
 	printf("en planificar\n");
-	int pid;
+	int pid,estaba,_pid;
+	int rv,i,j,globalFd;
 	t_pcb * pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
 	int flagQuantum;
@@ -644,6 +659,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_escribirArchivo * escribirArchivo;
 	t_leerArchivo * leerArchivo;
 	t_mensaje * mensaje;
+	t_fdParaLeer * fd;
 	while(PLANIFICACIONHABILITADA)
 	{
 		while(PLANIFICACIONPAUSADA);// SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
@@ -671,7 +687,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						while(!hayProcesosReady()){
 							rellenarColaReady();
 						}
-						printf("ya hay ready\n");
 						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 						pid = COLAREADY[0];
 						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
@@ -679,15 +694,13 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						pthread_mutex_unlock(&mutexProcesosReady);
 						// LO PONGO EN LA COLA DE EJECUTANDO
 						pthread_mutex_lock(&mutexColaExec);
-						if (CANTIDADEXECS % BLOQUE == 0)
-							COLAEXEC = realloc (COLAEXEC,(CANTIDADEXECS+BLOQUE) * sizeof(COLAEXEC[0]));
-						COLAEXEC[CANTIDADEXECS]=pid;
 						CANTIDADEXECS++;
+						COLAEXEC = realloc (COLAEXEC,(CANTIDADEXECS) * sizeof(COLAEXEC[0]));
+						COLAEXEC[CANTIDADEXECS-1]=pid;
 						pthread_mutex_unlock(&mutexColaExec);
 						// CAMBIO ESTADO A EJECUTANDO
 						cambiarEstado(pid,EXEC);
 						// LE MANDO EL PCB AL CPU
-						printf("para enviar\n");
 						enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
 						cpuLibre=0;
 						if (ALGORITMO == "RR")
@@ -699,14 +712,24 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			// VARIABLES COMPARTIDAS
 			case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
 				solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
-				solicitudVariable->variable=calloc(1,1);
 				recibirDinamico(SOLICITUDVALORVARIABLE,dataDePlanificacion->socket,solicitudVariable);
+				for (i = 0; i < CANTIDADVARS; i++)
+					if (!strcmp(SHARED_VARS[i],solicitudVariable->variable))
+						send(dataDePlanificacion->socket,&(SHARED_VALUES[i]),sizeof(int),0);
 				free(solicitudVariable);
 			break;
 			case ASIGNARVARIABLECOMPARTIDA: // CPU QUIERE ASIGNAR UN VALOR A UNA VARIABLE COMPARTIDA
 				asignarVariable=malloc(sizeof(t_asignarVariableCompartida));
-				asignarVariable->variable=calloc(1,1);
 				recibirDinamico(ASIGNARVARIABLECOMPARTIDA,dataDePlanificacion->socket,asignarVariable);
+				for (i = 0; i < CANTIDADVARS; i++)
+				{
+					if (!strcmp(SHARED_VARS[i],asignarVariable->variable))
+					{
+						pthread_mutex_lock(&mutexCompartidas);
+						SHARED_VALUES[i]=asignarVariable->valor;
+						pthread_mutex_unlock(&mutexCompartidas);
+					}
+				}
 				free(asignarVariable);
 			break;
 			// SEMAFOROS
@@ -714,12 +737,108 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
 				solicitudSemaforo->identificadorSemaforo=calloc(1,1);
 				recibirDinamico(SOLICITUDSEM,dataDePlanificacion->socket,solicitudSemaforo);
+				for (i = 0; i < CANTIDADSEM; i++)
+				{
+					if (!strcmp(SEM_IDS[i],solicitudSemaforo->identificadorSemaforo))
+					{
+						if (SEM_INIT[i]>0)
+						{
+							pthread_mutex_lock(&mutexSemaforos);
+							SEM_INIT[i]--;
+							pthread_mutex_unlock(&mutexSemaforos);
+						}
+						else
+						{
+							pthread_mutex_lock(&mutexColaBlock);
+							CANTIDADBLOCKS++;
+							COLABLOCK = realloc (COLABLOCK,(CANTIDADBLOCKS) * sizeof(COLABLOCK[0]));
+							COLABLOCK[CANTIDADBLOCKS-1]=pid;
+							pthread_mutex_unlock(&mutexColaBlock);
+							pthread_mutex_lock(&mutexSemaforos);
+							CANTIDADBLOCKPORSEM[i]++;
+							BLOQUEADOSPORSEM[i]=realloc(BLOQUEADOSPORSEM[i],CANTIDADBLOCKPORSEM[i]*sizeof(int));
+							(BLOQUEADOSPORSEM[i])[CANTIDADBLOCKPORSEM[i]-1]=pid;
+							pthread_mutex_unlock(&mutexSemaforos);
+							j=0;
+							while(COLAEXEC[j]!=_pid)
+								j++;
+							for (j; j < CANTIDADEXECS; j++)
+							{
+								pthread_mutex_lock(&mutexColaExec);
+								if (j+1==CANTIDADEXECS)
+									COLAEXEC[j]=-1;
+								else
+									COLAEXEC[j]=COLAEXEC[j+1];
+								pthread_mutex_unlock(&mutexColaExec);
+							}
+							pthread_mutex_lock(&mutexColaExec);
+							CANTIDADEXECS--;
+							COLAEXEC=realloc(COLAEXEC,CANTIDADEXECS*sizeof(COLAEXEC[0]));
+							pthread_mutex_unlock(&mutexColaExec);
+							pthread_mutex_lock(&mutexPcbs);
+							PCBS[_pid].estado=BLOCKED;
+							pthread_mutex_unlock(&mutexPcbs);
+
+						}
+					}
+				}
 				free(solicitudSemaforo);
 			break;
 			case SOLICITUDSEMSIGNAL: // CPU ESTA HACIENDO SIGNAL (VER ESTRUCTURA)
 				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
 				solicitudSemaforo->identificadorSemaforo=calloc(1,1);
 				recibirDinamico(SOLICITUDSEM,dataDePlanificacion->socket,solicitudSemaforo);
+				for (i = 0; i < CANTIDADSEM; i++)
+				{
+					if (!strcmp(SEM_IDS[i],solicitudSemaforo->identificadorSemaforo))
+					{
+						if(CANTIDADBLOCKPORSEM[i]!=0)
+						{
+							_pid=BLOQUEADOSPORSEM[i][0];
+							pthread_mutex_lock(&mutexSemaforos);
+							for (j = 0; j < CANTIDADBLOCKPORSEM[i]; j++)
+							{
+								if (j+1!=CANTIDADBLOCKPORSEM[i])
+								{
+									BLOQUEADOSPORSEM[i][j]=BLOQUEADOSPORSEM[i][j+1];
+								}
+							}
+							CANTIDADBLOCKPORSEM[i]--;
+							BLOQUEADOSPORSEM[i]=realloc(BLOQUEADOSPORSEM[i],CANTIDADBLOCKPORSEM[i]*sizeof(int));
+							j=0;
+							while(COLABLOCK[j]!=_pid)
+								j++;
+							pthread_mutex_unlock(&mutexSemaforos);
+							for (; j < CANTIDADBLOCKS; j++)
+							{
+								pthread_mutex_lock(&mutexColaBlock);
+								if (j+1==CANTIDADBLOCKS)
+									COLABLOCK[j]=-1;
+								else
+									COLABLOCK[j]=COLABLOCK[j+1];
+								pthread_mutex_unlock(&mutexColaBlock);
+							}
+							pthread_mutex_lock(&mutexColaBlock);
+							CANTIDADBLOCKS--;
+							COLABLOCK=realloc(COLABLOCK,CANTIDADBLOCKS*sizeof(COLABLOCK[0]));
+							pthread_mutex_unlock(&mutexColaBlock);
+							pthread_mutex_lock(&mutexColaReady);
+							CANTIDADREADYS++;
+							COLAREADY=realloc(COLAREADY,CANTIDADREADYS*sizeof(int));
+							COLAREADY[CANTIDADREADYS-1]=_pid;
+							pthread_mutex_unlock(&mutexColaReady);
+							pthread_mutex_lock(&mutexPcbs);
+							PCBS[_pid].estado=READY;
+							pthread_mutex_unlock(&mutexPcbs);
+						}
+						else if (CANTIDADBLOCKPORSEM[i]==0)
+						{
+							pthread_mutex_lock(&mutexSemaforos);
+							SEM_INIT[i]++;
+							pthread_mutex_unlock(&mutexSemaforos);
+						}
+					}
+				}
 				free(solicitudSemaforo);
 			break;
 			// HEAP
@@ -737,6 +856,41 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			case ABRIRARCHIVO: // CPU ABRE ARCHIVO
 				abrirArchivo=malloc(sizeof(t_abrirArchivo));
 				recibirDinamico(ABRIRARCHIVO,dataDePlanificacion->socket,abrirArchivo);
+				recibirDinamico(PCB,dataDePlanificacion->socket,pcb);
+				estaba=0;
+				for (i = 0; i < proximoFd; i++)
+				{
+					if (!strcmp(tablaArchivos[i].path,abrirArchivo->direccionArchivo))
+					{
+						globalFd=i;
+						estaba=1;
+					}
+				}
+				if (!estaba)
+				{
+					pthread_mutex_lock(&mutexTablaArchivos);
+					globalFd=proximoFd;
+					proximoFd++;
+					memcpy(tablaArchivos[globalFd].path,abrirArchivo->direccionArchivo,abrirArchivo->tamanio);
+					tablaArchivos[globalFd].vecesAbierto=1;
+					pthread_mutex_unlock(&mutexTablaArchivos);
+				}
+				if(estaba){
+					pthread_mutex_lock(&mutexTablaArchivos);
+					tablaArchivos[globalFd].vecesAbierto++;
+					pthread_mutex_unlock(&mutexTablaArchivos);
+				}
+				pcb->cantidadArchivos++;
+				pcb->referenciaATabla=realloc(pcb->referenciaATabla,pcb->cantidadArchivos);
+				memcpy(&(pcb->referenciaATabla[pcb->cantidadArchivos-1].flags),&(abrirArchivo->flags),sizeof(t_banderas));
+				pcb->referenciaATabla[pcb->cantidadArchivos-1].globalFd=globalFd;
+				pcb->referenciaATabla[pcb->cantidadArchivos-1].cursor=0;
+				updatePCB(pcb);
+				enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
+				fd=malloc(sizeof(t_fdParaLeer));
+				fd->fd=pcb->cantidadArchivos-1+3;
+				enviarDinamico(ABRIOARCHIVO,dataDePlanificacion->socket,fd);
+				free(fd);
 				free(abrirArchivo);
 			break;
 			case BORRARARCHIVO: // CPU BORRA ARCHIVO
@@ -747,6 +901,18 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			case CERRARARCHIVO: // CPU CIERRA ARCHIVO
 				cerrarArchivo=malloc(sizeof(t_cerrarArchivo));
 				recibirDinamico(CERRARARCHIVO,dataDePlanificacion->socket,cerrarArchivo);
+				recibirDinamico(PCB,dataDePlanificacion->socket,pcb);
+				globalFd=pcb->referenciaATabla[cerrarArchivo->descriptorArchivo-3].globalFd;
+				pthread_mutex_lock(&mutexTablaArchivos);
+				tablaArchivos[globalFd].vecesAbierto--;
+				if (tablaArchivos[globalFd].vecesAbierto==0)
+				{
+					for (i = globalFd; i < proximoFd; ++i)
+					{
+						/* code */
+					}
+				}
+				pthread_mutex_unlock(&mutexTablaArchivos);
 				free(cerrarArchivo);
 			break;
 			case MOVERCURSOR: // CPU MUEVE EL CURSOR DE UN ARCHIVO
@@ -781,10 +947,9 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						pid=pcb->pid;
 						// LO AGREGO A LA COLA EXIT
 						pthread_mutex_lock(&mutexColaExit);
-						if (CANTIDADEXITS % BLOQUE == 0)
-							COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
-						COLAEXIT[CANTIDADEXITS]=pid;
 						CANTIDADEXITS++;
+						COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS) * sizeof(COLAEXIT[0]));
+						COLAEXIT[CANTIDADEXITS-1]=pid;
 						pthread_mutex_unlock(&mutexColaExit);
 						cambiarEstado(pid,EXIT);
 						// BUSCO LA POSICION EN LA COLA DE EXEC
@@ -826,13 +991,16 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			case PCBQUANTUM:
 				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
 				cambiarEstado(pcb->pid,READY);
-				// TODO: AGREGAR A COLA READY
+				pthread_mutex_lock(&mutexColaReady);
+				CANTIDADREADYS++;
+				COLAREADY=realloc(COLAREADY,CANTIDADREADYS*sizeof(int));
+				COLAREADY[CANTIDADREADYS-1]=_pid;
+				pthread_mutex_unlock(&mutexColaReady);
 				updatePCB(pcb);
 			break;
 			case PCBBLOQUEADO:
 				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
-				cambiarEstado(pcb->pid,READY);
-				// TODO AGREGAR A COLA BLOCKED
+				cambiarEstado(pcb->pid,BLOCKED);
 				updatePCB(pcb);
 			break;
 		}
@@ -885,10 +1053,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					pthread_mutex_unlock(&mutexPid);
 					// GUARDO SOCKET DE LA CONSOLA INDEXADO CON EL PID
 					pthread_mutex_lock(&mutexSocketsConsola);
-					if (CANTIDADSOCKETSCONSOLA%BLOQUE==0)
-						SOCKETSCONSOLA = realloc (SOCKETSCONSOLA,(CANTIDADSOCKETSCONSOLA+BLOQUE) * sizeof(SOCKETSCONSOLA[0]));
-					SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA]=socket;
 					CANTIDADSOCKETSCONSOLA++;
+					SOCKETSCONSOLA = realloc (SOCKETSCONSOLA,(CANTIDADSOCKETSCONSOLA) * sizeof(SOCKETSCONSOLA[0]));
+					SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA-1]=socket;
 					pthread_mutex_unlock(&mutexSocketsConsola);
 					// CALCULO LA CANTIDAD DE PAGINAS
 					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,path->tamanio);
@@ -924,10 +1091,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					// LO AGREGO A LA TABLA
 					metadata_destruir(metadata);
 					pthread_mutex_lock(&mutexPcbs);
-					if (CANTIDADPCBS%BLOQUE==0)
-						PCBS = realloc (PCBS,(CANTIDADPCBS+BLOQUE) * sizeof(PCBS[0]));
-					PCBS[CANTIDADPCBS]=*pcb;
 					CANTIDADPCBS++;
+					PCBS = realloc (PCBS,(CANTIDADPCBS) * sizeof(PCBS[0]));
+					PCBS[CANTIDADPCBS-1]=*pcb;
 					pthread_mutex_unlock(&mutexPcbs);
 					// SOLICITUD DE MEMORIA
 					solicitudMemoria=calloc(1,sizeof(t_solicitudMemoria));
@@ -953,10 +1119,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					if (respuestaSolicitud->respuesta==OK){
 						// AGREGO EL PID A LA COLA DE NEWS
 						pthread_mutex_lock(&mutexColaNew);
-						if (CANTIDADNEWS % BLOQUE == 0)
-							COLANEW = realloc (COLANEW,(CANTIDADNEWS+BLOQUE) * sizeof(COLANEW[0]));
-						COLANEW[CANTIDADNEWS]=pid;
 						CANTIDADNEWS++;
+						COLANEW = realloc (COLANEW,(CANTIDADNEWS) * sizeof(COLANEW[0]));
+						COLANEW[CANTIDADNEWS-1]=pid;
 						pthread_mutex_unlock(&mutexColaNew);
 						resultado->resultado=1;
 					}
@@ -964,10 +1129,9 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 					 	resultado->resultado=0;
 					 	// AGREGO EL PID A LA COLA DE EXIT
 						pthread_mutex_lock(&mutexColaExit);
-						if (CANTIDADEXITS % BLOQUE == 0)
-							COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS+BLOQUE) * sizeof(COLAEXIT[0]));
-						COLAEXIT[CANTIDADEXITS]=pid;
 						CANTIDADEXITS++;
+						COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS) * sizeof(COLAEXIT[0]));
+						COLAEXIT[CANTIDADEXITS-1]=pid;
 						pthread_mutex_unlock(&mutexColaExit);
 						pthread_mutex_lock(&mutexPcbs);
 						PCBS[pid].exitCode=-1;
@@ -1043,14 +1207,25 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 	free(dataParaAceptar);
 }
 
+int countElementos(char* cadena){
+	int cont=0,i=0;
+	while(cadena[i]!=']')
+		{
+			if (cadena[i]==',')
+				cont++;
+			i++;
+		}
+	return cont+1;
+}
+
 int main(){	
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
 t_config *CFG;
+int i;
 CFG = config_create("kernelCFG.txt");
 char *PUERTO_PROG= config_get_string_value(CFG ,"PUERTO_PROG");
-char *PUERTO_CPU= config_get_string_value(CFG ,"PUERTO_CPU");
 char *IP_MEMORIA= config_get_string_value(CFG ,"IP_MEMORIA");
 char *PUERTO_MEMORIA= config_get_string_value(CFG ,"PUERTO_MEMORIA");
 char *IP_FS= config_get_string_value(CFG ,"IP_FS");
@@ -1059,13 +1234,21 @@ QUANTUM= config_get_int_value(CFG ,"QUANTUM");
 QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
 ALGORITMO= config_get_string_value(CFG ,"ALGORITMO");
 GRADO_MULTIPROG= config_get_int_value(CFG ,"GRADO_MULTIPROG");
-char* SEM_IDS= config_get_string_value(CFG ,"SEM_IDS");
-char* SEM_INIT= config_get_string_value(CFG ,"SEM_INIT");
-char* SHARED_VARS= config_get_string_value(CFG ,"SHARED_VARS");
+CANTIDADSEM=countElementos(config_get_string_value(CFG, "SEM_IDS"));
+SEM_IDS= config_get_array_value(CFG ,"SEM_IDS");
+SEM_INIT= config_get_array_value(CFG ,"SEM_INIT");
+CANTIDADVARS=countElementos(config_get_string_value(CFG, "SHARED_VARS"));
+SHARED_VARS= config_get_array_value(CFG ,"SEM_IDS");
+SHARED_VALUES=calloc(CANTIDADVARS,sizeof(int));
 STACK_SIZE= config_get_int_value(CFG ,"STACK_SIZE");
+BLOQUEADOSPORSEM=calloc(CANTIDADSEM,sizeof(int*));
+for (i = 0; i < CANTIDADSEM; i++)
+{
+	CANTIDADBLOCKPORSEM[i]=0;
+}
 system("clear");
-printf("Configuración:\nPUERTO_PROG = %s,\nPUERTO_CPU = %s,\nIP_MEMORIA = %s,\nPUERTO_MEMORIA = %s,\nIP_FS = %s,\nPUERTO_FS = %s,\nQUANTUM = %i,\nQUANTUM_SLEEP = %i,\nALGORITMO = %s,\nGRADO_MULTIPROG = %i,\nSEM_IDS = %s,\nSEM_INIT = %s,\nSHARED_VARS = %s,\nSTACK_SIZE = %i.\n"
-		,PUERTO_PROG,PUERTO_CPU,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,ALGORITMO,GRADO_MULTIPROG,SEM_IDS,SEM_INIT,SHARED_VARS,STACK_SIZE);
+// printf("Configuración:\nPUERTO_PROG = %s,\nIP_MEMORIA = %s,\nPUERTO_MEMORIA = %s,\nIP_FS = %s,\nPUERTO_FS = %s,\nQUANTUM = %i,\nQUANTUM_SLEEP = %i,\nALGORITMO = %s,\nGRADO_MULTIPROG = %i,\nSEM_IDS = %s,\nSEM_INIT = %s,\nSHARED_VARS = %s,\nSTACK_SIZE = %i.\n"
+		// ,PUERTO_PROG,IP_MEMORIA,PUERTO_MEMORIA,IP_FS,PUERTO_FS,QUANTUM,QUANTUM_SLEEP,ALGORITMO,GRADO_MULTIPROG,SEM_IDS,SEM_INIT,SHARED_VARS,STACK_SIZE);
 system("clear");
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1082,6 +1265,9 @@ pthread_mutex_init(&mutexColaExec,NULL);
 pthread_mutex_init(&mutexColaBlock,NULL);
 pthread_mutex_init(&mutexPausaPlanificacion,NULL);
 pthread_mutex_init(&mutexProcesosReady,NULL);
+pthread_mutex_init(&mutexTablaArchivos,NULL);
+pthread_mutex_init(&mutexCompartidas,NULL);
+pthread_mutex_init(&mutexSemaforos,NULL);
 // INICIO COLA READYS
 inicializarColaReadys();
 // RETURN VALUES

@@ -26,12 +26,12 @@ typedef struct {
 typedef struct {
 				char * path;
 				int vecesAbierto;
-				int tamanioPath;
 				}__attribute__((packed))
 				  t_tablaGlobalArchivos;
 
 typedef struct {
 				t_banderas flags;
+				int cursor;
 				int globalFd;
 				}__attribute__((packed))
 				  t_tablaArchivosDeProcesos;
