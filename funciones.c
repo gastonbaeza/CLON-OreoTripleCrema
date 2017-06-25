@@ -1317,6 +1317,7 @@ void agregarSiguienteEnOverflow(int pos_inicial, int * nro_frame, t_list**overfl
 	int * aux=malloc(4);
 	memcpy(aux,nro_frame,sizeof(int));
     list_add(overflow[pos_inicial], aux);
+    free(aux);
 }
 
 /* Elimina un frame de la lista enlazada correspondiente a una determinada posición del vector de overflow  */
