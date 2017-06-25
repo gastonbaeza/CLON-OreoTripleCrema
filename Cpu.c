@@ -227,6 +227,7 @@ void posicionarPC(int pos){
 		t_valor_variable cpu_dereferenciar(t_puntero direccion_variable){
 			printf("en cpu_dereferenciar\n");
 			int offset,pagina,valor;
+			char rv[20],*trash;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
 			t_peticionBytes * peticion=malloc(sizeof(t_peticionBytes));
@@ -236,7 +237,9 @@ void posicionarPC(int pos){
 			peticion->size=SIZE;
 			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
 			free(peticion);
-			while(0>recv(socketMemoria,&valor,sizeof(int),0));
+			while(0>recv(socketMemoria,rv,sizeof(int),0));
+			valor=strtol(rv,&trash,36);
+			printf("valor dereferenciado: %i.\n", valor);
 			return valor;
 		}
 
@@ -252,6 +255,8 @@ void posicionarPC(int pos){
 		 */
 		void cpu_asignar(t_puntero direccion_variable, t_valor_variable valor){
 			printf("en cpu_asignar\n");
+			printf("direccion a asignar: %i.\n",direccion_variable );
+			printf("valor a asignar: %i.\n", valor);
 			char buffer[20];
 			int offset,pagina;
 			offset=direccion_variable%TAMPAGINA;
