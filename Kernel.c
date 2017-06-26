@@ -17,6 +17,21 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/inotify.h>
+
+// El tamaño de un evento es igual al tamaño de la estructura de inotify
+// mas el tamaño maximo de nombre de archivo que nosotros soportemos
+// en este caso el tamaño de nombre maximo que vamos a manejar es de 24
+// caracteres. Esto es porque la estructura inotify_event tiene un array
+// sin dimension ( Ver C-Talks I - ANSI C ).
+#define EVENT_SIZE  ( sizeof (struct inotify_event) + 24 )
+
+// El tamaño del buffer es igual a la cantidad maxima de eventos simultaneos
+// que quiero manejar por el tamaño de cada uno de los eventos. En este caso
+// Puedo manejar hasta 1024 eventos simultaneos.
+#define BUF_LEN     ( 1024 * EVENT_SIZE )
+
+
 #define BACKLOG 5
 #define KERNEL 0
 #define MEMORIA 1
@@ -79,6 +94,11 @@
 
 #define SOLICITUDSEMWAIT 57
 // VARIABLES GLOBALES
+char *PUERTO_PROG;
+char *IP_MEMORIA;
+char *PUERTO_MEMORIA;
+char *IP_FS;
+char *PUERTO_FS;
 char * ALGORITMO;
 char ** SEM_IDS;
 char ** SEM_INIT;
@@ -130,7 +150,8 @@ pthread_mutex_t mutexSemaforos;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
-int primerIngreso=1;
+int primerIngresoConsola=1;
+int primerIngresoCpu=1;
 int socketConsolaMensaje;
 int proximoFd=0;
 t_tablaGlobalArchivos * tablaArchivos;
@@ -211,30 +232,33 @@ void getPcbAndRemovePid(int pid, t_pcb * pcb){
 
 void rellenarColaReady(){
 	int i=0,cantVacios=0,j;
-	if (GRADO_MULTIPROG>=CANTIDADREADYS)
+	while(1)
 	{
-		for (; i < GRADO_MULTIPROG; i++)
-			if (COLAREADY[i]==-1)
-				cantVacios++;
-		int primerReadyLibre;
-		primerReadyLibre=GRADO_MULTIPROG-cantVacios;
-		for (i=0; i<cantVacios; i++){
-			if (CANTIDADNEWS>0)
-			{
-				pthread_mutex_lock(&mutexColaReady);
-				CANTIDADREADYS++;
-				COLAREADY=realloc(COLAREADY,CANTIDADREADYS);
-				COLAREADY[primerReadyLibre+i]=COLANEW[0];
-				pthread_mutex_unlock(&mutexColaReady);
-				pthread_mutex_lock(&mutexColaNew);
-				for (j = 0; j < CANTIDADNEWS; j++)
+		if (GRADO_MULTIPROG>CANTIDADREADYS)
+		{
+			for (; i < GRADO_MULTIPROG; i++)
+				if (COLAREADY[i]==-1)
+					cantVacios++;
+			int primerReadyLibre;
+			primerReadyLibre=GRADO_MULTIPROG-cantVacios;
+			for (i=0; i<cantVacios; i++){
+				if (CANTIDADNEWS>0)
 				{
-					if (!(j+1==CANTIDADNEWS))
-						COLANEW[j]=COLANEW[j+1];
+					pthread_mutex_lock(&mutexColaReady);
+					CANTIDADREADYS++;
+					COLAREADY=realloc(COLAREADY,CANTIDADREADYS);
+					COLAREADY[primerReadyLibre+i]=COLANEW[0];
+					pthread_mutex_unlock(&mutexColaReady);
+					pthread_mutex_lock(&mutexColaNew);
+					for (j = 0; j < CANTIDADNEWS; j++)
+					{
+						if (!(j+1==CANTIDADNEWS))
+							COLANEW[j]=COLANEW[j+1];
+					}
+					CANTIDADNEWS--;
+					COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(int));
+					pthread_mutex_unlock(&mutexColaNew);
 				}
-				CANTIDADNEWS--;
-				COLANEW=realloc(COLANEW,CANTIDADNEWS*sizeof(int));
-				pthread_mutex_unlock(&mutexColaNew);
 			}
 		}
 	}
@@ -372,6 +396,9 @@ void consola(){
 			printf("6.-Reanudar la planificación.\n");
 		else
 			printf("6.-Detener la planificación.\n");
+		printf("7.-Obtener estado de los semáforos.\n");
+		printf("8.-Obtener estado de las variables compartidas.\n");
+		printf("9.-Ver valores de configuración.\n");
 		scanf("%i",&opcion);
 		switch(opcion){
 			case 1:
@@ -397,16 +424,13 @@ void consola(){
 								printf("\t%i\n",COLANEW[i]);
 						}
 						i=0;
-						while(COLAREADY[i]!=-1)
-							i++;
-						if (i==0)
+						if (CANTIDADREADYS==0)
 							printf("Cola ready vacía.\n");
 						else{
 							printf("Cola ready:\n");
 							i=0;
-							while(COLAREADY[i]!=-1){
+							for(;i<CANTIDADREADYS;i++){
 								printf("\t%i\n",COLAREADY[i]);
-								i++;
 							}
 						}
 						if (CANTIDADEXECS==0)
@@ -450,16 +474,13 @@ void consola(){
 					case 3: // MOSTRAR COLA DE READY
 						system("clear");
 						i=0;
-						while(COLAREADY[i]!=-1)
-							i++;
-						if (i==0)
+						if (CANTIDADREADYS==0)
 							printf("Cola ready vacía.\n");
 						else{
 							printf("Cola ready:\n");
 							i=0;
-							while(COLAREADY[i]!=-1){
+							for(;i<CANTIDADREADYS;i++){
 								printf("\t%i\n",COLAREADY[i]);
-								i++;
 							}
 						}
 						printf("Presione enter para volver al menú principal.\n");
@@ -642,6 +663,43 @@ void consola(){
 				getchar();
 				getchar();
 			break;
+			case 7: // SEMAFOROS
+				system("clear");
+				for (i = 0; i < CANTIDADSEM; i++)
+				{
+					printf("%s = %s\n", SEM_IDS[i], SEM_INIT[i]);
+				}
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
+			case 8: // VARS COMPARTIDAS
+				system("clear");
+				for (i = 0; i < CANTIDADVARS; i++)
+				{
+					printf("%s = %i\n", SHARED_VARS[i], SHARED_VALUES[i]);
+				}
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
+			case 9: // CONFIG
+				system("clear");
+				pthread_mutex_lock(&mutexPausaPlanificacion);
+				printf("Puerto del kernel: %s\n", PUERTO_PROG);
+				printf("Ip de memoria: %s\n", IP_MEMORIA);
+				printf("Puerto de memoria: %s\n", PUERTO_MEMORIA);
+				printf("Ip del file system: %s\n", IP_FS);
+				printf("Puerto del file system: %s\n", PUERTO_FS);
+				printf("Quantum: %i\n", QUANTUM);
+				printf("Quantum sleep: %i\n", QUANTUM_SLEEP);
+				printf("Algoritmo de planificación: %s\n", ALGORITMO);
+				printf("Grado de multiprogramación: %i\n", GRADO_MULTIPROG);
+				printf("Páginas de stack: %i\n", STACK_SIZE);
+				printf("Presione enter para volver al menú principal.\n");
+				getchar();
+				getchar();
+			break;
 		}
 	}
 }
@@ -678,7 +736,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_fdParaLeer * fd;
 	while(PLANIFICACIONHABILITADA)
 	{
-		while(PLANIFICACIONPAUSADA);// SI SE PAUSA LA PLANIFICACION QUEDO LOOPEANDO ACA
+		
 		if (primerAcceso){
 					primerAcceso=0;}
 		else
@@ -698,11 +756,9 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				else // SI NO HAY NOVEDADES MANDO CONTINUAR
 					enviarDinamico(CONTINUAR, dataDePlanificacion->socket,NULL);
 				break;
-			case PCB:
+			case PCB:	
+						while(!hayProcesosReady() || PLANIFICACIONPAUSADA);
 						pthread_mutex_lock(&mutexProcesosReady);
-						while(!hayProcesosReady()){
-							rellenarColaReady();
-						}
 						// OBTENGO EL PRIMER PID DE LA COLA DE LISTOS
 						pid = COLAREADY[0];
 						// LO SACO DE DICHA COLA Y OBTENGO SU PCB
@@ -1218,10 +1274,15 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 			interfaz = malloc(sizeof(int));
 			// ME INFORMO SOBRE LA INTERFAZ QUE SE CONECTÓ
 			handshakeServer(socketNuevaConexion,KERNEL,interfaz);
-			if (*interfaz==CONSOLA && primerIngreso==1)
+			if (*interfaz==CPU && primerIngresoCpu)
+			{
+				pthread_t hiloRellenarColaReady;
+				pthread_create(&hiloRellenarColaReady,NULL,(void *)rellenarColaReady,NULL);
+			}
+			if (*interfaz==CONSOLA && primerIngresoConsola==1)
 			{
 				socketConsolaMensaje=socketNuevaConexion;
-				primerIngreso=0;
+				primerIngresoConsola=0;
 			}
 			// CONFIGURACION E INICIO DE HILO 
 			else {
@@ -1235,6 +1296,15 @@ void aceptar(dataParaComunicarse * dataParaAceptar){
 	}
 	// LIBERO MEMORIA
 	free(dataParaAceptar);
+}
+
+void chequeoQuantum(){
+	t_config *CFG;
+	while(1){
+		CFG = config_create("kernelCFG.txt");
+		QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
+		config_destroy(CFG);
+	}
 }
 
 int countElementos(char* cadena){
@@ -1255,11 +1325,11 @@ int main(){
 t_config *CFG;
 int i;
 CFG = config_create("kernelCFG.txt");
-char *PUERTO_PROG= config_get_string_value(CFG ,"PUERTO_PROG");
-char *IP_MEMORIA= config_get_string_value(CFG ,"IP_MEMORIA");
-char *PUERTO_MEMORIA= config_get_string_value(CFG ,"PUERTO_MEMORIA");
-char *IP_FS= config_get_string_value(CFG ,"IP_FS");
-char *PUERTO_FS= config_get_string_value(CFG ,"PUERTO_FS");
+PUERTO_PROG= config_get_string_value(CFG ,"PUERTO_PROG");
+IP_MEMORIA= config_get_string_value(CFG ,"IP_MEMORIA");
+PUERTO_MEMORIA= config_get_string_value(CFG ,"PUERTO_MEMORIA");
+IP_FS= config_get_string_value(CFG ,"IP_FS");
+PUERTO_FS= config_get_string_value(CFG ,"PUERTO_FS");
 QUANTUM= config_get_int_value(CFG ,"QUANTUM");
 QUANTUM_SLEEP= config_get_int_value(CFG ,"QUANTUM_SLEEP");
 ALGORITMO= config_get_string_value(CFG ,"ALGORITMO");
@@ -1284,6 +1354,8 @@ system("clear");
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
+pthread_t hiloChequeoQuantum;
+pthread_create(&hiloChequeoQuantum,NULL,(void *)chequeoQuantum,NULL);
 // INICIO SEMAFOROS
 pthread_mutex_init(&mutexColaNew,NULL);
 pthread_mutex_init(&mutexColaReady,NULL);
@@ -1353,8 +1425,6 @@ if(bind(socketEscuchador,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1)
 	{perror("Error en el bind.\n");
 		return 1;}
 freeaddrinfo(serverInfo);
-// SE LIBERA EL ARCHIVO DE CONFIGURACION
-config_destroy(CFG);
 // CONFIGURACION DE HILO ACEPTADOR
 dataParaComunicarse *dataParaAceptar;
 dataParaAceptar=malloc(sizeof(dataParaComunicarse));

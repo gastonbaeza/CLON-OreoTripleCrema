@@ -840,8 +840,7 @@ int main(){
 	PUERTO_MEMORIA= (char*)config_get_string_value(CFG,"PUERTO_MEMORIA");
 	printf("Configuración:\nIP_KERNEL = %s,\nIP_MEMORIA=%s,\nPUERTO_KERNEL = %s.\n,PUERTO_MEMORIA=%s. \n",IP_KERNEL,IP_MEMORIA,PUERTO_KERNEL,PUERTO_MEMORIA);
 	
-	printf("Presione enter para continuar.\n");
-	getchar();
+	system("clear");
 	pcb=malloc(sizeof(t_pcb));
 	/*
 	*
