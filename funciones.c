@@ -1027,7 +1027,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_pcb((t_pcb *)paquete,unSocket);
 		 break;
 		 
-		default : fflush(stdout); printf("%s\n","el paquete que quiere enviar es de un formato desconocido"); 
+		default : fflush(stdout); printf("%s: %i.\n","el paquete que quiere enviar es de un formato desconocido",tipoPaquete); 
 		// pagaraprata();
 		break;
 

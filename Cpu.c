@@ -296,6 +296,7 @@ void posicionarPC(int pos){
 			
 			enviarDinamico(SOLICITUDVALORVARIABLE,socketKernel,solicitudValorVariable);
 			recv(socketKernel,&valor,sizeof(int),0);
+			printf("valor compartida: %i\n", valor);
 			return valor;
 		}
 
@@ -312,6 +313,7 @@ void posicionarPC(int pos){
 		 */
 		t_valor_variable cpu_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
 			printf("en cpu_asignarValorCompartida\n");
+			printf("valor: %i.\n", valor);
 			t_asignarVariableCompartida * asignarVariableCompartida;
 			asignarVariableCompartida=malloc(sizeof(t_asignarVariableCompartida));
 			asignarVariableCompartida->tamanioNombre=strlen(variable);
@@ -455,14 +457,8 @@ void posicionarPC(int pos){
 		solicitudSemaforo->identificadorSemaforo=identificador_semaforo;
 		solicitudSemaforo->estadoSemaforo=-1;
 		enviarDinamico(SOLICITUDSEMWAIT,socketKernel,solicitudSemaforo);
-		t_semaforo * semaforo=malloc(sizeof(t_semaforo));
-		recibirDinamico(SEMAFORO,socketKernel,semaforo);
-		if(semaforo->estadoSemaforo==0){
-			continuarEjecucion=0;
-		}else
-			continuarEjecucion=1;
+		free(solicitudSemaforo);
 		}
-
 		/*
 		 * SIGNAL
 		 *
@@ -735,10 +731,9 @@ while(1) {
 	
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
-							liberarContenidoPcb();
  		
 							recibirDinamico(PCB,socketKernel,pcb);
-
+							PID=pcb->pid;
 							printf("Proceso %i:\n", pcb->pid);
 							printf("\tEstado: %i\n", pcb->estado);
 							printf("\tPC: %i\n", pcb->programCounter);

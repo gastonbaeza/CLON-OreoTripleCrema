@@ -31,7 +31,7 @@
 #define ALMACENARBYTES 36
 #define SOLICITUDVALORVARIABLE 37
 #define ASIGNARVARIABLECOMPARTIDA 38
-#define SOLICITUDSEM 39
+#define SOLICITUDSEMSIGNAL 39
 #define SEMAFORO 40
 #define RESERVARESPACIO 41
 #define RESERVAESPACIO 42
@@ -47,6 +47,7 @@
 #define FINALIZARPROCESO 53
 #define PCBBLOQUEADO 54
 #define PCBQUANTUM 55
+#define SOLICITUDSEMWAIT 57
 #define FINALIZARPORERROR 59
 #define PCBERROR 60
 #define PCBFINALIZADOPORCONSOLA 56
@@ -134,6 +135,21 @@ int socketConsolaMensaje;
 int proximoFd=0;
 t_tablaGlobalArchivos * tablaArchivos;
 
+char *strip(const char *s) {
+    char *p = malloc(strlen(s) + 1);
+    if(p) {
+        char *p2 = p;
+        while(*s != '\0') {
+            if(*s != '\t' && *s != '\n' && *s != ' ') {
+                *p2++ = *s++;
+            } else {
+                ++s;
+            }
+        }
+        *p2 = '\0';
+    }
+    return p;
+}
 
 int estaBlocked(int pid){
 	int i;
@@ -638,11 +654,11 @@ void quantum(int * flagQuantum){
 void planificar(dataParaComunicarse * dataDePlanificacion){
 	printf("en planificar\n");
 	int pid,estaba,_pid;
-	int rv,i,j,globalFd;
+	int rv,i,j,globalFd,intAux;
+	char * aux;
 	t_pcb * pcb=malloc(sizeof(t_pcb));
 	int cpuLibre = 1;
 	int flagQuantum;
-	char* aux;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	seleccionador->tipoPaquete=PCB;
 	pthread_t hiloQuantum;
@@ -714,7 +730,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
 				recibirDinamico(SOLICITUDVALORVARIABLE,dataDePlanificacion->socket,solicitudVariable);
 				for (i = 0; i < CANTIDADVARS; i++)
-					if (!strcmp(SHARED_VARS[i],solicitudVariable->variable))
+					if (!strcmp(SHARED_VARS[i]+1,solicitudVariable->variable))
 						send(dataDePlanificacion->socket,&(SHARED_VALUES[i]),sizeof(int),0);
 				free(solicitudVariable);
 			break;
@@ -723,7 +739,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				recibirDinamico(ASIGNARVARIABLECOMPARTIDA,dataDePlanificacion->socket,asignarVariable);
 				for (i = 0; i < CANTIDADVARS; i++)
 				{
-					if (!strcmp(SHARED_VARS[i],asignarVariable->variable))
+					if (!strcmp(SHARED_VARS[i]+1,asignarVariable->variable))
 					{
 						pthread_mutex_lock(&mutexCompartidas);
 						SHARED_VALUES[i]=asignarVariable->valor;
@@ -736,15 +752,19 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			case SOLICITUDSEMWAIT: // CPU ESTA HACIENDO WAIT (VER ESTRUCTURA)
 				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
 				solicitudSemaforo->identificadorSemaforo=calloc(1,1);
-				recibirDinamico(SOLICITUDSEM,dataDePlanificacion->socket,solicitudSemaforo);
+				recibirDinamico(SOLICITUDSEMWAIT,dataDePlanificacion->socket,solicitudSemaforo);
+				solicitudSemaforo->identificadorSemaforo=strip(solicitudSemaforo->identificadorSemaforo);
 				for (i = 0; i < CANTIDADSEM; i++)
 				{
 					if (!strcmp(SEM_IDS[i],solicitudSemaforo->identificadorSemaforo))
 					{
-						if (SEM_INIT[i]>0)
+						if (atoi(SEM_INIT[i])>0)
 						{
 							pthread_mutex_lock(&mutexSemaforos);
-							SEM_INIT[i]--;
+							intAux=atoi(SEM_INIT[i]);
+							intAux--;
+							sprintf(aux, "%i", intAux);
+							strcpy(SEM_INIT[i],aux);
 							pthread_mutex_unlock(&mutexSemaforos);
 						}
 						else
@@ -787,14 +807,17 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 			case SOLICITUDSEMSIGNAL: // CPU ESTA HACIENDO SIGNAL (VER ESTRUCTURA)
 				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
 				solicitudSemaforo->identificadorSemaforo=calloc(1,1);
-				recibirDinamico(SOLICITUDSEM,dataDePlanificacion->socket,solicitudSemaforo);
+				recibirDinamico(SOLICITUDSEMSIGNAL,dataDePlanificacion->socket,solicitudSemaforo);
+				solicitudSemaforo->identificadorSemaforo=strip(solicitudSemaforo->identificadorSemaforo);
 				for (i = 0; i < CANTIDADSEM; i++)
 				{
 					if (!strcmp(SEM_IDS[i],solicitudSemaforo->identificadorSemaforo))
 					{
 						if(CANTIDADBLOCKPORSEM[i]!=0)
 						{
+							printf("hola\n");
 							_pid=BLOQUEADOSPORSEM[i][0];
+							printf("%i\n", _pid);
 							pthread_mutex_lock(&mutexSemaforos);
 							for (j = 0; j < CANTIDADBLOCKPORSEM[i]; j++)
 							{
@@ -834,7 +857,10 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						else if (CANTIDADBLOCKPORSEM[i]==0)
 						{
 							pthread_mutex_lock(&mutexSemaforos);
-							SEM_INIT[i]++;
+							intAux=atoi(SEM_INIT[i]);
+							intAux++;
+							sprintf(aux, "%i", intAux);
+							strcpy(SEM_INIT[i],aux);
 							pthread_mutex_unlock(&mutexSemaforos);
 						}
 					}
@@ -997,11 +1023,15 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				COLAREADY[CANTIDADREADYS-1]=_pid;
 				pthread_mutex_unlock(&mutexColaReady);
 				updatePCB(pcb);
+				primerAcceso=1;
+				seleccionador->tipoPaquete=PCB;
 			break;
 			case PCBBLOQUEADO:
 				recibirDinamico(PCBQUANTUM,dataDePlanificacion->socket,pcb);
 				cambiarEstado(pcb->pid,BLOCKED);
 				updatePCB(pcb);
+				primerAcceso=1;
+				seleccionador->tipoPaquete=PCB;
 			break;
 		}
 	}
@@ -1238,10 +1268,11 @@ CANTIDADSEM=countElementos(config_get_string_value(CFG, "SEM_IDS"));
 SEM_IDS= config_get_array_value(CFG ,"SEM_IDS");
 SEM_INIT= config_get_array_value(CFG ,"SEM_INIT");
 CANTIDADVARS=countElementos(config_get_string_value(CFG, "SHARED_VARS"));
-SHARED_VARS= config_get_array_value(CFG ,"SEM_IDS");
+SHARED_VARS= config_get_array_value(CFG ,"SHARED_VARS");
 SHARED_VALUES=calloc(CANTIDADVARS,sizeof(int));
 STACK_SIZE= config_get_int_value(CFG ,"STACK_SIZE");
 BLOQUEADOSPORSEM=calloc(CANTIDADSEM,sizeof(int*));
+CANTIDADBLOCKPORSEM=calloc(CANTIDADSEM,sizeof(int));
 for (i = 0; i < CANTIDADSEM; i++)
 {
 	CANTIDADBLOCKPORSEM[i]=0;
