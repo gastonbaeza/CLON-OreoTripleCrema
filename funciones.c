@@ -1235,7 +1235,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      int tamanioAPegar=MARCO_SIZE*sizeof(char);
      int acumulador=0;
      printf("tamanio cod en reservar %i\n",tamanioCodigo );
-     int paginasRequeridas=paginasCodigo+paginasStack+1;
+     int paginasRequeridas=paginasCodigo+paginasStack;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   
      	indice=calcularPosicion(unPid,unFrame,MARCOS);
@@ -1346,4 +1346,85 @@ int esPaginaCorrecta(int frame, int pid, int pagina,t_estructuraADM * bloquesAdm
 printf("%s\n","no puede haber seg fault" );printf("dime que frame eres :%i\n", frame);
 if(((bloquesAdmin[frame].pid)==pid) && ((bloquesAdmin[frame]).pagina==pagina)) {printf("%s\n","claramente esto no puede tener segfaultx2" );return 1;}
 	else {return -1;}
+}
+void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco * marcos, int MARCOS, t_list ** overflow,int MARCO_SIZE)
+{	int unMarco;
+	int entrada;
+	int indice;
+	for ( unMarco = 0; unMarco < MARCOS; unMarco++)
+	{
+		if (bloquesAdmin[unMarco].pid==*pidALiberar)
+		{
+			indice=calcularPosicion(bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,MARCOS);
+			entrada=buscarEnOverflow(indice,bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,bloquesAdmin,MARCOS,overflow);
+			marcos[entrada].numeroPagina=calloc(1,MARCO_SIZE);
+			bloquesAdmin[entrada].estado=0;
+			bloquesAdmin[entrada].pid=-1;
+			bloquesAdmin[entrada].pagina=-1;
+
+		}
+	}
+}
+/*void compactarYAlocar() 
+{	
+	int offset=0;
+	int aDesplazar;
+	int fragmentacion=cuantaFragExternaHay(unaEntrada,marcos,MARCO_SIZE);
+		while(offset<MARCO_SIZE)
+		{	
+			while( ((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->isFree )
+			{
+		
+			aDesplazar=((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->size+sizeof(t_heapMetaData);
+	
+			}
+
+		}
+}*/
+
+int cuantaFragExternaHay(int unaEntrada, t_marco * marcos,int MARCO_SIZE)
+{	int espacioFragmentado;
+	int offset=0;
+	while(offset<MARCO_SIZE)
+	{	
+		if(((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->isFree)
+		{
+			espacioFragmentado+=((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->size;
+		}
+		offset+=((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->size+sizeof(t_heapMetaData);
+	}
+	return espacioFragmentado;
+}
+int malloqueameEsta(int unaEntrada, int unTamanio,t_marco * marcos,int MARCO_SIZE) //devuelve 1 si puede alocar y -1 sino
+{	int offset=0;
+	int noEncontreEspacio=1;
+	while(offset<MARCO_SIZE && noEncontreEspacio )
+	{
+		if(((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->isFree)
+		{
+			if(unTamanio<((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->size)
+			{	noEncontreEspacio=0;
+				return 1;
+			}
+		}
+
+		offset+=((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->size+sizeof(t_heapMetaData);
+	}
+	if(noEncontreEspacio)
+	{
+		if(unTamanio<cuantaFragExternaHay(unaEntrada,marcos,MARCO_SIZE))
+		{
+			//compactarYAlocar(unaEntrada);
+			return 1;
+		}
+		else
+		{ return -1;}
+	}
+
+
+}
+void liberarEnHeap(int unaEntrada,int offset, t_marco * marcos, int MARCO_SIZE)
+{
+	((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->isFree=1;
+
 }
