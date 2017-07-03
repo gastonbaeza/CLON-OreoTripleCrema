@@ -229,6 +229,7 @@ int test;
 t_peticionBytes * peticionBytes;
 t_almacenarBytes * bytesAAlmacenar;
 t_solicitudMemoria * solicitud;
+int  * pidALiberar;
 while(1) {
 	
 			seleccionador=calloc(1,8);
@@ -297,7 +298,7 @@ while(1) {
  										else
  										{//lo busco en memoria
  											printf("estoy buscando la cosa en memoria porque no estaba en cache%s\n"," " );
- 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,marcos,MARCOS); printf("el indice en memoria: %i\n",indice );
+ 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); printf("el indice en memoria: %i\n",indice );
  											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
  											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
  											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
@@ -337,7 +338,14 @@ while(1) {
 								free(bytesAAlmacenar->valor);
 								free(bytesAAlmacenar);
  					break;
- 					case LIBERARMEMORIA:
+ 					case LIBERARMEMORIA: 
+ 											pidALiberar=calloc(1,sizeof(int));
+ 											buffer=calloc(1,sizeof(int));
+											memcpy(buffer,&a,sizeof(int));
+ 											while(0==recv(unData,pidALiberar,sizeof(int),0));
+ 											send(unData,buffer,sizeof(int),0);
+ 											liberarPaginas(pidALiberar,bloquesAdmin,marcos,MARCOS,overflow,MARCO_SIZE);
+ 											free(buffer);free(pidALiberar);
  							 
  					break;
  					/*case ACTUALIZARPCB:
