@@ -59,7 +59,7 @@
 #define OK 1
 #define FAIL 0
 #define BLOQUE 20
-
+#define ASIGNARPAGINAS 63
 #define CACHE 0
 #define MEMORIA 1 
 #define TABLA 2
@@ -230,6 +230,11 @@ t_peticionBytes * peticionBytes;
 t_almacenarBytes * bytesAAlmacenar;
 t_solicitudMemoria * solicitud;
 int  * pidALiberar;
+int confirmacion;
+int * marco;
+int pedidos;
+t_solicitudAsignar * pedidoAsignacion;
+int ultimaPagina;
 while(1) {
 	
 			seleccionador=calloc(1,8);
@@ -287,7 +292,13 @@ while(1) {
  										printf("pagina: %i\n",peticionBytes->pagina );
  										printf("size: %i\n", peticionBytes->size);
  										printf("offset: %i\n", peticionBytes->offset);
- 										
+ 										if(!existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
+										{	confirmacion=-1;
+											send(unData, &confirmacion, sizeof(int),0);
+										}
+										else{
+											confirmacion=0;
+											send(unData, &confirmacion, sizeof(int),0);
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
  											printf("entre a cache\n");
@@ -311,31 +322,56 @@ while(1) {
  											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
  											printf("paquete: %s\n", (char*)paquete);
+ 										}
  											free(paquete);
  											free(buffer);
  											free(peticionBytes);
  					break;
- 					/*case SOLICITUDINFOPROG:// informacion del programa en ejecucion (memoria)
-							 recibirDinamico(SOLICITUDINFOPROG,unData,paquete);		
-							 
-							 unPcb=(t_pcb *)paquete;
-							 
-							 buscarAdministrativa(unPcb->pid, unPcb,bloquesAdmin,MARCOS);	
-							 enviarDinamico(PIDINFO,socketKernel,(void *)unPcb);
-							 free(paquete);
-							 free(unPcb);*/
-							 	
+ 					case ASIGNARPAGINAS: //: [Identificador del Programa] [Páginas requeridas]
+ 										pedidoAsignacion=calloc(1,sizeof(t_solicitudAsignar));
+ 										recibirDinamico(ASIGNARPAGINAS,unData,pedidoAsignacion);
+ 										if(hayPaginasLibres(pedidoAsignacion->paginasAAsignar,bloquesAdmin,MARCOS)==-1) 
+ 										{ 
+ 											confirmacion=-1;
+											send(unData, &confirmacion, sizeof(int),0);
+ 										}
+ 										else{
+ 											confirmacion=0;
+ 											send(unData, &confirmacion, sizeof(int),0);
+ 											marco=calloc(1,sizeof(int));
+ 											for(pedidos=0;pedidos<pedidoAsignacion->paginasAAsignar;pedidos++)
+ 											{
+											ultimaPagina=buscarUltimaPaginaAsignada(pedidoAsignacion->pid,bloquesAdmin,MARCOS);
+											indice=calcularPosicion(pedidoAsignacion->pid,ultimaPagina,MARCOS);
+         									*marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); 
+         									if(*marco!=-1)
+         									{
+         									agregarSiguienteEnOverflow(indice,marco,overflow);
+        									 bloquesAdmin[*marco].estado=1;
+        									bloquesAdmin[*marco].pid=pedidoAsignacion->pid;
+        									bloquesAdmin[*marco].pagina=ultimaPagina;
+        									ultimaPagina++;
+ 											}
+											} free(marco);}free(pedidoAsignacion);
+							 			
  					//break;
- 					case ALMACENARBYTES:	bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
+ 					case ALMACENARBYTES:	
+ 								bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
 								bytesAAlmacenar->valor=calloc(1,20);
  								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
  								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
  								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
  								printf("el valor es %s\n",bytesAAlmacenar->valor );
-								
-								
+								if(!existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS))
+								{	confirmacion=-1;
+									send(unData, &confirmacion, sizeof(int),0);
+								}
+								else
+								{
 								almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
-								free(bytesAAlmacenar->valor);
+								confirmacion=0;
+								send(unData, &confirmacion, sizeof(int),0);
+								}free(bytesAAlmacenar->valor);
 								free(bytesAAlmacenar);
  					break;
  					case LIBERARMEMORIA: 
