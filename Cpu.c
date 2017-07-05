@@ -52,6 +52,8 @@
 #define SOLICITUDSEMWAIT 57
 #define FINALIZARPORERROR 59
 #define PCBERROR 60
+#define PAGINAINVALIDA 61
+#define STACKOVERFLOW 62
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -228,7 +230,7 @@ void posicionarPC(int pos){
 		 */
 		t_valor_variable cpu_dereferenciar(t_puntero direccion_variable){
 			printf("en cpu_dereferenciar\n");
-			int offset,pagina,valor;
+			int offset,pagina,valor,foo;
 			char rv[20],*trash;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -238,11 +240,20 @@ void posicionarPC(int pos){
 			peticion->offset=offset;
 			peticion->size=SIZE;
 			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
-			free(peticion);
-			while(0>recv(socketMemoria,rv,sizeof(int),0));
-			valor=strtol(rv,&trash,36);
-			printf("valor dereferenciado: %i.\n", valor);
-			return valor;
+			while(0>recv(socketMemoria,&foo,sizeof(int),0)){
+				perror("asd:");
+			}
+			if(foo==1){
+				free(peticion);
+				while(0>recv(socketMemoria,rv,sizeof(int),0));
+				valor=strtol(rv,&trash,36);
+				printf("valor dereferenciado: %i.\n", valor);
+				return valor;
+			}
+			else{
+				enviarDinamico(STACKOVERFLOW,socketKernel,1);
+				return -1;
+			}
 		}
 
 		/*
@@ -260,7 +271,7 @@ void posicionarPC(int pos){
 			printf("direccion a asignar: %i.\n",direccion_variable );
 			printf("valor a asignar: %i.\n", valor);
 			char buffer[20];
-			int offset,pagina;
+			int offset,pagina,rv;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
@@ -273,6 +284,13 @@ void posicionarPC(int pos){
 			printf("este es el valor estringeado %s\n", bytes->valor);
 			printf("este es el buffer : %s\n",buffer );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
+				perror("asd:");
+			}
+			if (rv==-1)
+			{
+				enviarDinamico(STACKOVERFLOW,socketKernel,1);
+			}
 			printf("%s\n", bytes->valor);
 			free(bytes);
 		}
@@ -424,6 +442,7 @@ void posicionarPC(int pos){
 
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
 			char buffer[20];
+			int rv;
 			sprintf(buffer,"%d",retorno);
 			bytes->valor=buffer;
 			bytes->pid=PID;
@@ -433,6 +452,13 @@ void posicionarPC(int pos){
 			printf("este es el valor estringeado %s\n", bytes->valor);
 			printf("este es el buffer : %s\n",buffer );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
+				perror("asd:");
+			}
+			if (rv==-1)
+			{
+				enviarDinamico(STACKOVERFLOW,socketKernel,1);
+			}
 			free(bytes);
 			finalizarNivelStack();
 		}
@@ -719,6 +745,7 @@ void conectarKernel(void){
 	char * linea;
 	int primerAcceso=1;
 	int j;
+	int rv;
 
 t_peticionBytes * peticion;
 while(1) {
@@ -755,13 +782,21 @@ while(1) {
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
-							linea=calloc(1,peticion->size);
-							free(buffer);
-							printf("esperandoLinea\n");
-							while(0>recv(socketMemoria,linea,peticion->size,0)){
+							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
 								perror("asd:");
 							}
-		 					iniciarEjecucion(linea);
+							if (rv==1)
+							{
+								linea=calloc(1,peticion->size);
+								printf("esperandoLinea\n");
+								while(0>recv(socketMemoria,linea,peticion->size,0)){
+									perror("asd:");
+								}
+			 					iniciarEjecucion(linea);
+							}
+							else{
+								enviarDinamico(PAGINAINVALIDA,socketKernel,1);
+							}
 							free(peticion);
 		 					break;							
 		case CONTINUAR:
@@ -773,10 +808,21 @@ while(1) {
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
-							linea=calloc(1,peticion->size);
-							free(buffer);
-							while(0>recv(socketMemoria,linea,peticion->size,0));
-		 					iniciarEjecucion(linea);
+							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
+								perror("asd:");
+							}
+							if (rv==1)
+							{
+								linea=calloc(1,peticion->size);
+								printf("esperandoLinea\n");
+								while(0>recv(socketMemoria,linea,peticion->size,0)){
+									perror("asd:");
+								}
+			 					iniciarEjecucion(linea);
+							}
+							else{
+								enviarDinamico(PAGINAINVALIDA,socketKernel,1);
+							}
 							free(peticion);
 		break;
 
