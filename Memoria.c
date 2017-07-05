@@ -297,7 +297,7 @@ while(1) {
 											send(unData, &confirmacion, sizeof(int),0);
 										}
 										else{
-											confirmacion=0;
+											confirmacion=1;
 											send(unData, &confirmacion, sizeof(int),0);
  										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
  										{//lo busco en cache
@@ -317,7 +317,7 @@ while(1) {
  										}	
  											buffer=calloc(1,sizeof(int));
 											memcpy(buffer,&a,sizeof(int));
-											while(0>recv(unData,buffer, sizeof(int),0));
+											
 											
  											printf("solicbytes\n");
  											send(unData,paquete,peticionBytes->size,0);
