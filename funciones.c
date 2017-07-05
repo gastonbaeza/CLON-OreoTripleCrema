@@ -183,16 +183,14 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 		else //este es el LRU
 		{	
 			entrada=buscarEntradaMasAntigua(memoriaCache,ENTRADAS_CACHE);
-			printf("aca no tiene que entrar\n");
+			
 		}
 	} 
-	printf("antes sttrcpy\n");
-	printf("entrada: %i.\n", entrada);
-	printf("buffer: %s.\n", (char*)buffer);
+	
 	memmove((memoriaCache[entrada]).contenido,buffer,tamanio+1);
-	printf("qwe\n");
+	
 	// printf("memoriaCache[entrada].contenido: %s.\n",(char*)(memoriaCache[entrada]).contenido );
-	printf("despues strcpy\n");
+	
 	(memoriaCache[entrada]).antiguedad=0;
 	(memoriaCache[entrada]).pid=unPid;
 	(memoriaCache[entrada]).frame=pagina;
@@ -916,7 +914,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		case SOLICITUDBYTES:
 			while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_peticion((t_peticionBytes *)paquete,unSocket);
-			send(unSocket,buffer, sizeof(int),0);
+			
 		break;
 		case ARRAYPIDS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -1195,32 +1193,30 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      int paginasCargadas=0;
      int tamanioAPegar=MARCO_SIZE*sizeof(char);
      int acumulador=0;
-     printf("tamanio cod en reservar %i\n",tamanioCodigo );
+    
      int paginasRequeridas=paginasCodigo+paginasStack;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   
-     	indice=calcularPosicion(unPid,unFrame,MARCOS);
-         *marco=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); 
+     	indice=calcularPosicion(unPid,unFrame,MARCOS); printf("que carajos este indice %i\n",indice );
+         *marco=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); printf("a ver ese marco %i\n", *marco );
          if(*marco!=-1)
          {
          	agregarSiguienteEnOverflow(indice,marco,overflow);
         	 bloquesAdmin[*marco].estado=1;
         	bloquesAdmin[*marco].pid=unPid;
         	bloquesAdmin[*marco].pagina=unFrame;
-        	printf("despues de bloquesAdmin\n");
+        	
     		if(paginasCargadas<paginasCodigo)
 	    		{ if(acumulador+(MARCO_SIZE*sizeof(char))>tamanioCodigo) 
 	    				{
 	    				tamanioAPegar=tamanioCodigo-acumulador;
 	    				}
-	    			printf("quisimama\n");
-	    			printf("tamanioAPegar: %i.\n", tamanioAPegar);
-	    			printf("marco: %i.\n", *marco);
+	    			
+	    			
 					memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador,tamanioAPegar);
-					printf("qwedsa\n");
-					printf("antes escribirEnCache\n");
+					
 					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar);
-					printf("despues escribirEnCache\n");
+					
 					acumulador+=tamanioAPegar*sizeof(char);
 	    		}
     		
@@ -1282,9 +1278,10 @@ int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAd
 /* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
 void agregarSiguienteEnOverflow(int pos_inicial, int * nro_frame, t_list**overflow) {
 	int * aux=malloc(4);
-	memcpy(aux,nro_frame,sizeof(int));
+	printf(" el marco en agregarsiguente es %i\n",*nro_frame );
+	memcpy(aux,nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
     list_add(overflow[pos_inicial], aux);
-    free(aux);
+    
 }
 
 /* Elimina un frame de la lista enlazada correspondiente a una determinada posición del vector de overflow  */
