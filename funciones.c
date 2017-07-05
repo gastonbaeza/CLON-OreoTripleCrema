@@ -84,7 +84,9 @@
 #define VALIDARARHIVO 58
 #define FINALIZARPORERROR 59
 #define PCBERROR 60
-
+#define PAGINAINVALIDA 61
+#define STACKOVERFLOW 62
+#define ASIGNARPAGINAS 63
 void horaYFechaActual (char horaActual[19]) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
     struct tm *fechaYHora = localtime(&tiempo);
@@ -417,36 +419,7 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	}
 	free(buffer);
 }
-// void dserial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
-// {
-// 	int  unChar;
-// 	int * buffer1=malloc(sizeof(int));
-// 	int b=1;
-// 	memcpy(buffer1,&b,sizeof(int));
 
-// 	while(0>recv(unSocket, &(tablaProcesos->descriptor),sizeof(int),0));
-// 	send(unSocket,buffer1, sizeof(int),0);
-// 	while(0>recv(unSocket, &(tablaProcesos->flag),sizeof(int),0));
-// 	send(unSocket,buffer1, sizeof(int),0);
-// 	while(0>recv(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0));free(buffer1);
-// }
-// void dserial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
-// {	int * buffer=malloc(sizeof(int));
-// 	int a=1;
-// 	memcpy(buffer,&a,sizeof(int));
-// 	while(0>recv(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0));
-// 	send(unSocket,buffer, sizeof(int),0);
-// 	dserial_string(&(tablaGlobalArchivos->path),unSocket); free(buffer);
-// }
-
-// void serial_tablaGlobalArchivos(t_tablaGlobalArchivos * tablaGlobalArchivos, int unSocket)
-// {	int * buffer=malloc(sizeof(int));
-// 	int a=1;
-// 	memcpy(buffer,&a,sizeof(int));
-// 	send(unSocket,&(tablaGlobalArchivos->vecesAbierto),sizeof(int),0);
-// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-// 	serial_string(tablaGlobalArchivos->path,tablaGlobalArchivos->tamanioPath,unSocket); free(buffer);
-// }
 void serial_pcb(t_pcb * pcb, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -656,19 +629,7 @@ void serial_linea(t_linea * linea, int unSocket)
 	
 	serial_string(linea->linea,linea->tamanio,unSocket); 
 }
-// void serial_tablaArchivosDeProcesos(t_tablaArchivosDeProcesos * tablaProcesos, int unSocket)
-// {
-// 	int  unChar;
-// 	int * buffer=malloc(sizeof(int));
-// 	int b=1;
-// 	memcpy(buffer,&b,sizeof(int));
-// 	send(unSocket, &(tablaProcesos->descriptor),sizeof(int),0);
-// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-// 	send(unSocket, &(tablaProcesos->flag),sizeof(int),0);
-// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-// 	send(unSocket, &(tablaProcesos->posicionTablaGlobal),sizeof(int),0);
-// 	free(buffer);
-// }
+
 void serial_solicitudMemoria(t_solicitudMemoria * solicitud,int  unSocket)
 	{	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -1018,7 +979,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path*)paquete,unSocket);
 		 break;
-		 case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION:
+		 case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case PAGINAINVALIDA: case STACKOVERFLOW:
 		 break;
 		 case CONTINUAR:
 		 break;
@@ -1122,7 +1083,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case VALIDARARHIVO:
 		 	dserial_path((t_path*)paquete,unSocket);
 		break;
-		case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION:
+		case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case STACKOVERFLOW: case PAGINAINVALIDA:
 		break;
 		case CONTINUAR:
 		break;
@@ -1365,22 +1326,33 @@ void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco *
 		}
 	}
 }
-/*void compactarYAlocar() 
+void compactarYAlocar(int entrada, int MARCO_SIZE,t_marco * marcos, int MARCOS) 
 {	
 	int offset=0;
+	int offsetPagina=0;
 	int aDesplazar;
-	int fragmentacion=cuantaFragExternaHay(unaEntrada,marcos,MARCO_SIZE);
+	int freeNuevo;
+	t_heapMetaData * unHeap=calloc(1,sizeof(t_heapMetaData));
+	void * pagina=calloc(1,MARCO_SIZE);
+	int fragmentacion=cuantaFragExternaHay(entrada,marcos,MARCO_SIZE);
+	
 		while(offset<MARCO_SIZE)
 		{	
-			while( ((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->isFree )
-			{
-		
-			aDesplazar=((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->size+sizeof(t_heapMetaData);
-	
+			if(((t_heapMetaData*)marcos[entrada].numeroPagina+offset)->isFree==0)
+			{	
+				
+				memcpy(pagina+offsetPagina,marcos[entrada].numeroPagina+offset,((t_heapMetaData*)marcos[entrada].numeroPagina+offset)->size+sizeof(t_heapMetaData));
+				offsetPagina+=((t_heapMetaData*)marcos[entrada].numeroPagina+offset)->size+sizeof(t_heapMetaData);
 			}
+			offset+=((t_heapMetaData*)marcos[entrada].numeroPagina+offset)->size+sizeof(t_heapMetaData);
 
 		}
-}*/
+		freeNuevo=MARCO_SIZE-offsetPagina-sizeof(t_heapMetaData);
+		unHeap->size=freeNuevo;
+		unHeap->isFree=1;
+		memcpy(pagina+offsetPagina,unHeap,sizeof(t_heapMetaData));
+		memcpy(marcos[entrada].numeroPagina,pagina,MARCO_SIZE);
+}
 
 int cuantaFragExternaHay(int unaEntrada, t_marco * marcos,int MARCO_SIZE)
 {	int espacioFragmentado;
@@ -1427,4 +1399,29 @@ void liberarEnHeap(int unaEntrada,int offset, t_marco * marcos, int MARCO_SIZE)
 {
 	((t_heapMetaData*)marcos[unaEntrada].numeroPagina+offset)->isFree=1;
 
+}
+int existePagina(int unPid, int pagina,t_estructuraADM * bloquesAdmin, int MARCOS)
+{
+int unaAdmin;
+for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) 
+	{
+		if(bloquesAdmin[unaAdmin].pid == unPid && bloquesAdmin[unaAdmin].pagina == pagina)
+			return 1;
+	
+	}return -1;
+}
+int buscarUltimaPaginaAsignada(int unPid, t_estructuraADM * bloquesAdmin, int MARCOS)
+{
+int unaAdmin;
+int ultimaPagina=0;
+	for (unaAdmin = 0; unaAdmin < MARCOS; unaAdmin++) 
+	{
+		if(bloquesAdmin[unaAdmin].pid==unPid)
+		{
+			if(bloquesAdmin[unaAdmin].pagina>ultimaPagina)
+			{ultimaPagina=bloquesAdmin[unaAdmin].pagina;}	
+		}										
+													
+	
+	}return ultimaPagina;
 }
