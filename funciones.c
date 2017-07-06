@@ -591,9 +591,21 @@ void serial_resultadoIniciarPrograma(t_resultadoIniciarPrograma* resultadoInicia
 	serial_int(&(resultadoIniciarPrograma->pid),unSocket);
 	serial_int(&(resultadoIniciarPrograma->resultado),unSocket);
 }
-void serial_arrayPids(int * arraypids,int unSocket){
-
-	serial_int(arraypids,unSocket);
+void serial_arrayPids(t_arrayPids * arraypids,int unSocket){
+	int i;
+	serial_int(&(arraypids->cantidad),unSocket);
+	for (i = 0; i < arraypids->cantidad; i++)
+	{
+		serial_int(&(arraypids->pids[i]),unSocket);
+	}
+}
+void dserial_arrayPids(t_arrayPids * arraypids,int unSocket){
+	int i;
+	dserial_int(&(arraypids->cantidad),unSocket);
+	for (i = 0; i < arraypids->cantidad; i++)
+	{
+		dserial_int(&(arraypids->pids[i]),unSocket);
+	}
 }
 
 void serial_programaSalida(t_programaSalida * programaSalida, int unSocket)
@@ -948,6 +960,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_liberarMemoria((t_liberarMemoria *)paquete,unSocket);
 		break;
+		case ARRAYPIDS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+			serial_arrayPids((t_arrayPids *)paquete,unSocket);
+		break;
 		case ABRIRARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_abrirArchivo((t_abrirArchivo *)paquete,unSocket);
@@ -1050,6 +1066,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case SOLICITUDSEMWAIT:
 			dserial_solicitudSemaforo((t_solicitudSemaforo *)paquete,unSocket);
+		break;
+		case ARRAYPIDS:	
+					dserial_arrayPids((t_arrayPids *)paquete,unSocket);
 		break;
 		case SOLICITUDSEMSIGNAL:
 			dserial_solicitudSemaforo((t_solicitudSemaforo *)paquete,unSocket);
