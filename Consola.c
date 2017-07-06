@@ -180,7 +180,7 @@ int main(){
 	int serverSocket;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
-	pfreeaddrinfo(serverInfo);
+	freeaddrinfo(serverInfo);
 	int * buffer=malloc(sizeof(int));
 	handshakeCliente(serverSocket,CONSOLA,buffer);
 	send(serverSocket,&primer,sizeof(int),0);
