@@ -87,6 +87,11 @@
 #define PAGINAINVALIDA 61
 #define STACKOVERFLOW 62
 #define ASIGNARPAGINAS 63
+#define CREARARCHIVOFS 64
+#define GUARDARDATOSFS 65
+#define OBTENERDATOSFS 66
+#define PAQUETEFS 67
+#define BORRARARCHIVOFS 68
 void horaYFechaActual (char horaActual[19]) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
     struct tm *fechaYHora = localtime(&tiempo);
@@ -851,6 +856,40 @@ void dserial_moverCursor(t_moverCursor * moverCursor, int unSocket)
 	dserial_int(&(moverCursor->descriptorArchivo),unSocket);
 	dserial_int(&(moverCursor->posicion),unSocket);
 }
+void serial_obtenerDatosFs(t_leerArchivoFS * leerArchivoFS, int unSocket)
+{
+	serial_string(leerArchivoFS->path,leerArchivoFS->tamanioPath,unSocket);
+	serial_int(&(leerArchivoFS->offset),unSocket);
+	serial_int(&(leerArchivoFS->size),unSocket);
+
+}
+void dserial_obtenerDatosFs(t_leerArchivoFS * leerArchivoFS, int unSocket)
+{	
+	leerArchivoFS->tamanioPath=dserial_string(&(leerArchivoFS->path),unSocket);
+	dserial_int(&(leerArchivoFS->offset),unSocket);
+	dserial_int(&(leerArchivoFS->size),unSocket);
+
+}
+void serial_guardarDatosFs(t_escribirArchivoFS * escribirArchivoFS, int unSocket)
+{
+	serial_string(escribirArchivoFS->path,escribirArchivoFS->tamanioPath,unSocket);
+	serial_int(&(escribirArchivoFS->offset),unSocket);
+	serial_string(escribirArchivoFS->buffer,escribirArchivoFS->size,unSocket);
+}
+void dserial_guardarDatosFs(t_escribirArchivoFS * escribirArchivoFS, int unSocket)
+{	
+	escribirArchivoFS->tamanioPath=dserial_string(&(escribirArchivoFS->path),unSocket);
+	dserial_int(&(escribirArchivoFS->offset),unSocket);
+	escribirArchivoFS->size=dserial_string(&(escribirArchivoFS->buffer),unSocket);
+	}
+void serial_paqueteFs(t_paqueteFS * paqueteFS, int unSocket)
+{
+	serial_string(paqueteFS->paquete,paqueteFS->tamanio,unSocket);
+}
+void dserial_paqueteFs(t_paqueteFS * paqueteFS, int unSocket)
+{	
+	paqueteFS->tamanio=dserial_string(&(paqueteFS->paquete),unSocket);
+}
 void serial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {
 	serial_string(escribirArchivo->informacion,escribirArchivo->tamanio,unSocket); 
@@ -864,13 +903,11 @@ void dserial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 void serial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
 {
 	serial_int(&(leerArchivo->descriptor),unSocket);
-	serial_int(&(leerArchivo->punteroInformacion),unSocket);
 	serial_int(&(leerArchivo->tamanio),unSocket);
 }
 void dserial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
 {	
 	dserial_int(&(leerArchivo->descriptor),unSocket);
-	dserial_int(&(leerArchivo->punteroInformacion),unSocket);
 	dserial_int(&(leerArchivo->tamanio),unSocket);
 }
 
@@ -984,8 +1021,25 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		 case LEERARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_leerArchivo((t_leerArchivo *)paquete,unSocket);
+		 case OBTENERDATOSFS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+		 	serial_obtenerDatosFs((t_leerArchivoFS *)paquete,unSocket);
+		 case GUARDARDATOSFS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+		 	serial_guardarDatosFs((t_escribirArchivoFS *)paquete,unSocket);
+		 case PAQUETEFS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+		 	serial_paqueteFs((t_paqueteFS *)paquete,unSocket);
+		 break;
+		 case BORRARARCHIVOFS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+		 	serial_path((t_path *)paquete,unSocket);
 		 break;
 		 case VALIDARARHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+		 	serial_path((t_path*)paquete,unSocket);
+		 break;
+		 case CREARARCHIVOFS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path*)paquete,unSocket);
 		 break;
@@ -1093,7 +1147,22 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case LEERARCHIVO:
 			dserial_leerArchivo((t_leerArchivo *)paquete,unSocket);
 		break;
+		case OBTENERDATOSFS:
+			dserial_obtenerDatosFs((t_leerArchivoFS *)paquete,unSocket);
+		break;
+		case GUARDARDATOSFS:
+			dserial_guardarDatosFs((t_escribirArchivoFS *)paquete,unSocket);
+		break;
+		case BORRARARCHIVOFS:
+			dserial_path((t_path *)paquete,unSocket);
+		break;
+		case PAQUETEFS:
+			dserial_paqueteFs((t_paqueteFS *)paquete,unSocket);
+		break;
 		case VALIDARARHIVO:
+		 	dserial_path((t_path*)paquete,unSocket);
+		break;
+		case CREARARCHIVOFS:
 		 	dserial_path((t_path*)paquete,unSocket);
 		break;
 		case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case STACKOVERFLOW: case PAGINAINVALIDA:

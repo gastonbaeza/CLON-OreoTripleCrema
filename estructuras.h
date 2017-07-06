@@ -24,6 +24,7 @@ typedef struct {
 				 t_marco;
 
 typedef struct {
+				int fd;
 				char * path;
 				int vecesAbierto;
 				}__attribute__((packed))
@@ -33,6 +34,7 @@ typedef struct {
 				t_banderas flags;
 				int cursor;
 				int globalFd;
+				int abierto;
 				}__attribute__((packed))
 				  t_tablaArchivosDeProcesos;
 
@@ -258,7 +260,6 @@ typedef struct {
 
 typedef struct {
 				int descriptor;
-				int punteroInformacion;
 				int tamanio;
 				
 				}__attribute__((packed))
@@ -297,6 +298,29 @@ typedef struct {
 				int fd;
 				}__attribute__((packed))
 					t_fdParaLeer;
+
+typedef struct {
+				int tamanioPath;
+				char * path;
+				int offset;
+				int size;
+				char * buffer;
+				}__attribute__((packed))
+					t_escribirArchivoFS;
+
+typedef struct {
+				int tamanioPath;
+				char * path;
+				int offset;
+				int size;
+				}__attribute__((packed))
+					t_leerArchivoFS;
+
+typedef struct {
+				int tamanio;
+				char * paquete;
+				}__attribute__((packed))
+					t_paqueteFS;
 
 
 //funcion que retorna ok/exception al kernel ante el pedido de memoria

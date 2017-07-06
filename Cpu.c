@@ -55,6 +55,7 @@
 #define PCBERROR 60
 #define PAGINAINVALIDA 61
 #define STACKOVERFLOW 62
+#define PAQUETEFS 67
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -403,6 +404,7 @@ void posicionarPC(int pos){
 			pcb->indiceStack[pcb->posicionStack].varRetorno.size=SIZE;
 			pthread_mutex_unlock(&mutexPcb);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			printf("pos: %i\n", pos);
 			posicionarPC(pos);
 			
 		}
@@ -590,6 +592,8 @@ void posicionarPC(int pos){
 			borrarArchivo=malloc(sizeof(t_borrarArchivo));
 			borrarArchivo->fdABorrar=descriptor_archivo;
 			enviarDinamico(BORRARARCHIVO,socketKernel,borrarArchivo);
+			enviarDinamico(PCB,socketKernel,pcb);
+			recibirDinamico(PCB,socketKernel,pcb);
 			
 		}
 
@@ -610,6 +614,7 @@ void posicionarPC(int pos){
 					cerrarArchivo->descriptorArchivo=descriptor_archivo;
 					enviarDinamico(CERRARARCHIVO,socketKernel,cerrarArchivo);
 					enviarDinamico(PCB,socketKernel,pcb);
+					recibirDinamico(PCB,socketKernel,pcb);
 				}
 		/*
 		 * MOVER CURSOR DE ARCHIVO
@@ -627,8 +632,9 @@ void posicionarPC(int pos){
 			moverCursor=malloc(sizeof(t_moverCursor));
 			moverCursor->descriptorArchivo=descriptor_archivo;
 			moverCursor->posicion=posicion;
-			
 			enviarDinamico(MOVERCURSOR,socketKernel,moverCursor);
+			enviarDinamico(PCB,socketKernel,pcb);
+			recibirDinamico(PCB,socketKernel,pcb);
 		}
 		/*
 		 * ESCRIBIR ARCHIVO
@@ -652,6 +658,8 @@ void posicionarPC(int pos){
 			escribirArchivo->informacion=informacion;
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
+			enviarDinamico(PCB,socketKernel,pcb);
+			recibirDinamico(PCB,socketKernel,pcb);
 		}
 
 		/*
@@ -670,11 +678,14 @@ void posicionarPC(int pos){
 		void cpu_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
 			printf("en cpu_leer\n");
 			t_leerArchivo * leerArchivo;
+			t_paqueteFS * paqueteFS;
 			leerArchivo=malloc(sizeof(t_leerArchivo));
 			leerArchivo->descriptor=descriptor_archivo;
-			leerArchivo->punteroInformacion=informacion;
 			leerArchivo->tamanio=tamanio;
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
+			enviarDinamico(PCB,socketKernel,pcb);
+			recibirDinamico(PAQUETEFS,socketKernel,paqueteFS);
+			recibirDinamico(PCB,socketKernel,pcb);
 		}
 
 AnSISOP_funciones functions = {
