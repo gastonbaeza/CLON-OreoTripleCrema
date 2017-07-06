@@ -928,10 +928,6 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			serial_peticion((t_peticionBytes *)paquete,unSocket);
 			
 		break;
-		case ARRAYPIDS:
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
-			serial_arrayPids((int *)paquete,unSocket);
-		break;
 		case RESULTADOINICIARPROGRAMA:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);
