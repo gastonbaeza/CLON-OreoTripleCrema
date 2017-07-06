@@ -239,6 +239,7 @@ while(1) {
 	
 			seleccionador=calloc(1,8);
 			while(0>recv(unData,seleccionador,sizeof(t_seleccionador),0));
+			printf("el pqeute es %i\n",seleccionador->tipoPaquete);
 			switch (seleccionador->tipoPaquete)
 			{
 					case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
