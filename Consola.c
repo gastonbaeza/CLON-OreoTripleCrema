@@ -49,6 +49,7 @@
 #define BLOQUE 20
 
 t_list * procesos;
+int idKernel;
 
 pthread_mutex_t semaforoProcesos;
 pthread_mutex_t mutexComunicacion;
@@ -66,6 +67,7 @@ void programa(t_path * path_ansisop){
 	struct addrinfo hints;
 	struct addrinfo *kernel;
 	int * unBuffer=malloc(sizeof(int));
+	int primer=0;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -73,10 +75,11 @@ void programa(t_path * path_ansisop){
 	int rv; 
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
-
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
 	handshakeCliente(serverSocket,CONSOLA,unBuffer);
+	send(serverSocket,&primer,sizeof(int),0);
 	enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
+	send(serverSocket,&idKernel,sizeof(int),0);
 	free(path_ansisop->path);
 	free(path_ansisop);
 							
@@ -91,6 +94,7 @@ void programa(t_path * path_ansisop){
 void receptor(){
 	struct addrinfo hints;
 	struct addrinfo *kernel;
+	int primer=1;
 	int * unBuffer=malloc(sizeof(int));
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -99,9 +103,10 @@ void receptor(){
 	int rv; 
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
-
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
 	handshakeCliente(serverSocket,CONSOLA,unBuffer);
+	send(serverSocket,&primer,sizeof(int),0);
+	while(0>recv(serverSocket,&idKernel, sizeof(int),0));
 	receptorListo=1;
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 t_mensaje * unMensaje;
@@ -155,6 +160,7 @@ int main(){
 
 	pthread_t  hiloPrograma,hiloReceptor;
 	int rv;
+	int primer=0;
 	IP=malloc(13);
 	PUERTO=malloc(10);
 	strcpy(IP,IP_KERNEL);
@@ -168,21 +174,18 @@ int main(){
 	hints.ai_socktype = SOCK_STREAM;
 	fflush(stdout);
 
-	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
 	if ((rv =getaddrinfo(IP_KERNEL, PUERTO_KERNEL, &hints, &serverInfo)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 	
 	config_destroy(CFG);
 	int serverSocket;
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-
 	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
-	freeaddrinfo(serverInfo);
+	pfreeaddrinfo(serverInfo);
 	int * buffer=malloc(sizeof(int));
 	handshakeCliente(serverSocket,CONSOLA,buffer);
-	
+	send(serverSocket,&primer,sizeof(int),0);
 pthread_mutex_init(&semaforoProcesos,NULL);
 int cancelarThread=0;
-int PIDS[list_size(procesos)];
 int unPid;
 int * PID;
 PID=malloc(sizeof(int));
@@ -236,15 +239,15 @@ while(cancelarThread==0){
 							pthread_mutex_lock(&semaforoProcesos);
 							printf("%s\n"," ha inicializado el proceso de desconexion" );
 							printf("%i\n",list_size(procesos));
+							t_arrayPids * pids;
+							pids->pids=malloc(list_size(procesos));
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
-								PIDS[unPid]=*(int *)list_get(procesos,unPid);
+								pids->pids[unPid]=*(int *)list_get(procesos,unPid);
 
 							}
-							int *procesosAMatar;
-							procesosAMatar=&PIDS[0];
 							
-							enviarDinamico(ARRAYPIDS,serverSocket,(void *)procesosAMatar); 
+							enviarDinamico(ARRAYPIDS,serverSocket,(void *)pids); 
 							
 							pthread_mutex_unlock(&semaforoProcesos);
 							cancelarThread ++;

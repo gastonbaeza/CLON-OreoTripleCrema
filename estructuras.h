@@ -132,6 +132,21 @@ typedef struct {
 				}t_estructuraADM;
 
 typedef struct { 
+				int cantidad;
+				int * pids;
+				}__attribute__((packed))
+				  t_arrayPids;
+typedef struct  {
+				int size;
+				int isFree;
+				}t_heapMetaData;
+
+typedef struct {
+				int pid;
+				int paginasAAsignar;
+				}__attribute__((packed))
+				t_solicitudAsignar;
+typedef struct { 
 				int unaInterfaz;
 				int tipoPaquete;
 
@@ -282,10 +297,6 @@ typedef struct {
 				int fd;
 				}__attribute__((packed))
 					t_fdParaLeer;
-typedef struct  {
-int size;
-int isFree;
-}t_heapMetaData;
 
 
 //funcion que retorna ok/exception al kernel ante el pedido de memoria

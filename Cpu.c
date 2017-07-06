@@ -17,7 +17,8 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <parser/metadata_program.h>
-#include <stddef.h>
+#include <stddef.h> 
+#include <signal.h> 
 
 
 
@@ -70,6 +71,7 @@ pthread_mutex_t mutexPcb;
 int PROXIMAPAG=0;
 int PROXIMOOFFSET=0;
 int TAMPAGINA;
+int flagSignal=0;
 
 
 
@@ -828,18 +830,38 @@ while(1) {
 
  		case FINALIZARPROCESO: 
  								enviarDinamico(PCBFINALIZADOPORCONSOLA,socketKernel,pcb);
+ 								send(socketKernel,&flagSignal,sizeof(int),0);
+ 								if (flagSignal)
+ 								{
+ 									exit(0);
+ 								}
  								liberarContenidoPcb();
  		break;
  		case FINALIZARPORERROR: 
  								enviarDinamico(PCBERROR,socketKernel,pcb);
+ 								send(socketKernel,&flagSignal,sizeof(int),0);
+ 								if (flagSignal)
+ 								{
+ 									exit(0);
+ 								}
  								liberarContenidoPcb();
  		break;
  		case FINQUANTUM: 
  								enviarDinamico(PCBQUANTUM,socketKernel,pcb);
+ 								send(socketKernel,&flagSignal,sizeof(int),0);
+ 								if (flagSignal)
+ 								{
+ 									exit(0);
+ 								}
  								liberarContenidoPcb();
  		break;
  		case PARAREJECUCION:
  								enviarDinamico(PCBBLOQUEADO,socketKernel,pcb);
+ 								send(socketKernel,&flagSignal,sizeof(int),0);
+ 								if (flagSignal)
+ 								{
+ 									exit(0);
+ 								}
  								liberarContenidoPcb();		
  		break;
 }}
@@ -870,12 +892,21 @@ free(seleccionador);
 
 
 
-
+void signal_handler(int signal){
+	if (signal==SIGUSR1){
+		flagSignal=1;
+	}
+}
 
 
 
 
 int main(){
+	struct sigaction sigact;
+    sigact.sa_handler = signal_handler;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    sigaction(SIGUSR1, &sigact, (struct sigaction *)NULL);
 
 
 	t_config * CFG;
@@ -899,18 +930,18 @@ int main(){
 	hints.ai_socktype = SOCK_STREAM;
 
 	getaddrinfo(IP_MEMORIA,PUERTO_MEMORIA,&hints,&serverInfo);
+    // Print pid, so that we can send signals from other shells
+    printf("My pid is: %d\n", getpid());
 
 
 	socketMemoria = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 
 
 	connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen);
-
 	freeaddrinfo(serverInfo);
 	int * unBuffer;
 	unBuffer=malloc(sizeof(int));
 	handshakeCliente(socketMemoria, CPU, unBuffer);	
-
 	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
 
 
