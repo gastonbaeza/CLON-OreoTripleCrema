@@ -1,6 +1,7 @@
 #ifndef _estructuras_h
 #include <parser/metadata_program.h>
 #include <parser/parser.h>
+#include <stdbool.h>
 #define _estructuras_h
 
 
@@ -29,6 +30,24 @@ typedef struct {
 				int vecesAbierto;
 				}__attribute__((packed))
 				  t_tablaGlobalArchivos;
+typedef struct  {
+				int size;
+				bool isFree;
+				}t_heapMetaData;
+
+typedef struct {
+				int pagina;
+				int espacioLibre;
+				int cantidadMetadatas;
+				t_heapMetaData * contenido;
+				}__attribute__((packed))
+				  t_heapProceso;
+typedef struct {
+				int pid;
+				int cantPaginas;
+				t_heapProceso * paginas;
+				}__attribute__((packed))
+				  t_heapGlobal;
 
 typedef struct {
 				t_banderas flags;
@@ -138,10 +157,6 @@ typedef struct {
 				int * pids;
 				}__attribute__((packed))
 				  t_arrayPids;
-typedef struct  {
-				int size;
-				int isFree;
-				}t_heapMetaData;
 
 typedef struct {
 				int pid;

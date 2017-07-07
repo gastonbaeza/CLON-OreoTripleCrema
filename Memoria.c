@@ -293,7 +293,7 @@ while(1) {
  										printf("pagina: %i\n",peticionBytes->pagina );
  										printf("size: %i\n", peticionBytes->size);
  										printf("offset: %i\n", peticionBytes->offset);
- 										if(!existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
+ 										if(-1==existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
 										{	confirmacion=-1;
 											send(unData, &confirmacion, sizeof(int),0);
 										}
@@ -363,7 +363,7 @@ while(1) {
  								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
  								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
  								printf("el valor es %s\n",bytesAAlmacenar->valor );
-								if(!existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS))
+								if(existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS)==-1)
 								{	confirmacion=-1;
 									send(unData, &confirmacion, sizeof(int),0);
 								}

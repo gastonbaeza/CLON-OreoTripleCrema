@@ -92,6 +92,7 @@
 #define OBTENERDATOSFS 66
 #define PAQUETEFS 67
 #define BORRARARCHIVOFS 68
+#define RESERVADOESPACIO 69
 void horaYFechaActual (char horaActual[19]) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
     struct tm *fechaYHora = localtime(&tiempo);
@@ -227,8 +228,11 @@ void almacenarBytes(int unPid, int pagina,char * contenido,t_marco * marcos, int
 {	
 	int indice=calcularPosicion(unPid,pagina,MARCOS); printf("el indice en almacenar bytes es: %i\n",indice );
 	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); printf("la entrada en almacenarbytes de buscar overflow : %i\n",entrada );
+	if(entrada!=-1)
+	{	
 	strcpy((char*)(marcos[entrada].numeroPagina+offset),contenido);
-	escribirEnCache(unPid,pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
+	escribirEnCache(unPid,pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);}
+	else{ printf("%s\n","stackOverflow /segmentation fault" );}
  								
 }
 
@@ -796,6 +800,14 @@ void serial_reservarEspacioMemoria(t_reservarEspacioMemoria * reservarEspacioMem
 void dserial_reservarEspacioMemoria(t_reservarEspacioMemoria * reservarEspacioMemoria, int unSocket)
 {	
 	dserial_int(&(reservarEspacioMemoria->espacio),unSocket);}
+void serial_reservar(t_reservar * reservar, int unSocket)
+{
+	serial_int(&(reservar->puntero),unSocket);
+}
+void dserial_reservar(t_reservar * reservar, int unSocket)
+{	
+	dserial_int(&(reservar->puntero),unSocket);}
+
 
 void serial_liberarMemoria(t_liberarMemoria * liberarMemoria, int unSocket)
 {
@@ -989,6 +1001,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_reservarEspacioMemoria((t_reservarEspacioMemoria *)paquete, unSocket);
 		break;
+		case RESERVADOESPACIO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+			serial_reservar((t_reservar *)paquete, unSocket);
+		break;
 		case LIBERARESPACIOMEMORIA:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_liberarMemoria((t_liberarMemoria *)paquete,unSocket);
@@ -1125,6 +1141,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case RESERVARESPACIO:
 			dserial_reservarEspacioMemoria((t_reservarEspacioMemoria *)paquete,unSocket);
+		break;
+		case RESERVADOESPACIO:
+			dserial_reservar((t_reservar *)paquete,unSocket);
 		break;
 		case LIBERARESPACIOMEMORIA:
 			dserial_liberarMemoria((t_liberarMemoria *)paquete,unSocket);

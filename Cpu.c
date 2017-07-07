@@ -56,6 +56,7 @@
 #define PAGINAINVALIDA 61
 #define STACKOVERFLOW 62
 #define PAQUETEFS 67
+#define RESERVADOESPACIO 69
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
@@ -285,6 +286,9 @@ void posicionarPC(int pos){
 			sprintf (buffer, "%d",valor);
 			bytes->valor=buffer;
 			printf("este es el valor estringeado %s\n", bytes->valor);
+			printf("este es el valor pagina %i\n", bytes->pagina);
+			printf("este es el valor offset %i\n", bytes->offset);
+			printf("este es el valor size %i\n", bytes->size);
 			printf("este es el buffer : %s\n",buffer );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -292,6 +296,7 @@ void posicionarPC(int pos){
 			}
 			if (rv==-1)
 			{
+				printf("me devolvio error\n");
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
 			}
 			printf("%s\n", bytes->valor);
@@ -425,6 +430,11 @@ void posicionarPC(int pos){
 			if (pcb->posicionStack==0)
 			{	
 				enviarDinamico(PCBFINALIZADO,socketKernel,pcb);
+				send(socketKernel,&flagSignal,sizeof(int),0);
+ 				if (flagSignal)
+ 				{
+ 					exit(0);
+ 				}
 				liberarContenidoPcb();
 			}
 			else{
@@ -525,8 +535,10 @@ void posicionarPC(int pos){
 			reservarEspacioMemoria=malloc(sizeof(t_reservarEspacioMemoria));
 			reservarEspacioMemoria->espacio=espacio;
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
+			enviarDinamico(PCB,socketKernel,pcb);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
-			recibirDinamico(RESERVARESPACIO,socketKernel,reservar);
+			recibirDinamico(RESERVADOESPACIO,socketKernel,reservar);
+			recibirDinamico(PCB,socketKernel,pcb);
 			return reservar->puntero;
 			
 
