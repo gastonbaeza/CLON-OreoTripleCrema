@@ -108,6 +108,7 @@ void finalizarNivelStack(){
 
 void liberarContenidoPcb(){
 	free(pcb->indiceCodigo);
+	free(pcb->referenciaATabla);
 	free(pcb->indiceStack->argumentos);
 	free(pcb->indiceStack->variables);
 	free(pcb->indiceStack);
@@ -191,6 +192,7 @@ void posicionarPC(int pos){
 				}
 				pthread_mutex_unlock(&mutexPcb);
 				printf("antes return\n");
+				printf("cantidadVariables: %i.\n", pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 				return (pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].offset);
 			}
 		}
@@ -208,17 +210,24 @@ void posicionarPC(int pos){
 		t_puntero cpu_obtenerPosicionVariable (t_nombre_variable identificador_variable){
 			printf("en cpu_obtenerPosicionVariable\n");
 			int i;
+			printf("identificador: %c.\n", identificador_variable);
 			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
 				return (pcb->indiceStack[pcb->posicionStack].argumentos[identificador_variable-48].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].argumentos[identificador_variable-48].offset);
 			}
 			else // es una variable
 			{
+				printf("es variable\n");
+				printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
+				printf("primerVariable: %c.\n", pcb->indiceStack[pcb->posicionStack].variables[0].id);
 				for (i = 0; i < pcb->indiceStack[pcb->posicionStack].cantidadVariables; i++)
-				{
+				{	printf("%c==%c?\n",identificador_variable, pcb->indiceStack[pcb->posicionStack].variables[i].id);
 					if (identificador_variable==pcb->indiceStack[pcb->posicionStack].variables[i].id)
-						break;
+						{break;
+							printf("entre!\n");}
 				}
+				printf("antes return\n");
+				printf("direccion: %i.\n", (pcb->indiceStack->variables[i].pagina)*TAMPAGINA+(pcb->indiceStack->variables[i].offset));
 				return (pcb->indiceStack->variables[i].pagina)*TAMPAGINA+(pcb->indiceStack->variables[i].offset);
 			}
 		}
@@ -234,6 +243,7 @@ void posicionarPC(int pos){
 		 */
 		t_valor_variable cpu_dereferenciar(t_puntero direccion_variable){
 			printf("en cpu_dereferenciar\n");
+			printf("Direccion: %i.\n", direccion_variable);
 			int offset,pagina,valor,foo;
 			char rv[20],*trash;
 			offset=direccion_variable%TAMPAGINA;
@@ -243,6 +253,10 @@ void posicionarPC(int pos){
 			peticion->pagina=pagina;
 			peticion->offset=offset;
 			peticion->size=SIZE;
+			printf("%i\n", peticion->pid);
+			printf("%i\n", peticion->pagina);
+			printf("%i\n", peticion->offset);
+			printf("%i\n", peticion->size);
 			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
 			while(0>recv(socketMemoria,&foo,sizeof(int),0)){
 				perror("asd:");
@@ -250,7 +264,7 @@ void posicionarPC(int pos){
 			if(foo==1){
 				free(peticion);
 				while(0>recv(socketMemoria,rv,sizeof(int),0));
-				valor=strtol(rv,&trash,36);
+				valor=atoi(rv);
 				printf("valor dereferenciado: %i.\n", valor);
 				return valor;
 			}
@@ -530,15 +544,23 @@ void posicionarPC(int pos){
 		 * @return	puntero a donde esta reservada la memoria
 		 */
 		t_puntero cpu_reservar(t_valor_variable espacio)
-		{	printf("en cpu_reservar\n");
+		{	
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+			printf("en cpu_reservar\n");
 			t_reservarEspacioMemoria * reservarEspacioMemoria;
 			reservarEspacioMemoria=malloc(sizeof(t_reservarEspacioMemoria));
 			reservarEspacioMemoria->espacio=espacio;
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
 			enviarDinamico(PCB,socketKernel,pcb);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
+			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(RESERVADOESPACIO,socketKernel,reservar);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
+			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
+				
+			printf("puntero: %i.\n", reservar->puntero);
 			return reservar->puntero;
 			
 
@@ -558,11 +580,17 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_liberar(t_puntero puntero){
+			
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_liberar\n");
 			t_liberarMemoria * liberarMemoria;
 			liberarMemoria=malloc(sizeof(t_liberarMemoria));
 			liberarMemoria->direccionMemoria=puntero;
 			enviarDinamico(LIBERARESPACIOMEMORIA,socketKernel,liberarMemoria);
+			enviarDinamico(PCB,socketKernel,pcb);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			recibirDinamico(PCB,socketKernel,pcb);
+			
 		}
 
 		/*
@@ -576,6 +604,7 @@ void posicionarPC(int pos){
 		 * @return	El valor del descriptor de archivo abierto por el sistema
 		 */
 		t_descriptor_archivo cpu_abrir(t_direccion_archivo direccion, t_banderas flags){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_abrir\n");
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
@@ -583,8 +612,10 @@ void posicionarPC(int pos){
 					memcpy(&(abrirArchivo->flags),&flags,sizeof(t_banderas));
 					enviarDinamico(ABRIRARCHIVO,socketKernel,abrirArchivo);
 					enviarDinamico(PCB,socketKernel,pcb);
+					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 					recibirDinamico(PCB,socketKernel,pcb);
 					t_fdParaLeer * fdParaLeer= malloc(sizeof(t_fdParaLeer));
+					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
 					
 		
@@ -599,12 +630,14 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_borrar(t_descriptor_archivo descriptor_archivo){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_borrar\n");
 			t_borrarArchivo * borrarArchivo;
 			borrarArchivo=malloc(sizeof(t_borrarArchivo));
 			borrarArchivo->fdABorrar=descriptor_archivo;
 			enviarDinamico(BORRARARCHIVO,socketKernel,borrarArchivo);
 			enviarDinamico(PCB,socketKernel,pcb);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
 			
 		}
@@ -621,11 +654,13 @@ void posicionarPC(int pos){
 
 		void cpu_cerrar(t_descriptor_archivo descriptor_archivo){
 			printf("en cpu_cerrar\n");
-					t_cerrarArchivo * cerrarArchivo;
+					t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+			t_cerrarArchivo * cerrarArchivo;
 					cerrarArchivo=malloc(sizeof(t_cerrarArchivo));
 					cerrarArchivo->descriptorArchivo=descriptor_archivo;
 					enviarDinamico(CERRARARCHIVO,socketKernel,cerrarArchivo);
 					enviarDinamico(PCB,socketKernel,pcb);
+					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 					recibirDinamico(PCB,socketKernel,pcb);
 				}
 		/*
@@ -639,6 +674,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en moverCursor\n");
 			t_moverCursor * moverCursor;
 			moverCursor=malloc(sizeof(t_moverCursor));
@@ -646,6 +682,7 @@ void posicionarPC(int pos){
 			moverCursor->posicion=posicion;
 			enviarDinamico(MOVERCURSOR,socketKernel,moverCursor);
 			enviarDinamico(PCB,socketKernel,pcb);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
 		}
 		/*
@@ -662,6 +699,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_escribir\n");
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
@@ -671,6 +709,7 @@ void posicionarPC(int pos){
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
 			enviarDinamico(PCB,socketKernel,pcb);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
 		}
 
@@ -688,6 +727,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_leer\n");
 			t_leerArchivo * leerArchivo;
 			t_paqueteFS * paqueteFS;
@@ -696,7 +736,9 @@ void posicionarPC(int pos){
 			leerArchivo->tamanio=tamanio;
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
 			enviarDinamico(PCB,socketKernel,pcb);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PAQUETEFS,socketKernel,paqueteFS);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
 		}
 

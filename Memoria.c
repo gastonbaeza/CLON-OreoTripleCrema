@@ -338,11 +338,11 @@ while(1) {
  										}
  										else{
  											confirmacion=0;
- 											send(unData, &confirmacion, sizeof(int),0);
  											marco=calloc(1,sizeof(int));
  											for(pedidos=0;pedidos<pedidoAsignacion->paginasAAsignar;pedidos++)
  											{
 											ultimaPagina=buscarUltimaPaginaAsignada(pedidoAsignacion->pid,bloquesAdmin,MARCOS);
+        									ultimaPagina++;
 											indice=calcularPosicion(pedidoAsignacion->pid,ultimaPagina,MARCOS);
          									*marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); 
          									if(*marco!=-1)
@@ -351,7 +351,7 @@ while(1) {
         									 bloquesAdmin[*marco].estado=1;
         									bloquesAdmin[*marco].pid=pedidoAsignacion->pid;
         									bloquesAdmin[*marco].pagina=ultimaPagina;
-        									ultimaPagina++;
+ 											send(unData, &confirmacion, sizeof(int),0);
  											}
 											} free(marco);}free(pedidoAsignacion);
 							 			

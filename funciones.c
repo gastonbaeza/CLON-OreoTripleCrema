@@ -375,6 +375,7 @@ void serial_int(int * numero,int unSocket)
 	memcpy(buffer,&b,sizeof(int));
 	send(unSocket,numero,sizeof(int),0);	
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	free(buffer);
 }
 void dserial_int(int * numero,int unSocket)
 {
@@ -383,6 +384,7 @@ void dserial_int(int * numero,int unSocket)
 	memcpy(buffer,&b,sizeof(int));
 	while(0>=recv(unSocket,numero,sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
+	free(buffer);
 }
 int dserial_string(char ** unString,int unSocket)
 {	int tamanio;
@@ -858,6 +860,16 @@ void dserial_fdParaLeer(t_fdParaLeer * fdParaLeer, int unSocket)
 {	
 	dserial_int(&(fdParaLeer->fd),unSocket);
 }
+void serial_solicitudAsignar(t_solicitudAsignar * solicitud, int unSocket)
+{
+	serial_int(&(solicitud->pid),unSocket);
+	serial_int(&(solicitud->paginasAAsignar),unSocket);
+}
+void dserial_solicitudAsignar(t_solicitudAsignar * solicitud, int unSocket)
+{	
+	dserial_int(&(solicitud->pid),unSocket);
+	dserial_int(&(solicitud->paginasAAsignar),unSocket);
+}
 void serial_moverCursor(t_moverCursor * moverCursor, int unSocket)
 {
 	serial_int(&(moverCursor->descriptorArchivo),unSocket);
@@ -1013,6 +1025,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_arrayPids((t_arrayPids *)paquete,unSocket);
 		break;
+		case ASIGNARPAGINAS:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+			serial_solicitudAsignar((t_solicitudAsignar *)paquete,unSocket);
+		break;
 		case ABRIRARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_abrirArchivo((t_abrirArchivo *)paquete,unSocket);
@@ -1135,6 +1151,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case ARRAYPIDS:	
 					dserial_arrayPids((t_arrayPids *)paquete,unSocket);
+		break;
+		case ASIGNARPAGINAS:	
+					dserial_solicitudAsignar((t_solicitudAsignar *)paquete,unSocket);
 		break;
 		case SOLICITUDSEMSIGNAL:
 			dserial_solicitudSemaforo((t_solicitudSemaforo *)paquete,unSocket);
