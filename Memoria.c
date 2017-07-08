@@ -389,8 +389,8 @@ while(flagHilo) {
 	 											pidALiberar=calloc(1,sizeof(int));
 	 											buffer=calloc(1,sizeof(int));
 												memcpy(buffer,&a,sizeof(int));
-	 											while(0==recv(unData,pidALiberar,sizeof(int),0));
-	 											send(unData,buffer,sizeof(int),0);
+	 											while(0<recv(unData,pidALiberar,sizeof(int),0));
+	 											
 	 											liberarPaginas(pidALiberar,bloquesAdmin,marcos,MARCOS,overflow,MARCO_SIZE);
 	 											free(buffer);free(pidALiberar);
 	 							 

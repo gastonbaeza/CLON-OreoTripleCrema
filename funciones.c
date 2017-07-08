@@ -82,7 +82,7 @@
 #define PCBQUANTUM 55
 #define PCBFINALIZADOPORCONSOLA 56
 #define SOLICITUDSEMWAIT 57
-#define VALIDARARHIVO 58
+#define VALIDARARCHIVO 58
 #define FINALIZARPORERROR 59
 #define PCBERROR 60
 #define PAGINAINVALIDA 61
@@ -1069,7 +1069,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path *)paquete,unSocket);
 		 break;
-		 case VALIDARARHIVO:
+		 case VALIDARARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path*)paquete,unSocket);
 		 break;
@@ -1077,7 +1077,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_path((t_path*)paquete,unSocket);
 		 break;
-		 case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case PAGINAINVALIDA: case STACKOVERFLOW:
+		 case ESPERONOVEDADES: case FINALIZARPROCESO: case LIBERARMEMORIA:case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case PAGINAINVALIDA: case STACKOVERFLOW:
 		 break;
 		 case CONTINUAR:
 		 break;
@@ -1199,13 +1199,13 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		case PAQUETEFS:
 			dserial_paqueteFs((t_paqueteFS *)paquete,unSocket);
 		break;
-		case VALIDARARHIVO:
+		case VALIDARARCHIVO:
 		 	dserial_path((t_path*)paquete,unSocket);
 		break;
 		case CREARARCHIVOFS:
 		 	dserial_path((t_path*)paquete,unSocket);
 		break;
-		case ESPERONOVEDADES: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case STACKOVERFLOW: case PAGINAINVALIDA:
+		case ESPERONOVEDADES:case LIBERARMEMORIA: case FINALIZARPROCESO: case FINALIZARPORERROR: case FINQUANTUM: case PARAREJECUCION: case STACKOVERFLOW: case PAGINAINVALIDA:
 		break;
 		case CONTINUAR:
 		break;
@@ -1590,3 +1590,12 @@ void ultimoDirectorio(char * unPath,char** laDir)
 	}
 }
 
+char * enlistadorDeBloques(int * bloquesAsignados, int bloquesAsignados)
+{	int unBloque=0;
+	char * lista=malloc(bloquesAsignados+bloquesAsignados-1+2+1); // bloques+comas+corchetes+barraceroF
+	for (unBloque = 0; unBloque < bloquesAsignados; unBloque++)
+	{
+		
+	}
+
+}
