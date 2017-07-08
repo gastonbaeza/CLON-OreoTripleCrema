@@ -173,8 +173,8 @@ bloquesAdmin[unaAdmin].pagina=-1;
 marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
 int unMarco=0;
 
-memoria=calloc(MARCOS,MARCO_SIZE);
-cache=calloc(ENTRADAS_CACHE,MARCO_SIZE);
+memoria=calloc(1,MARCOS*MARCO_SIZE);
+cache=calloc(1,ENTRADAS_CACHE*MARCO_SIZE);
 memoriaCache=(t_estructuraCache*)calloc(1,sizeof(t_estructuraCache)*ENTRADAS_CACHE);
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
 for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
@@ -182,7 +182,6 @@ for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada regio
 		marcos[unMarco].numeroPagina=memoria+(unMarco*MARCO_SIZE);
 		
 	}
-
 for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
 	{
 		memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
@@ -237,8 +236,7 @@ t_solicitudAsignar * pedidoAsignacion;
 int ultimaPagina;
 int flagHilo=1,rv;
 while(flagHilo) {
-	
-			seleccionador=calloc(1,8);
+		seleccionador=calloc(1,8);
 			while(0>(rv=recv(unData,seleccionador,sizeof(t_seleccionador),0)));
 			if (rv==0)
 			{
@@ -250,10 +248,8 @@ while(flagHilo) {
 				{
 						case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 								 //esto lo vi en stack overflow no me peguen
-							printf("SOLICITUDMEMORIA\n");
-								solicitud=calloc(1,sizeof(t_solicitudMemoria));
+							solicitud=malloc(sizeof(t_solicitudMemoria));
 								recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
-								printf("despues recibir\n");
 								fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);
 								printf("Codigo: %s\n", solicitud->codigo); 
 								printf("Cant Pags Codigo: %i\n", solicitud->cantidadPaginasCodigo);
@@ -276,8 +272,9 @@ while(flagHilo) {
 	 						
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
 	 							
-	 							test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
-	 							if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
+								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
+	 							
+								if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
 	 							else printf("%s\n","algo malo paso en la reserva" );
 	 							free(solicitud->codigo);
 	 							free(solicitud);
@@ -301,11 +298,10 @@ while(flagHilo) {
 	 										printf("size: %i\n", peticionBytes->size);
 	 										printf("offset: %i\n", peticionBytes->offset);
 	 										if(-1==existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
-											{	printf("-1\n");
-												confirmacion=-1;
+											{	confirmacion=-1;
 												send(unData, &confirmacion, sizeof(int),0);
 											}
-											else{printf("else\n");
+											else{
 												confirmacion=1;
 												send(unData, &confirmacion, sizeof(int),0);
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
@@ -333,7 +329,6 @@ while(flagHilo) {
 	 											send(unData,paquete,peticionBytes->size,0);
 	 											printf("paquete: %s\n", (char*)paquete);
 	 										}
-	 										printf("despue\n");
 	 											free(paquete);
 	 											free(peticionBytes);
 	 					break;
@@ -389,8 +384,8 @@ while(flagHilo) {
 	 											pidALiberar=calloc(1,sizeof(int));
 	 											buffer=calloc(1,sizeof(int));
 												memcpy(buffer,&a,sizeof(int));
-	 											while(0<recv(unData,pidALiberar,sizeof(int),0));
-	 											
+	 											while(0>recv(unData,pidALiberar,sizeof(int),0));
+	 											printf("pid:%i\n", *pidALiberar);
 	 											liberarPaginas(pidALiberar,bloquesAdmin,marcos,MARCOS,overflow,MARCO_SIZE);
 	 											free(buffer);free(pidALiberar);
 	 							 
