@@ -6,6 +6,7 @@
 #include "estructuras.h"
 #include "funciones.h"
 #include <commons/collections/list.h>
+#include <commons/string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -29,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <linux/limits.h>
 #define FILESYSTEM 84
 #define BACKLOG 5
 #define LIBRE 0
@@ -76,6 +78,16 @@
 #define PIDSIZE 1
 #define MEMORIASIZE 0
 #define VALIDARARCHIVO 58
+
+#define CREARARCHIVOFS 64
+#define GUARDARDATOSFS 65
+#define OBTENERDATOSFS 66
+#define PAQUETEFS 67
+#define BORRARARCHIVOFS 68
+char * PUNTO_MONTAJE;
+char * BLOQUES_MONTAJE;
+char * ARCHIVOS_MONTAJE;
+char * METADATA_MONTAJE;
 char * bitArray;
 char * listaBloques;
 int makeDir(char *fullpath, mode_t permissions){
@@ -93,6 +105,7 @@ while(arrDirs[i]!=NULL)
     mkdir(aggrpaz,permissions);
     strcat(aggrpaz, "/");
 }
+free(path);
 i=0;
 return 0;
 }
@@ -102,7 +115,7 @@ int enQueBloqueEstoy(int*offset, int*tamanioBloque){
 }
 
 int deDondeEmpiezoALeer(int*offset, int*tamanioBloque){
-	int inicioLectura= offset%tamanioBloque;
+	int inicioLectura= *offset%(*tamanioBloque);
 	return inicioLectura;
 }
 
@@ -128,8 +141,34 @@ FILE* getSiguiente(char**BLOQUES,int index){
 	return f;
 }
 
+char *strip(const char *s) {
+    char *p = malloc(strlen(s) + 1);
+    if(p) {
+        char *p2 = p;
+        while(*s != '\0') {
+            if(*s != '\t' && *s != '\n' && *s != ' ') {
+                *p2++ = *s++;
+            } else {
+                ++s;
+            }
+        }
+        *p2 = '\0';
+    }
+    return p;
+}
+
+int cantidadElementos(char* cadena){
+	int cont=0,i=0;
+	while(cadena[i]!=']')
+		{
+			if (cadena[i]==',')
+				cont++;
+			i++;
+		}
+	return cont+1;
+}
 int main(){
-char* PUERTO,*PUNTO_MONTAJE;
+char* PUERTO;
 t_config *CFG;
 t_config * cfgMetadata;
 CFG = config_create("fileSystemCFG.txt");
@@ -154,14 +193,12 @@ hints.ai_socktype = SOCK_STREAM;
 if ((rv =getaddrinfo(NULL, PUERTO, &hints, &serverInfo)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 
 listenningSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-sleep(1);
 fflush(stdout);
 printf("%s \n", "Socket OK");
 
 if(bind(listenningSocket,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1) {perror("Error en el bind."); exit(1);}
 
 fflush(stdout);
-sleep(1);
 printf("%s \n", "Bind OK\n");
 
 
@@ -199,6 +236,15 @@ metadataFS->cantBloques=config_get_int_value(cfgMetadata,"CANTIDAD_BLOQUES");pri
 //////////////////genero el bitarray.bin/////////////////////////////////////////////////
 printf("%s\n","comence a generar el bitarray" );
 strcpy(direccion,PUNTO_MONTAJE);
+ARCHIVOS_MONTAJE=calloc(1,PATH_MAX);
+strcpy(ARCHIVOS_MONTAJE,PUNTO_MONTAJE);
+strcat(ARCHIVOS_MONTAJE,"/Archivos");
+METADATA_MONTAJE=calloc(1,PATH_MAX);
+strcpy(METADATA_MONTAJE,PUNTO_MONTAJE);
+strcat(METADATA_MONTAJE,"/Metadata");
+BLOQUES_MONTAJE=calloc(1,PATH_MAX);
+strcpy(BLOQUES_MONTAJE,PUNTO_MONTAJE);
+strcat(BLOQUES_MONTAJE,"/Bloques");
 int bitmap1;
 int i;
 int confirmacion;
@@ -246,208 +292,288 @@ int * bloquesAsignados;
 char * pegador=calloc(1,200);
 
 
-path=calloc(1,sizeof(t_path));
 strcpy(direccion,PUNTO_MONTAJE);
-path->path="/caca/aloha.bin";
 
-int index;
-char* bloqueDondeEstoy;
+int index,bloquesNecesarios;
+char*auxCant;
+char* bloqueDondeEstoy,bloquesAsignadosChar;
 char* bloqueConBin;
 char*rutaParcial;
 char*rutaFinal;
+char*bloquesArray;
 int tamanio;
-char* resultado;
+int TAMANIO;
+int cantidadBloques,primerBloqueAEscribir,cantAPedir,offsetAEscribir;
+t_paqueteFS* resultado;
+char * auxChar,*ptoMont;
 int sizeAux;
+int restoUltimoBloque;
 char*auxResultado;
 int valorRespuesta;
 t_config * CFGarchivo;		
 FILE*f;
 char**BLOQUES;
-t_escribirArchivo * escribirArchivoFS;
-while(0>=recv(socketKernel,seleccionador,sizeof(t_seleccionador),0));
-{
-	switch (seleccionador->tipoPaquete){
-		case VALIDARARCHIVO:
-					
-					
-					recibirDinamico(PATH,socketKernel,path);
-					if( access( path->path, F_OK ) != -1 ) {
-						confirmacion=1;
-						send(socketKernel,&confirmacion,sizeof(int),0);
-						printf("%s \n", "Validado, troesma.\n");
-					} else {
-						confirmacion=-1;
-						send(socketKernel,&confirmacion,sizeof(int),0);
-						printf("%s \n", "El archivo no existe o no se encuentra disponible\n");
-					}
-					free(path);
+t_escribirArchivoFS * escribirArchivoFS;
+t_leerArchivoFS * leerArchivoFS;
+while(1){
+	while(0>recv(socketKernel,seleccionador,sizeof(t_seleccionador),0));
 	
-		break;
-		case CREARARCHIVO: 
-		/*Parámetros: [Path]
-
-		Cuando el Proceso Kernel reciba la operación de abrir un archivo deberá, en caso que el
-		archivo no exista y este sea abierto en modo de creación (“c”), llamar a esta operación que
-		creará el archivo dentro del path solicitado. Por default todo archivo creado se le debe
-		asignar al menos 1 bloque de datos*/
+		switch (seleccionador->tipoPaquete)
+		{
+			case VALIDARARCHIVO:
+						
+						
+						path=calloc(1,sizeof(t_path));
+						recibirDinamico(PATH,socketKernel,path);
+						auxChar=calloc(1,PATH_MAX);
+						strcpy(auxChar,strip(ARCHIVOS_MONTAJE));
+						if( access( strcat(auxChar,strip(path->path)), F_OK ) != -1 ) {
+							confirmacion=1;
+							printf("%s \n", "Validado, troesma.\n");
+						} else {
+							confirmacion=-1;
+							printf("%s \n", "El archivo no existe o no se encuentra disponible\n");
+						}
+						send(socketKernel,&confirmacion,sizeof(int),0);
+						free(path);
+						free(auxChar);
 		
-		recibirDinamico(PATH,socketKernel,path);
+			break;
+			case CREARARCHIVOFS: 
+			/*Parámetros: [Path]
 
-		direccion=strcat(direccion,"/Archivos"); printf("direccion archivos %s\n",direccion );
-		direccion=strcat(direccion,path->path);
-		ultimoDirectorio(direccion,&soloDir); printf("%s\n",soloDir ); 
-
-		makeDir(soloDir,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		bloquesAsignados=asignarBloques(1,&bitarray,bloques);
-		listaBloques=enlistadorDeBloques(bloquesAsignados,1);
-		crearBloques(listaBloques, bitmap,PUNTO_MONTAJE);
-		strcpy(pegador,"BLOQUES=");
-		listaBloques=strcat(pegador,listaBloques);printf("lo que va en la conf %s\n",listaBloques );
-		
-		 bitmap= fopen(direccion,"ab+"); printf("final 4k %s\n",direccion );
-		if (bitmap!=NULL)
-		{	fseek(bitmap,0,SEEK_END);
-			fwrite("TAMANIO=0",strlen("TAMANIO=0"),1,bitmap);
-			fwrite("\n",1,1,bitmap);
-			fwrite(listaBloques,strlen(listaBloques),1,bitmap);
-			fclose(bitmap);
-			printf("%s\n", "fue creado el archivo");
-		}
-		else{perror ("Error opening threshold file");
-			printf("%s\n","se rompio algo" );}
-		
-
-		break;
-		case BORRARARCHIVO: printf("%s \n", "Borrado, papu.\n");
-		/*Parámetros: [Path]
-		Borrará el archivo en el path indicado, eliminando su archivo de metadata y marcando los
-		bloques como libres dentro del bitmap*/
-		path=malloc(sizeof(t_path));
+			Cuando el Proceso Kernel reciba la operación de abrir un archivo deberá, en caso que el
+			archivo no exista y este sea abierto en modo de creación (“c”), llamar a esta operación que
+			creará el archivo dentro del path solicitado. Por default todo archivo creado se le debe
+			asignar al menos 1 bloque de datos*/
+			
+			path=calloc(1,sizeof(t_path));
 			recibirDinamico(PATH,socketKernel,path);
-			CFGarchivo = config_create(path->path);
-			TAMANIO= config_get_int_value(CFG ,"TAMANIO");
-			BLOQUES= config_get_int_value(CFG ,"BLOQUES");
-			cantidadBloques=cantidadElementos(BLOQUES);
-			for(i;i<cantidadBloques;i++){
-			bitarray_clean_bit(bitarray,BLOQUES[i]);
-			}
-			if( remove(path->path) != 0 )
+			path->path=strip(path->path);
+			direccion=strcat(direccion,"/Archivos"); printf("direccion archivos %s\n",direccion );
+			direccion=strcat(direccion,path->path);
+			ultimoDirectorio(direccion,&soloDir); printf("%s\n",soloDir ); 
 
-				perror("Error al borrar el archivo");
-			else
-				printf("Borrado, papu.");
-			free(path);
-			config_destroy(CFGarchivo);
-		break;
-		
-		case OBTENERDATOS: printf("%s \n", "Tomá, comela.\n");
-		/*Parámetros: [Path, Offset, Size]
-		Ante un pedido de datos el File System devolverá del path enviado por parámetro, la
-		cantidad de bytes definidos por el Size a partir del offset solicitado. Requiere que el archivo
-		se encuentre abierto en modo lectura (“r”)*/
-		leerArchivoFS=malloc(sizeof(t_leerArchivoFS));
-			recibirDinamico(LEERARCHIVOFS,socketKernel,leerArchivoFS);
-			CFGarchivo = config_create(leerArchivoFS->path);
-			TAMANIO= config_get_int_value(CFG ,"TAMANIO");
-			BLOQUES= config_get_array_value(CFG ,"BLOQUES");
-			index=enQueBloqueEstoy(leerArchivoFS->offset,tamanioBloque);
-			bloqueDondeEstoy=obtenerBloque(BLOQUES,&index);
-			bloqueConBin=calloc(1,200);
-			strcpy(bloqueConBin,bloqueDondeEstoy);
-			bloqueConBin=strcpy(bloqueConBin,".bin");
-			rutaParcial=calloc(1,200);
-			strcpy(rutaParcial,PUNTO_MONTAJE);
-			rutaParcial=strcat(rutaParcial,"Bloques/");
-			rutaFinal=calloc(1,200);
-			strcpy(rutaFinal,rutaParcial);
-			rutaFinal=strcat(rutaFinal,bloqueConBin);
-			FILE*f=fopen(rutaFinal,"rb");
-			tamanio=tamBloque-deDondeEmpiezoALeer(leerArchivoFS->offset,tamBloque);
-			fseek(f,deDondeEmpiezoALeer(leerArchivoFS->offset,tamBloque),SEEK_SET);
-			resultado=calloc(1,leerArchivoFS->size);
-			sizeAux=leerArchivoFS->size;
-			auxResultado=malloc(sizeof(leerArchivoFS->size));
-			while(sizeAux>0){
-				fread(auxResultado,tamanio,1,f);
-				resultado=strcat(resultado,auxResultado);
-				sizeAux-=tamanio;
-				if(tamBloque<sizeAux){
-					tamanio=tamBloque;
-				}else{
-					tamanio=sizeAux;
-				}
-				if(sizeAux!=0){
-					fclose(f);
-					index++;
-					f=getSiguiente(BLOQUES,index);}
+			makeDir(soloDir,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+			bloquesAsignados=(int*)asignarBloques(1,&bitarray,bloques);
+			listaBloques=(char*)enlistadorDeBloques(bloquesAsignados,1);
+			crearBloques(listaBloques,PUNTO_MONTAJE,tamBloques);
+			strcpy(pegador,"BLOQUES=");
+			listaBloques=strcat(pegador,listaBloques);printf("lo que va en la conf %s\n",listaBloques );
+			
+			 bitmap= fopen(direccion,"ab+"); printf("final 4k %s\n",direccion );
+			if (bitmap!=NULL)
+			{	fseek(bitmap,0,SEEK_END);
+				fwrite("TAMANIO=0",strlen("TAMANIO=0"),1,bitmap);
+				fwrite("\n",1,1,bitmap);
+				fwrite(listaBloques,strlen(listaBloques),1,bitmap);
+				fclose(bitmap);
+				printf("%s\n", "fue creado el archivo");
 			}
-			enviarDinamico(LEERARCHIVO,socketKernel,resultado);
-			free(auxResultado);
-			free(resultado);
-			free(bloqueConBin);
-			free(rutaParcial);
-			free(rutaFinal);
+			else{perror ("Error opening threshold file");
+				printf("%s\n","se rompio algo" );}
+			
 
-		break;
-		case GUARDARDATOS: printf("%s \n", "Guardados, lince.\n");
-		/*Parámetros: [Path, Offset, Size, Buffer]
-		Ante un pedido de escritura el File System almacenará en el path enviado por parámetro, los
-		bytes del buffer, definidos por el valor del Size y a partir del offset solicitado. Requiere que el
-		archivo se encuentre abierto en modo escritura (“w”)*/
-		escribirArchivoFS=calloc(1,sizeof(t_))
-		recibirDinamico(ESCRIBIRARCHIVO,socketKernel,t_escribirArchivo;);
-		CFGarchivo = config_create(escribirArchivoFS->path);
-			TAMANIO= config_get_int_value(CFG ,"TAMANIO");
-			BLOQUES= config_get_array_value(CFG ,"BLOQUES");
-	 		index=enQueBloqueEstoy(escribirArchivoFS->offset,&TAMANIO);
-			bloqueDondeEstoy=obtenerBloque(BLOQUES,index);
-			bloqueConBin=calloc(1,200);
-			strcpy(bloqueConBin,bloqueDondeEstoy);
-			bloqueConBin=strcpy(bloqueConBin,".bin");
-			rutaParcial=calloc(1,200);
-			strcpy(rutaParcial,PUNTO_MONTAJE);
-			rutaParcial=strcat(rutaParcial,"Bloques/");
-			rutaFinal=calloc(1,200);
-			strcpy(rutaFinal,rutaParcial);
-			rutaFinal=strcat(rutaFinal,bloqueConBin);
-			f=fopen(rutaFinal,"wb");
-			tamanio=tamBloque-deDondeEmpiezoALeer(escribirArchivoFS->offset,tamBloque);
-			fseek(f,deDondeEmpiezoALeer(escribirArchivoFS->offset,tamBloque),SEEK_SET);
-			sizeAux=escribirArchivoFS->size;
-			/*auxBuffer=malloc(sizeof(escribirArchivoFS->buffer));
-			auxBuffer=escribirArchivoFS->buffer;*/
-			while(sizeAux>0){
-				fwrite(auxResultado,tamanio,1,f);
-				auxResultado-=tamanio;
-				sizeAux-=tamanio;
-				if(tamBloque<sizeAux){
-					tamanio=tamBloque;
-				}else{
-					tamanio=sizeAux;
+			break;
+			case BORRARARCHIVO: printf("%s \n", "Borrado, papu.\n");
+			/*Parámetros: [Path]
+			Borrará el archivo en el path indicado, eliminando su archivo de metadata y marcando los
+			bloques como libres dentro del bitmap*/
+			path=malloc(sizeof(t_path));
+				recibirDinamico(PATH,socketKernel,path);
+				CFGarchivo = config_create(path->path);
+				TAMANIO= config_get_int_value(CFG ,"TAMANIO");
+				BLOQUES= config_get_array_value(CFG ,"BLOQUES");
+				auxCant=config_get_string_value(CFG,"BLOQUES");
+				cantidadBloques=cantidadElementos(auxCant);
+				for(i;i<cantidadBloques;i++){
+				bitarray_clean_bit(bitarray,atoi(BLOQUES[i]));
 				}
-				if(sizeAux!=0){
+				if( remove(path->path) != 0 )
+
+					perror("Error al borrar el archivo");
+				else
+					printf("Borrado, papu.");
+				free(path);
+				config_destroy(CFGarchivo);
+			break;
+			
+			case OBTENERDATOSFS: printf("%s \n", "Tomá, comela.\n");
+			/*Parámetros: [Path, Offset, Size]
+			Ante un pedido de datos el File System devolverá del path enviado por parámetro, la
+			cantidad de bytes definidos por el Size a partir del offset solicitado. Requiere que el archivo
+			se encuentre abierto en modo lectura (“r”)*/
+			leerArchivoFS=malloc(sizeof(t_leerArchivoFS));
+				recibirDinamico(OBTENERDATOSFS,socketKernel,leerArchivoFS);
+				CFGarchivo = config_create(leerArchivoFS->path);
+				TAMANIO= config_get_int_value(CFG ,"TAMANIO");
+				BLOQUES= config_get_array_value(CFG ,"BLOQUES");
+				index=enQueBloqueEstoy(&(leerArchivoFS->offset),&tamBloques);
+				bloqueDondeEstoy=obtenerBloque(BLOQUES,&index);
+				bloqueConBin=calloc(1,200);
+				strcpy(bloqueConBin,bloqueDondeEstoy);
+				bloqueConBin=strcpy(bloqueConBin,".bin");
+				rutaParcial=calloc(1,200);
+				strcpy(rutaParcial,PUNTO_MONTAJE);
+				rutaParcial=strcat(rutaParcial,"Bloques/");
+				rutaFinal=calloc(1,200);
+				strcpy(rutaFinal,rutaParcial);
+				rutaFinal=strcat(rutaFinal,bloqueConBin);
+				FILE*f=fopen(rutaFinal,"rb");
+				tamanio=tamBloques-deDondeEmpiezoALeer(&(leerArchivoFS->offset),&tamBloques);
+				fseek(f,deDondeEmpiezoALeer(&(leerArchivoFS->offset),&tamBloques),SEEK_SET);
+				resultado=calloc(1,sizeof(t_paqueteFS));
+				resultado->paquete=calloc(1,leerArchivoFS->size);
+				sizeAux=leerArchivoFS->size;
+				auxResultado=malloc(sizeof(leerArchivoFS->size));
+				while(sizeAux>0){
+					fread(auxResultado,tamanio,1,f);
+					resultado->paquete=strcat(resultado->paquete,auxResultado);
+					sizeAux-=tamanio;
+					if(tamBloques<sizeAux){
+						tamanio=tamBloques;
+					}else{
+						tamanio=sizeAux;
+					}
+					if(sizeAux!=0){
+						fclose(f);
+						index++;
+						f=getSiguiente(BLOQUES,index);}
+				}
+				enviarDinamico(PAQUETEFS,socketKernel,resultado);
+				free(auxResultado);
+				free(resultado->paquete);
+				free(resultado);
+				free(bloqueConBin);
+				free(rutaParcial);
+				free(rutaFinal);
+
+			break;
+			case GUARDARDATOSFS: printf("%s \n", "Guardados, lince.\n");
+			/*Parámetros: [Path, Offset, Size, Buffer]
+			Ante un pedido de escritura el File System almacenará en el path enviado por parámetro, los
+			bytes del buffer, definidos por el valor del Size y a partir del offset solicitado. Requiere que el
+			archivo se encuentre abierto en modo escritura (“w”)*/
+			escribirArchivoFS=calloc(1,sizeof(t_escribirArchivoFS));
+			recibirDinamico(GUARDARDATOSFS,socketKernel,escribirArchivoFS);
+			printf("path: %s\n", escribirArchivoFS->path);
+			printf("buffer: %s\n", escribirArchivoFS->buffer);
+			printf("size: %i\n", escribirArchivoFS->size);
+			printf("offset: %i\n",escribirArchivoFS->offset);
+			auxChar=calloc(1,PATH_MAX);
+			strcpy(auxChar,strip(ARCHIVOS_MONTAJE));
+			strcat(auxChar,strip(escribirArchivoFS->path));
+			printf("auxChar: %s\n", strip(auxChar));
+			CFG = config_create(auxChar);
+			printf("qwe\n");
+			printf("%p de config\n", CFG);
+			rv=1;
+				// TAMANIO= config_get_int_value(CFG ,"TAMANIO");
+				printf("qwe\n");
+				bloquesArray= config_get_string_value(CFG ,"BLOQUES");
+				printf("qwe\n");
+				cantidadBloques=cantidadElementos(bloquesArray);
+				BLOQUES=config_get_array_value(CFG ,"BLOQUES");
+				bloquesNecesarios=calcularPaginas(tamBloques,offsetAEscribir+escribirArchivoFS->size);
+				cantAPedir=bloquesNecesarios-cantidadBloques;
+				printf("antes if\n");
+				if (cantAPedir>0)
+				{
+					if (hayBloquesLibres(cantAPedir,&bitarray,metadataFS->cantBloques))
+					{
+						printf("adentro hayBloquesLibres\n");
+						bloquesAsignados=(int*)asignarBloques(cantAPedir,&bitarray,metadataFS->cantBloques);
+						bloquesAsignadosChar=enlistadorDeBloques(bloquesAsignados,cantAPedir);
+						crearBloques(bloquesAsignadosChar,PUNTO_MONTAJE,tamBloques);
+						printf("saliendo hayBloquesLibres\n");
+					}
+					else{
+						rv=0;
+					}
+					BLOQUES=realloc(BLOQUES,(cantidadBloques+cantAPedir)*5);
+					for (i = 0; i < cantAPedir && rv; i++)
+					{
+						printf("antes sprintf\n");
+						sprintf(BLOQUES[cantidadBloques+i],"%i",bloquesAsignados[i]);
+						printf("despues sprintf\n");
+					}
+				}
+				ptoMont=calloc(1,PATH_MAX);
+				if (rv)
+				{
+					printf("despues if\n");
+					offsetAEscribir=deDondeEmpiezoALeer(&(escribirArchivoFS->offset),&tamBloques);
+					primerBloqueAEscribir=escribirArchivoFS->offset/tamBloques;
+					printf("asd\n");
+					strcpy(ptoMont,strip(BLOQUES_MONTAJE));
+					strcat(ptoMont,"/");
+					strcat(ptoMont,BLOQUES[primerBloqueAEscribir]);
+					strcat(ptoMont,".bin");
+					printf("antes de escribir en : %s\n",ptoMont);
+					f=fopen(ptoMont,"wb");
+					fseek(f,offsetAEscribir,SEEK_SET);
+					if (offsetAEscribir+escribirArchivoFS->size<tamBloques)
+					{
+						fwrite(escribirArchivoFS->buffer,escribirArchivoFS->size,1,f);
+						restoUltimoBloque=escribirArchivoFS->size;
+						escribirArchivoFS->size=0;
+					}
+					else{
+						fwrite(escribirArchivoFS->buffer,tamBloques-offsetAEscribir,1,f);
+						escribirArchivoFS->size-=(tamBloques-offsetAEscribir);
+						escribirArchivoFS->buffer+=(tamBloques-offsetAEscribir);
+					}
 					fclose(f);
-					index++;
-					f=getSiguiente(BLOQUES,&index);}
-			}
-			if(cantidadElementos(BLOQUES)*tamanioBloque<sizeAux){
-				valorRespuesta=0;
-			}else{valorRespuesta=1;}
-			send(socketKernel,&valorRespuesta,sizeof(int),0);
-			/*free(auxBuffer);*/
-			free(bloqueConBin);
-			free(rutaParcial);
-			free(rutaFinal);
-			free(escribirArchivoFS);
-		break;
-		default: printf("%s \n", "Numero incorrecto\n");
-		break;
-			}	/*En caso de que se soliciten datos o se intenten guardar datos en un archivo inexistente,
-				 el File System deberá retornar un error de Archivo no encontrado*/
-		}	
-		free(seleccionador);
- 		
-return 0;
+					i=primerBloqueAEscribir+1;
+					while(escribirArchivoFS->size>0){
+						strcpy(ptoMont,strip(BLOQUES_MONTAJE));
+						strcat(ptoMont,"/");
+						strcat(ptoMont,BLOQUES[i]);
+						strcat(ptoMont,".bin");
+						printf("antes de escribir en : %s\n",ptoMont);
+						f=fopen(ptoMont,"wb");
+						if (offsetAEscribir+escribirArchivoFS->size<tamBloques)
+						{
+							fwrite(escribirArchivoFS->buffer,escribirArchivoFS->size,1,f);
+							restoUltimoBloque=escribirArchivoFS->size;
+							escribirArchivoFS->size=0;
+						}
+						else{
+							fwrite(escribirArchivoFS->buffer,tamBloques-offsetAEscribir,1,f);
+							escribirArchivoFS->size-=(tamBloques-offsetAEscribir);
+							escribirArchivoFS->buffer+=(tamBloques-offsetAEscribir);
+						}
+						fclose(f);
+						i++;
+					}
+				}
+				config_set_value(CFG,"TAMANIO",string_itoa((cantidadBloques+cantAPedir-1)*tamBloques+restoUltimoBloque));
+				
+				bloquesArray=realloc(bloquesArray,(cantidadBloques+cantAPedir)*5+cantidadBloques+cantAPedir-1+2);
+				strcpy(bloquesArray,"[");
+				for (i = 0; i < (cantidadBloques+cantAPedir); i++)
+				{
+					strcat(bloquesArray,BLOQUES[i]);
+					if (!(i+1==(cantidadBloques+cantAPedir)))
+					{
+						strcat(bloquesArray,",");
+					}
+				}
+				strcat(bloquesArray,"]");
+
+				config_set_value(CFG,"BLOQUES",bloquesArray);
+				printf("despues de escribir\n");
+				send(socketKernel,&rv,sizeof(int),0);
+				free(ptoMont);
+			break;
+			default: printf("%s \n", "Numero incorrecto\n");
+			break;
+		}	/*En caso de que se soliciten datos o se intenten guardar datos en un archivo inexistente, el File System deberá retornar un error de Archivo no encontrado*/
+	}	
+	free(seleccionador);
+	 		
+	return 0;
 }
+
 
 

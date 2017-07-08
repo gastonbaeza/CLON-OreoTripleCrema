@@ -19,7 +19,7 @@
 #include <parser/metadata_program.h>
 #include <stddef.h> 
 #include <signal.h> 
-
+#include <linux/limits.h>
 
 
 #define SOLICITUDLINEA 2
@@ -93,6 +93,8 @@ void nuevoNivelStack(){
 	pcb->indiceStack[pcb->posicionStack].varRetorno.offset=-1;
 	pcb->indiceStack[pcb->posicionStack].varRetorno.size=-1;
 	pcb->indiceStack[pcb->posicionStack].posRetorno=pcb->programCounter;
+	pcb->indiceStack[pcb->posicionStack].variables=malloc(1);
+	pcb->indiceStack[pcb->posicionStack].argumentos=malloc(1);
 	pthread_mutex_unlock(&mutexPcb);
 }
 
@@ -107,12 +109,38 @@ void finalizarNivelStack(){
 
 
 void liberarContenidoPcb(){
+	int i;
 	free(pcb->indiceCodigo);
 	free(pcb->referenciaATabla);
-	free(pcb->indiceStack->argumentos);
-	free(pcb->indiceStack->variables);
+	for (i = 0; i < pcb->cantidadStack; i++)
+	{	
+		if (pcb->indiceStack[i].cantidadArgumentos)
+		{
+			free(pcb->indiceStack[i].argumentos);
+		}
+		if (pcb->indiceStack[i].cantidadVariables)
+		{
+			free(pcb->indiceStack[i].variables);
+		}
+	}
 	free(pcb->indiceStack);
 	free(pcb);
+}
+
+char* limpiar_string(char* s){
+    char *p = malloc(strlen(s) + 1);
+    if(p) {
+        char *p2 = p;
+        while(*s != '\0') {
+            if(*s != '\t' && *s != '\n' && *s != ' ') {
+                *p2++ = *s++;
+            } else {
+                ++s;
+            }
+        }
+        *p2 = '\0';
+    }
+    return p;
 }
 
 void posicionarPC(int pos){
@@ -176,6 +204,9 @@ void posicionarPC(int pos){
 				printf("%i\n",pcb->cantidadStack );
 				pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
 				printf("antes realloc\n");
+				printf("%i\n", pcb->indiceStack[pcb->posicionStack].cantidadVariables);
+				printf("%i\n", pcb->posicionStack);
+				printf("%i\n", pcb->indiceStack[pcb->posicionStack].variables[0].pagina);
 				pcb->indiceStack[pcb->posicionStack].variables=realloc(pcb->indiceStack[pcb->posicionStack].variables,pcb->indiceStack[pcb->posicionStack].cantidadVariables*sizeof(t_variable));
 				printf("despues realloc\n");
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].id=identificador_variable;
@@ -218,6 +249,7 @@ void posicionarPC(int pos){
 			}
 			else // es una variable
 			{
+				printf("pcb->posicionStack: %i.\n", pcb->posicionStack);
 				printf("es variable\n");
 				printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 				printf("primerVariable: %c.\n", pcb->indiceStack[pcb->posicionStack].variables[0].id);
@@ -227,9 +259,8 @@ void posicionarPC(int pos){
 						{break;
 							printf("entre!\n");}
 				}
-				printf("antes return\n");
-				printf("direccion: %i.\n", (pcb->indiceStack->variables[i].pagina)*TAMPAGINA+(pcb->indiceStack->variables[i].offset));
-				return (pcb->indiceStack->variables[i].pagina)*TAMPAGINA+(pcb->indiceStack->variables[i].offset);
+				printf("direccion: %i.\n", (pcb->indiceStack[pcb->posicionStack].variables[i].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[i].offset));
+				return (pcb->indiceStack[pcb->posicionStack].variables[i].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[i].offset);
 			}
 		}
 
@@ -374,11 +405,13 @@ void posicionarPC(int pos){
 		 * @param	t_nombre_etiqueta	Nombre de la etiqueta
 		 * @return	void
 		 */
-		void cpu_irAlLabel(t_nombre_etiqueta t_nombre_etiqueta){
+		void cpu_irAlLabel(t_nombre_etiqueta nombre_etiqueta){
 			printf("en cpu_irAlLabel\n");
 			int i,pos;
-			pos=metadata_buscar_etiqueta(t_nombre_etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
-			posicionarPC(pos);
+			printf("%s\n",nombre_etiqueta );
+			pos=metadata_buscar_etiqueta(limpiar_string(nombre_etiqueta), pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			printf("pos:%i\n", pos);
+			pcb->programCounter=pos;
 		}
 
 		/*
@@ -397,8 +430,9 @@ void posicionarPC(int pos){
 			printf("en cpu_llamarSinRetorno\n");
 			int i,pos;
 			nuevoNivelStack();
+			etiqueta=limpiar_string(etiqueta);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
-			posicionarPC(pos);
+			pcb->programCounter=pos;
 		}
 
 		/*
@@ -423,11 +457,12 @@ void posicionarPC(int pos){
 			pcb->indiceStack[pcb->posicionStack].varRetorno.offset=donde_retornar%TAMPAGINA;
 			pcb->indiceStack[pcb->posicionStack].varRetorno.size=SIZE;
 			pthread_mutex_unlock(&mutexPcb);
+			etiqueta=limpiar_string(etiqueta);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
 			printf("pcb->indiceEtiquetas.etiquetas: %s.\n", pcb->indiceEtiquetas.etiquetas);
 			printf("pcb->indiceEtiquetas.etiquetas_size: %i.\n", pcb->indiceEtiquetas.etiquetas_size);
 			printf("pos: %i\n", pos);
-			posicionarPC(pos);
+			pcb->programCounter=pos;
 			
 		}
 
@@ -611,16 +646,20 @@ void posicionarPC(int pos){
 			printf("en cpu_abrir\n");
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
-					abrirArchivo->direccionArchivo=direccion;
+					abrirArchivo->direccionArchivo=malloc(PATH_MAX);
+					strcpy(abrirArchivo->direccionArchivo,direccion);
+					abrirArchivo->tamanio=strlen(abrirArchivo->direccionArchivo);
 					memcpy(&(abrirArchivo->flags),&flags,sizeof(t_banderas));
 					enviarDinamico(ABRIRARCHIVO,socketKernel,abrirArchivo);
 					enviarDinamico(PCB,socketKernel,pcb);
+					free(abrirArchivo->direccionArchivo);
+					free(abrirArchivo);
 					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 					recibirDinamico(PCB,socketKernel,pcb);
 					t_fdParaLeer * fdParaLeer= malloc(sizeof(t_fdParaLeer));
 					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
-					
+					printf("fd: %i\n",fdParaLeer->fd );
 		
 					return fdParaLeer->fd;}
 		/*
@@ -814,7 +853,7 @@ void conectarKernel(void){
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 	char * linea;
 	int primerAcceso=1;
-	int j;
+	int j,k;
 	int rv;
 
 t_peticionBytes * peticion;
@@ -836,7 +875,7 @@ while(1) {
 							printf("Proceso %i:\n", pcb->pid);
 							printf("\tEstado: %i\n", pcb->estado);
 							printf("\tPC: %i\n", pcb->programCounter);
-							// printf("\tReferencia a tabla de archivos: %i\n", PCBS[i].referenciaATabla);
+							// printf("\tReferencia a tabla de archivos: %i\n", pcb->referenciaATabla);
 							printf("\tPaginas de codigo: %i\n", pcb->paginasCodigo);
 							printf("\tPosicion stack: %i\n", pcb->posicionStack);
 							printf("\tCantidad de instrucciones: %i\n", pcb->cantidadInstrucciones);
@@ -874,6 +913,36 @@ while(1) {
 		case CONTINUAR:
 							printf("en continuar\n");
 							
+						// printf("\tIndice Stack:\n");
+						// for (j = 0; j < pcb->cantidadStack; j++)
+						// {
+						// 	printf("\t[%i]\n", j);
+						// 	printf("\t\tCantidad Args: %i\n", pcb->indiceStack[j].cantidadArgumentos);
+						// 	if (pcb->indiceStack[j].cantidadArgumentos!=0)
+						// 	{
+						// 		printf("\t\tArgumentos:\n");
+						// 		for (k = 0; k < pcb->indiceStack[j].cantidadArgumentos; k++)
+						// 		{
+						// 			printf("\t\tId: %c,\t",pcb->indiceStack[j].argumentos[k].id);printf("Pagina: %i,\t",pcb->indiceStack[j].argumentos[k].pagina);printf("Offset: %i,\t",pcb->indiceStack[j].argumentos[k].offset);printf("Size: %i.\n",pcb->indiceStack[j].argumentos[k].size);
+						// 		}
+						// 	}
+						// 	printf("\t\tCantidad Vars: %i\n", pcb->indiceStack[j].cantidadVariables);
+						// 	if (pcb->indiceStack[j].cantidadVariables!=0)
+						// 	{
+						// 		printf("\t\tVariables:\n");
+						// 		for (k = 0; k < pcb->indiceStack[j].cantidadVariables; k++)
+						// 		{
+						// 			printf("\t\tId: %c,\t",pcb->indiceStack[j].variables[k].id);printf("Pagina: %i,\t",pcb->indiceStack[j].variables[k].pagina);printf("Offset: %i,\t",pcb->indiceStack[j].variables[k].offset);printf("Size: %i.\n",pcb->indiceStack[j].variables[k].size);
+						// 		}
+						// 	}
+						// 	if (j!=0)
+						// 	{
+						// 		printf("\t\tPosicion Retorno: %i\n", pcb->indiceStack[j].posRetorno);
+						// 		printf("\t\tVariable Retorno:\n");
+						// 		printf("\t\t\tPagina: %i,\t",pcb->indiceStack[j].varRetorno.pagina);printf("Offset: %i,\t",pcb->indiceStack[j].varRetorno.offset);printf("Size: %i.\n",pcb->indiceStack[j].varRetorno.size);
+						// 	}	
+						// }
+
 							peticion=malloc(sizeof(t_peticionBytes));
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;

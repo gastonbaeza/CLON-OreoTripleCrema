@@ -27,6 +27,7 @@ typedef struct {
 typedef struct {
 				int fd;
 				char * path;
+				int tamanioPath;
 				int vecesAbierto;
 				}__attribute__((packed))
 				  t_tablaGlobalArchivos;
@@ -336,6 +337,13 @@ typedef struct {
 				char * paquete;
 				}__attribute__((packed))
 					t_paqueteFS;
+
+typedef struct {
+				int tamanioBloques;
+				int cantBloques;
+				char * magicNumber;
+				}__attribute__((packed))
+					t_metadataFS;
 
 
 //funcion que retorna ok/exception al kernel ante el pedido de memoria

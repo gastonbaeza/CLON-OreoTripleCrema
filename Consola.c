@@ -50,7 +50,6 @@
 
 t_list * procesos;
 int idKernel;
-
 pthread_mutex_t semaforoProcesos;
 pthread_mutex_t mutexComunicacion;
 pthread_mutex_t mutexfreeDataConexion;
@@ -62,6 +61,16 @@ char * PUERTO_KERNEL;
 char* IP;
 char* PUERTO;
 int receptorListo=0;
+/*FILE *consolaLog;*/
+int contador=0;
+
+/*void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
+	*archivoDeLog=fopen(direccionDelArchivo,"w");
+	fseek(&archivoDeLog,contador,SEEK_SET);
+	fwrite(contenidoAEscribir,strlen(contenidoAEscribir),1,*archivoDeLog);
+	contador=contador+strlen(contenidoAEscribir);
+	fclose(*archivoDeLog);
+	}*/
 
 void programa(t_path * path_ansisop){ 
 	struct addrinfo hints;
@@ -128,7 +137,7 @@ switch (seleccionador->tipoPaquete){
 
 					if (resultado->resultado){
 						pthread_mutex_lock(&semaforoProcesos);
-						list_add(procesos,(void *)(resultado->pid));
+						list_add(procesos,(void *)(&(resultado->pid)));
 						printf("El pid asignado es : %i\n", resultado->pid);
 						pthread_mutex_unlock(&semaforoProcesos);
 					}
@@ -219,6 +228,10 @@ while(cancelarThread==0){
 							path_ansisop->path=prog->elPrograma;
 							path_ansisop->tamanio=prog->tamanio;
 							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
+							/*escribirEnArchivoLog("escribir1",&consolaLog,"consolaLog.txt");
+							escribirEnArchivoLog("escribir2",&consolaLog,"consolaLog.txt");
+							*/
+
 							free(path);
 							
 							
@@ -239,18 +252,25 @@ while(cancelarThread==0){
 							pthread_mutex_lock(&semaforoProcesos);
 							printf("%s\n"," ha inicializado el proceso de desconexion" );
 							printf("%i\n",list_size(procesos));
-							t_arrayPids * pids;
-							pids->pids=malloc(list_size(procesos));
+							t_arrayPids * pids=malloc(sizeof(t_arrayPids));
+							printf("aca\n");
+							pids->cantidad=list_size(procesos);
+							printf("ada\n");
+							pids->pids=malloc(list_size(procesos)*sizeof(int));
+							printf("afa\n");
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
+								printf("aga\n");
+								printf("%i\n", *(int*)(list_get(procesos,unPid)));
 								pids->pids[unPid]=*(int *)list_get(procesos,unPid);
 
 							}
-							
+							printf("llegue\n");
 							enviarDinamico(ARRAYPIDS,serverSocket,(void *)pids); 
-							
+							printf("sali\n");
+							free(pids->pids);
+							free(pids);
 							pthread_mutex_unlock(&semaforoProcesos);
-							cancelarThread ++;
 	
 		break;
 	case LIMPIARMENSAJES:
@@ -262,6 +282,7 @@ while(cancelarThread==0){
 	}
 }
 	printf("%s\n",mensajeFinalizacionHilo);
+	
 	return 0;
 }
 	

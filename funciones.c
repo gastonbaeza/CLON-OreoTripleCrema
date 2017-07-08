@@ -1033,6 +1033,10 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_abrirArchivo((t_abrirArchivo *)paquete,unSocket);
 		break;
+		case ABRIOARCHIVO:
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+			serial_fdParaLeer((t_fdParaLeer *)paquete,unSocket);
+		break;
 		case BORRARARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_borrarArchivo((t_borrarArchivo *)paquete,unSocket);
@@ -1171,6 +1175,9 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 		case ABRIRARCHIVO:
 			dserial_abrirArchivo((t_abrirArchivo *)paquete,unSocket);
+		break;
+		case ABRIOARCHIVO:
+			dserial_fdParaLeer((t_fdParaLeer *)paquete,unSocket);
 		break;
 		case BORRARARCHIVO:
 			dserial_borrarArchivo((t_borrarArchivo *)paquete,unSocket);
@@ -1334,7 +1341,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 	    				{
 	    				tamanioAPegar=tamanioCodigo-acumulador;
 	    				}
-	    			memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador,tamanioAPegar);
+	    			memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador*sizeof(char),tamanioAPegar);
 					
 					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar);
 					acumulador+=tamanioAPegar*sizeof(char);
@@ -1556,6 +1563,7 @@ int  * asignarBloques(int unaCantidad, t_bitarray** bitarray,int tamanioBitarray
 				bitarray_set_bit(*bitarray,unBit);
 				bloquesAsignados[asignados]=unBit;
 				asignados++;
+				printf("%i\n", bloquesAsignados[asignados]);
 			}
 			unBit++;
 		}
@@ -1569,9 +1577,28 @@ int  * asignarBloques(int unaCantidad, t_bitarray** bitarray,int tamanioBitarray
 		return bloquesAsignados;
 		
 }
+
+int hayBloquesLibres(int cantidad, t_bitarray ** bitarray,int tamanioBitarray){
+	int i,contador=0;
+	for (i = 0; i < tamanioBitarray; i++)
+	{
+		if ((int)bitarray_test_bit(*bitarray,i)==0)
+		{
+			contador++;
+		}
+		if (contador==cantidad)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void ultimoDirectorio(char * unPath,char** laDir)
 {	int unCaracter;
 	int tamanio=strlen(unPath);
+	
+	
 	for(unCaracter=tamanio;unCaracter>0;unCaracter--)
 	{
 		if(unPath[unCaracter]=='/')
@@ -1590,10 +1617,54 @@ void ultimoDirectorio(char * unPath,char** laDir)
 
 char * enlistadorDeBloques(int * bloquesAsignados, int cantidadAsignados)
 {	int unBloque=0;
-	char * lista=malloc(cantidadAsignados+cantidadAsignados-1+2+1); // bloques+comas+corchetes+barraceroF
+	char * lista=malloc(cantidadAsignados+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
+	char * aux=calloc(1,10);
+	strcpy(lista,"["); 
 	for (unBloque = 0; unBloque < cantidadAsignados; unBloque++)
 	{
-		
+		sprintf(aux,"%i",bloquesAsignados[unBloque]);
+		strcat(lista,aux);
+		if(unBloque==cantidadAsignados-1)
+		{
+			strcat(lista,"]");
+		}
+	 	else
+	 	{
+	 		strcat(lista,",");
+	 	}
 	}
+	free(aux);
+	printf("%s\n",lista );
+	return lista;
 
+}
+void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
+{	printf("qwe\n");
+	FILE * bitmap;
+	int tamanio=strlen(listaDeBloques);
+	int unCaracter=0;
+	char * puntoBin=".bin";
+	char string[20];
+	char * direccionBloques=calloc(1,200);
+	strcpy(direccionBloques,direccionMontaje);
+	strcat(direccionBloques,"/Bloques/");
+	printf("%s\n", direccionBloques);
+	for(unCaracter = 0; unCaracter < tamanio; unCaracter++)
+	{
+		if(listaDeBloques[unCaracter]!='['&&listaDeBloques[unCaracter]!=']'&&listaDeBloques[unCaracter]!=',')
+		{	string[0]=listaDeBloques[unCaracter];
+			string[1]='\0';
+			strcat(string,puntoBin);
+			strcat(direccionBloques,string);
+			printf("direccionBloques\n");
+			bitmap = fopen(direccionBloques,"wb"); 
+		if (bitmap!=NULL)
+			{
+			truncate(direccionBloques,tamBloques);
+			fclose(bitmap);
+			}
+		}
+	}
+	free(direccionBloques);
+	printf("%s\n","genere los Bloques" );
 }
