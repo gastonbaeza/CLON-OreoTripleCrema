@@ -292,7 +292,6 @@ while(flagHilo) {
 	 					case SOLICITUDBYTES:
 	 										peticionBytes=calloc(1,sizeof(t_peticionBytes));
 	 										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
-	 										paquete=calloc(1,peticionBytes->size+1);
 	 										printf("pid: %i\n", peticionBytes->pid);
 	 										printf("pagina: %i\n",peticionBytes->pagina );
 	 										printf("size: %i\n", peticionBytes->size);
