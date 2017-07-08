@@ -685,10 +685,8 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 
 	while(0>=recv(unSocket,&(solicitud->tamanioCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	printf("tamanioCodigo: %i\n", solicitud->tamanioCodigo);
 	dserial_string(&(solicitud->codigo),unSocket);
 	send(unSocket,buffer, sizeof(int),0);
-	printf("holabb\n");
 	while(0>=recv(unSocket,&(solicitud->cantidadPaginasCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>=recv(unSocket,&(solicitud->cantidadPaginasStack),sizeof(int),0));
@@ -939,9 +937,9 @@ void dserial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
 
 void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 { 	
-	t_seleccionador * seleccionador=calloc(2,4);
+	t_seleccionador * seleccionador=calloc(1,sizeof(t_seleccionador));
 	seleccionador->tipoPaquete=tipoPaquete;
-	int * buffer=calloc(1,4);
+	int * buffer=calloc(1,sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
@@ -1103,6 +1101,8 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 	memcpy(buffer,&b,sizeof(int));
 	send(unSocket,buffer, sizeof(int),0);
 	t_path * path;
+	printf("tipoPaquete en recibirDinamico: %i \n", tipoPaquete);
+	
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
 			dserial_solicitudMemoria(paquete,unSocket);
@@ -1311,13 +1311,13 @@ int buscarMarcoLibre(t_marco *marcos,int MARCOS,t_estructuraADM * bloquesAdmin) 
 }
 
 int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_estructuraADM * bloquesAdmin, t_marco ** marcos,int tamanioCodigo,int unPid,char** codigo, int  MARCO_SIZE, t_list**overflow,int ENTRADAS_CACHE,t_estructuraCache * memoriaCache)
- {    int indice;
+ {    
+	 int indice;
      int unFrame=0;
      int * marco=calloc(1,sizeof(int));
      int paginasCargadas=0;
      int tamanioAPegar=MARCO_SIZE*sizeof(char);
      int acumulador=0;
-    
      int paginasRequeridas=paginasCodigo+paginasStack;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   
@@ -1329,23 +1329,19 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
         	 bloquesAdmin[*marco].estado=1;
         	bloquesAdmin[*marco].pid=unPid;
         	bloquesAdmin[*marco].pagina=unFrame;
-        	
     		if(paginasCargadas<paginasCodigo)
 	    		{ if(acumulador+(MARCO_SIZE*sizeof(char))>tamanioCodigo) 
 	    				{
 	    				tamanioAPegar=tamanioCodigo-acumulador;
 	    				}
-	    			
-	    			
-					memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador,tamanioAPegar);
+	    			memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador,tamanioAPegar);
 					
 					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar);
-					
 					acumulador+=tamanioAPegar*sizeof(char);
 	    		}
     		
-    	} else {return -1;}
     	paginasCargadas++;
+    	} else {return -1;}
      }
      free(marco);
      return 1;
@@ -1404,7 +1400,9 @@ void agregarSiguienteEnOverflow(int pos_inicial, int * nro_frame, t_list**overfl
 	int * aux=malloc(4);
 	printf(" el marco en agregarsiguente es %i\n",*nro_frame );
 	memcpy(aux,nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
+	printf("pos inicial: %i\n", pos_inicial);
     list_add(overflow[pos_inicial], aux);
+    printf("pase add\n");
     
 }
 
