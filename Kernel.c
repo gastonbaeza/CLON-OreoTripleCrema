@@ -1178,7 +1178,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 											sacarHeapMetadata(i,j,k+1);
 											tablaHeap[i].paginas[j].espacioLibre+=sizeof(t_heapMetaData);
 										}
-										if (tablaHeap[i].paginas[j].contenido[k-1].isFree)
+										if (tablaHeap[i].paginas[j].contenido[k-1].isFree && k!=0)
 										{
 											printf("el anterior esta free\n");
 											tablaHeap[i].paginas[j].contenido[k-1].size+=tablaHeap[i].paginas[j].contenido[k].size+sizeof(t_heapMetaData);
