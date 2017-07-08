@@ -112,6 +112,7 @@ void liberarContenidoPcb(){
 	free(pcb->indiceStack->argumentos);
 	free(pcb->indiceStack->variables);
 	free(pcb->indiceStack);
+	free(pcb);
 }
 
 void posicionarPC(int pos){
@@ -423,6 +424,8 @@ void posicionarPC(int pos){
 			pcb->indiceStack[pcb->posicionStack].varRetorno.size=SIZE;
 			pthread_mutex_unlock(&mutexPcb);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			printf("pcb->indiceEtiquetas.etiquetas: %s.\n", pcb->indiceEtiquetas.etiquetas);
+			printf("pcb->indiceEtiquetas.etiquetas_size: %i.\n", pcb->indiceEtiquetas.etiquetas_size);
 			printf("pos: %i\n", pos);
 			posicionarPC(pos);
 			
@@ -825,7 +828,9 @@ while(1) {
 	
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
- 		
+ 							PROXIMOOFFSET=0;
+ 							PROXIMAPAG=0;
+							pcb=malloc(sizeof(t_pcb));
 							recibirDinamico(PCB,socketKernel,pcb);
 							PID=pcb->pid;
 							printf("Proceso %i:\n", pcb->pid);
@@ -983,7 +988,6 @@ int main(){
 	printf("Configuración:\nIP_KERNEL = %s,\nIP_MEMORIA=%s,\nPUERTO_KERNEL = %s.\n,PUERTO_MEMORIA=%s. \n",IP_KERNEL,IP_MEMORIA,PUERTO_KERNEL,PUERTO_MEMORIA);
 	
 	system("clear");
-	pcb=malloc(sizeof(t_pcb));
 	/*
 	*
 	*/

@@ -66,7 +66,7 @@
 #define PCBFINALIZADOPORCONSOLA 56
 
 	#define ARRAYPIDS 51
-	#define SOLICITUDMEMORIA 0
+	#define SOLICITUDMEMORIA 70
 	#define RESPUESTAOKMEMORIA 1
 	#define INICIARPROGRAMA 2
 	#define FINALIZARPROGRAMA 88
@@ -715,6 +715,19 @@ void quantum(int * flagQuantum){
 	*flagQuantum=1;
 }
 
+void sacarHeapMetadata(indexProceso,pagina,posicion){
+	int i=posicion;
+	for (; i < tablaHeap[indexProceso].paginas[pagina].cantidadMetadatas; i++)
+	{
+		if (!(i+1==tablaHeap[indexProceso].paginas[pagina].cantidadMetadatas))
+		{
+			memcpy(&(tablaHeap[indexProceso].paginas[pagina].contenido[i]),&(tablaHeap[indexProceso].paginas[pagina].contenido[i+1]),sizeof(t_heapMetaData));
+		}
+	}
+	tablaHeap[indexProceso].paginas[pagina].cantidadMetadatas--;
+	tablaHeap[indexProceso].paginas[pagina].contenido=realloc(tablaHeap[indexProceso].paginas[pagina].contenido,tablaHeap[indexProceso].paginas[pagina].cantidadMetadatas*sizeof(t_heapMetaData));
+}
+
 void liberarContenidoPcb (t_pcb * pcb){
 
 					free(pcb->indiceCodigo);
@@ -731,6 +744,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	int pid,estaba,_pid,cantBytes,posPagAux,posPagNueva,puntero,bytesLibres;
 	int rv,i,j,k,l,globalFd,intAux,flag,cantUsados,usadosRecorridos,primerFree,cantLibres,proximoMetadata;
 	char * aux;
+	int aux1,aux2,aux3;
 	t_path * path;
 	void * paginaAux,*paginaNueva;
 	t_heapMetaData * metadataAux;
@@ -985,94 +999,32 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 							break;
 						}
 					}
+					printf("pid: %i\n", tablaHeap[i].pid);
+					printf("cant Paginas: %i\n", tablaHeap[i].cantPaginas);
 					for (j = 0; j < tablaHeap[i].cantPaginas; j++)
 					{
-						if (tablaHeap[i].paginas[j].espacioLibre<=(reservarMemoria->espacio)-sizeof(t_heapMetaData))
+						if (tablaHeap[i].paginas[j].espacioLibre>=(reservarMemoria->espacio)+sizeof(t_heapMetaData))
 						{
+							printf("tablaHeap[%i].paginas[%i].espacioLibre=%i >= reservarMemoria->espacio+sizeof(t_heapMetaData)=%i\n",i,j,tablaHeap[i].paginas[j].espacioLibre,(reservarMemoria->espacio)+sizeof(t_heapMetaData) );
 							break;
 						}
 					}
 					if (j!=tablaHeap[i].cantPaginas)
 					{	printf("alcanza alguna pagina\n");
-						flag=0;
-						for (k = 0; flag; k++)
+						flag=1;
+						for (k = 0; (k<tablaHeap[i].paginas[j].cantidadMetadatas) && flag; k++)
 						{	
-							if (k==tablaHeap[i].paginas[j].cantidadMetadatas)
-							{
-								paginaAux=calloc(1,TAMPAGINA);
-								paginaNueva=calloc(1,TAMPAGINA);
-								metadataAux=malloc(sizeof(t_heapMetaData)*tablaHeap[i].paginas[j].cantidadMetadatas);
-								memcpy(metadataAux,tablaHeap[i].paginas[j].contenido,sizeof(t_heapMetaData)*tablaHeap[i].paginas[j].cantidadMetadatas);
-								peticion=malloc(sizeof(t_peticionBytes));
-								peticion->pid=pid;
-								peticion->pagina=tablaHeap[i].paginas[j].pagina;
-								peticion->offset=0;
-								peticion->size=TAMPAGINA;
-								enviarDinamico(SOLICITUDBYTES,SOCKETMEMORIA,peticion);
-								while(0>recv(SOCKETMEMORIA,&rv,sizeof(int),0)){
-										perror("asd:");
-								}
-								if (rv==1)
-								{
-									while(0>recv(SOCKETMEMORIA,paginaAux,TAMPAGINA,0)){
-										perror("asd:");
-									}
-								}
-								cantUsados=0;
-								cantLibres=0;
-								bytesLibres=0;
-								for (k = 0; k < tablaHeap[i].paginas[j].cantidadMetadatas; k++)
-								{
-									if(tablaHeap[i].paginas[j].contenido[k].isFree==false)
-										cantUsados++;
-									if(tablaHeap[i].paginas[j].contenido[k].isFree==true)
-									{
-										cantLibres++;
-										bytesLibres+=tablaHeap[i].paginas[j].contenido[k].size;
-									}
-								}
-								usadosRecorridos=0;
-								k=0;
-								proximoMetadata=0;
-								while(usadosRecorridos<cantUsados){
-									if (metadataAux[k].isFree==false)
-									{
-										memcpy(&(tablaHeap[i].paginas[j].contenido[proximoMetadata]),&(metadataAux[k]),sizeof(t_heapMetaData));
-										posPagAux=sizeof(t_heapMetaData);
-										for (l = 0; l < k; l++)
-										{
-											posPagAux+=sizeof(t_heapMetaData)+metadataAux[l].size;
-										}
-										posPagNueva=sizeof(t_heapMetaData);
-										for (l = 0; l < proximoMetadata; l++)
-										{
-											posPagNueva+=sizeof(t_heapMetaData)+tablaHeap[i].paginas[j].contenido[proximoMetadata].size;
-										}
-										memcpy(paginaNueva+posPagNueva,paginaAux+posPagAux,metadataAux[k].size);
-										proximoMetadata++;
-										usadosRecorridos++;
-
-									}
-									k++;
-								}
-								tablaHeap[i].paginas[j].contenido[cantUsados].isFree=true;
-								tablaHeap[i].paginas[j].contenido[cantUsados].size=bytesLibres+(cantLibres-1)*sizeof(t_heapMetaData);
-								tablaHeap[i].paginas[j].contenido=realloc(tablaHeap[i].paginas[j].contenido,(cantUsados+1)*sizeof(t_heapMetaData));
-								bytes=malloc(sizeof(t_almacenarBytes));
-								bytes->pid=pid;
-								bytes->pagina=tablaHeap[i].paginas[j].pagina;
-								bytes->offset=0;
-								bytes->size=TAMPAGINA;
-								bytes->valor=calloc(1,TAMPAGINA);
-								memcpy(bytes->valor,paginaNueva,TAMPAGINA);
-								enviarDinamico(ALMACENARBYTES,SOCKETMEMORIA,bytes);
-								k=0;
-
-							}
+							printf("k=%i==tablaHeap[%i].paginas[%i].cantidadMetadatas=%i\n", k,i,j,tablaHeap[i].paginas[j].cantidadMetadatas);
+							
 							if (k==tablaHeap[i].paginas[j].cantidadMetadatas-1)
 							{
-								if ((reservarMemoria->espacio<=(tablaHeap[i].paginas[j].contenido[k].size)-sizeof(t_heapMetaData) )&& tablaHeap[i].paginas[j].contenido[k].isFree)
+								printf("Ultimo metadata\n");
+								aux1=reservarMemoria->espacio;
+								aux2=tablaHeap[i].paginas[j].contenido[k].size ;
+								aux3=sizeof(t_heapMetaData);
+								if ((aux1<=(aux2-aux3)) && tablaHeap[i].paginas[j].contenido[k].isFree)
 								{
+									printf("alcanza el ultimo\n");
 									tablaHeap[i].paginas[j].contenido[k].isFree=false;
 									intAux=tablaHeap[i].paginas[j].contenido[k].size;
 									tablaHeap[i].paginas[j].contenido[k].size=reservarMemoria->espacio;
@@ -1080,20 +1032,26 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 									tablaHeap[i].paginas[j].contenido=realloc(tablaHeap[i].paginas[j].contenido,tablaHeap[i].paginas[j].cantidadMetadatas*sizeof(t_heapMetaData));
 									tablaHeap[i].paginas[j].contenido[k+1].isFree=true;
 									tablaHeap[i].paginas[j].contenido[k+1].size=intAux-reservarMemoria->espacio-sizeof(t_heapMetaData);
-									tablaHeap[i].paginas[j].espacioLibre-=sizeof(t_heapMetaData)-reservarMemoria->espacio;
-									flag=1;
+									printf("espacioLibre: %i.\n", tablaHeap[i].paginas[j].espacioLibre);
+									tablaHeap[i].paginas[j].espacioLibre+=-sizeof(t_heapMetaData)-reservarMemoria->espacio;
+									flag=0;
+									printf("espacioLibre: %i.\n", tablaHeap[i].paginas[j].espacioLibre);
 								}
+								else
+									printf("no alcanza el ultimo\n");
 							}
 							else{
+								printf("no ultimo metadata\n");
+								printf("%i,%i,%i.\n", i,j,k);
 								if ((reservarMemoria->espacio<=(tablaHeap[i].paginas[j].contenido[k].size)) && tablaHeap[i].paginas[j].contenido[k].isFree)
-								{
+								{	printf("entra\n");
 									if (reservarMemoria->espacio==(tablaHeap[i].paginas[j].contenido[k].size))
-									{
+									{	printf("entra justo\n");
 										tablaHeap[i].paginas[j].contenido[k].isFree=false;
 										tablaHeap[i].paginas[j].espacioLibre-=reservarMemoria->espacio;
-										flag=1;
+										flag=0;
 									}
-									else{
+									else{printf("sobra lugar\n");
 										tablaHeap[i].paginas[j].contenido[k].isFree=false;
 										intAux=tablaHeap[i].paginas[j].contenido[k].size;
 										tablaHeap[i].paginas[j].contenido[k].size=reservarMemoria->espacio;
@@ -1101,22 +1059,26 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 										tablaHeap[i].paginas[j].contenido=realloc(tablaHeap[i].paginas[j].contenido,tablaHeap[i].paginas[j].cantidadMetadatas*sizeof(t_heapMetaData));
 										tablaHeap[i].paginas[j].contenido[k+1].isFree=true;
 										tablaHeap[i].paginas[j].contenido[k+1].size=intAux-reservarMemoria->espacio-sizeof(t_heapMetaData);
-										tablaHeap[i].paginas[j].espacioLibre-=sizeof(t_heapMetaData)-reservarMemoria->espacio;
-										flag=1;
+										tablaHeap[i].paginas[j].espacioLibre+=-sizeof(t_heapMetaData)-reservarMemoria->espacio;
+										flag=0;
+										printf("espacioLibre: %i\n", tablaHeap[i].paginas[j].espacioLibre);
 									}
 								}
+								printf("salgo de no ultimo metadata\n");
 							}
 						}
+						k--;
 						puntero=(tablaHeap[i].paginas[j].pagina-pcb->paginasCodigo)*TAMPAGINA;
-						printf("ptr=%i.\n", puntero);
+						printf("%i\n", tablaHeap[i].paginas[j].pagina-pcb->paginasCodigo);
 						for (l = 0; l < k; l++)
 						{
+							printf("ptr:%i\n", puntero);
 							puntero+=sizeof(t_heapMetaData)+tablaHeap[i].paginas[j].contenido[l].size;
+							printf("ptr:%i\n", puntero);
 						}
-
-						printf("ptr=%i.\n", puntero);
+						printf("ptr:%i\n", puntero);
 						puntero+=sizeof(t_heapMetaData);
-						printf("ptr=%i.\n", puntero);
+						printf("ptr:%i\n", puntero);
 					}
 					else
 					{	printf("nueva pagina a reservar\n");
@@ -1138,13 +1100,14 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 							tablaHeap[i].paginas=realloc(tablaHeap[i].paginas,tablaHeap[i].cantPaginas*sizeof(t_heapProceso));
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].pagina=pcb->paginasCodigo+STACK_SIZE+pcb->paginasHeap;
 							pcb->paginasHeap++;
-							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].espacioLibre=TAMPAGINA-sizeof(t_heapMetaData)-reservarMemoria->espacio;
+							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].espacioLibre=TAMPAGINA-2*sizeof(t_heapMetaData)-reservarMemoria->espacio;
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].cantidadMetadatas=2;
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].contenido=malloc(2*sizeof(t_heapMetaData));
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].contenido[0].isFree=false;
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].contenido[0].size=reservarMemoria->espacio;
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].contenido[1].isFree=true;
 							tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].contenido[1].size=TAMPAGINA-reservarMemoria->espacio-2*sizeof(t_heapMetaData);
+							printf("espacioLibre: %i.\n", tablaHeap[i].paginas[tablaHeap[i].cantPaginas-1].espacioLibre);
 						}
 						puntero=(tablaHeap[i].paginas[j].pagina-pcb->paginasCodigo)*TAMPAGINA;
 						puntero+=sizeof(t_heapMetaData);
@@ -1155,6 +1118,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				}
 				pthread_mutex_unlock(&mutexAlocar);
 				reservar=malloc(sizeof(t_heapMetaData));
+				printf("ptr=%i.\n", puntero);
 				reservar->puntero=puntero;
 				enviarDinamico(RESERVADOESPACIO,dataDePlanificacion->socket,reservar);
 				updatePCB(pcb);
@@ -1175,6 +1139,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				pagina=liberarMemoria->direccionMemoria/TAMPAGINA+pcb->paginasCodigo;
 				offset=liberarMemoria->direccionMemoria%TAMPAGINA;
 				pthread_mutex_lock(&mutexAlocar);
+				aux1=-1;
+				aux2=-1;
 				for (i = 0; i < CANTTABLAHEAP; i++)
 				{
 					if (tablaHeap[i].pid==pcb->pid)
@@ -1188,17 +1154,67 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 									offset-=sizeof(t_heapMetaData);
 									if (offset==0)
 									{
+										printf("encontre la metadata\n");
+										tablaHeap[i].paginas[j].espacioLibre+=tablaHeap[i].paginas[j].contenido[k].size;
 										tablaHeap[i].paginas[j].contenido[k].isFree=true;
+										printf("?\n");
+										if (tablaHeap[i].paginas[j].contenido[k+1].isFree)
+										{
+											printf("el siguinte esta free\n");
+											if (k+1==tablaHeap[i].paginas[j].cantidadMetadatas-1)
+											{
+												if (tablaHeap[i].paginas[j].contenido[k+1].size==0)
+												{
+													tablaHeap[i].paginas[j].contenido[k].size+=sizeof(t_heapMetaData);
+												}
+												else{
+													tablaHeap[i].paginas[j].contenido[k].size+=tablaHeap[i].paginas[j].contenido[k+1].size+sizeof(t_heapMetaData);
+												}
+											}
+											else{
+												tablaHeap[i].paginas[j].contenido[k].size+=tablaHeap[i].paginas[j].contenido[k+1].size+sizeof(t_heapMetaData);
+												
+											}
+											sacarHeapMetadata(i,j,k+1);
+											tablaHeap[i].paginas[j].espacioLibre+=sizeof(t_heapMetaData);
+										}
+										if (tablaHeap[i].paginas[j].contenido[k-1].isFree)
+										{
+											printf("el anterior esta free\n");
+											tablaHeap[i].paginas[j].contenido[k-1].size+=tablaHeap[i].paginas[j].contenido[k].size+sizeof(t_heapMetaData);
+											sacarHeapMetadata(i,j,k);
+											tablaHeap[i].paginas[j].espacioLibre+=sizeof(t_heapMetaData);
+										}
+										break;
 									}
 									else{
 										offset-=tablaHeap[i].paginas[j].contenido[k].size;
 									}
-									k++;
 								}
 							}
 						}
 					}
 				}
+				for (i = 0; i < CANTTABLAHEAP; i++)
+				{
+					if (tablaHeap[i].pid==pcb->pid)
+					{
+						for (j = 0; j < tablaHeap[i].cantPaginas; j++)
+						{
+							if (tablaHeap[i].paginas[j].pagina==pagina)
+							{
+									printf("espacioLibre: %i.\n", tablaHeap[i].paginas[j].espacioLibre);
+									printf("cantidadMetadatas: %i.\n", tablaHeap[i].paginas[j].cantidadMetadatas);
+								for (k = 0; k < tablaHeap[i].paginas[j].cantidadMetadatas; k++)
+								{
+									printf("flag: %i.\n",tablaHeap[i].paginas[j].contenido[k].isFree);
+									printf("size: %i.\n",tablaHeap[i].paginas[j].contenido[k].size);
+								}
+							}
+						}
+					}
+				}
+
 				pthread_mutex_unlock(&mutexAlocar);
 				updatePCB(pcb);
 				enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
@@ -1646,167 +1662,180 @@ void comunicarse(dataParaComunicarse * dataDeConexion){
 	while(COMUNICACIONHABILITADA && estaComunicacion){
 		// RECIBO EL SELECCIONADOR (SI ES CPU, DIRECTAMENTE LE MANDO PCBS)
 		seleccionador=malloc(sizeof(t_seleccionador));
-		if (interfaz==CPU)
+		if (interfaz==CPU){
 			seleccionador->tipoPaquete=SOLICITUDPCB;
+			rv=1;
+		}
 		else
-			while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
-		switch(seleccionador->tipoPaquete){
-				case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
-					// RECIBO EL PATH
-					path = malloc (sizeof(t_path));
-					recibirDinamico(PATH, socket, path);
-					while(0>recv(socket,&idConsola,sizeof(int),0));
-					// GENERO EL PID
-					pid = ULTIMOPID;
-					pthread_mutex_lock(&mutexPid);
-					ULTIMOPID++;
-					pthread_mutex_unlock(&mutexPid);
-					// GUARDO SOCKET DE LA CONSOLA INDEXADO CON EL PID
-					pthread_mutex_lock(&mutexSocketsConsola);
-					CANTIDADSOCKETSCONSOLA++;
-					SOCKETSCONSOLA = realloc (SOCKETSCONSOLA,(CANTIDADSOCKETSCONSOLA) * sizeof(SOCKETSCONSOLA[0]));
-					SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA-1]=idConsola;
-					pthread_mutex_unlock(&mutexSocketsConsola);
-					// CALCULO LA CANTIDAD DE PAGINAS
-					int cantPaginasCodigo = calcularPaginas(TAMPAGINA,path->tamanio);
-					// GENERO LA METADATA DEL SCRIPT
-					printf("path->path: %s.\n", path->path);
-					metadata=metadata_desde_literal(path->path);
-					// CREO EL PCB
-					t_pcb * pcb;
-					pcb=malloc(sizeof(t_pcb));
-					pcb->pid = pid;
-					pcb->estado = NEW;
-					pcb->rafagasEjecutadas=0;
-					pcb->privilegiadasEjecutadas=0;
-					pcb->paginasHeap=0;
-					pcb->alocaciones=0;
-					pcb->bytesAlocados=0;
-					pcb->liberaciones=0;
-					pcb->bytesLiberados=0;
-					pcb->cantidadArchivos=0;
-					pcb->programCounter=0;
-					pcb->paginasCodigo=cantPaginasCodigo;
-					pcb->posicionStack=0;
-					pcb->cantidadInstrucciones=metadata->instrucciones_size;
-					pcb->indiceCodigo=malloc(metadata->instrucciones_size*sizeof(t_intructions));
-					memcpy(pcb->indiceCodigo,metadata->instrucciones_serializado,metadata->instrucciones_size*sizeof(t_intructions));
-					pcb->indiceEtiquetas.etiquetas_size=-1;
-					pcb->indiceEtiquetas.etiquetas_size=metadata->etiquetas_size;
-					pcb->indiceEtiquetas.etiquetas=calloc(1,metadata->etiquetas_size);
-					memcpy(pcb->indiceEtiquetas.etiquetas,metadata->etiquetas,metadata->etiquetas_size);
-					printf("metadata->etiquetas_size: %i.\n", metadata->etiquetas_size);
-					printf("metadata->etiquetas: %s.\n",metadata->etiquetas);
-					printf("metadata->cantidad_de_etiquetas: %i.\n",metadata->cantidad_de_etiquetas);
-					
-					pthread_mutex_lock(&mutexAlocar);
-					CANTTABLAHEAP++;
-					printf("CANTHEAP: %i\n", CANTTABLAHEAP);
-					tablaHeap=realloc(tablaHeap,CANTTABLAHEAP*sizeof(t_heapGlobal));
-					tablaHeap[CANTTABLAHEAP-1].pid=pcb->pid;
-					tablaHeap[CANTTABLAHEAP-1].cantPaginas=0;
-					tablaHeap[CANTTABLAHEAP-1].paginas=malloc(tablaHeap[CANTTABLAHEAP-1].cantPaginas*sizeof(t_heapProceso));
-					pthread_mutex_unlock(&mutexAlocar);
-					pcb->cantidadStack=1;
-					pcb->indiceStack=malloc(sizeof(t_stack));
-					pcb->indiceStack[0].cantidadVariables=0;
-					pcb->indiceStack[0].cantidadArgumentos=0;
-					pcb->exitCode=1;
-					// LO AGREGO A LA TABLA
-					metadata_destruir(metadata);
-					pthread_mutex_lock(&mutexPcbs);
-					CANTIDADPCBS++;
-					PCBS = realloc (PCBS,(CANTIDADPCBS) * sizeof(PCBS[0]));
-					PCBS[CANTIDADPCBS-1]=*pcb;
-					pthread_mutex_unlock(&mutexPcbs);
-					// SOLICITUD DE MEMORIA
-					solicitudMemoria=calloc(1,sizeof(t_solicitudMemoria));
-					solicitudMemoria->tamanioCodigo=path->tamanio;
-					solicitudMemoria->codigo=path->path;
-					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
-					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
-					solicitudMemoria->pid=pid;
-					printf("%i\n", solicitudMemoria->tamanioCodigo);
-					printf("%i\n", solicitudMemoria->cantidadPaginasCodigo);
-					printf("%i\n", solicitudMemoria->pid);
-					enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
-					//LIBERO MEMORIA
-					free(path);
-					free(solicitudMemoria);
-					free(pcb);
-					
-					// RECIBO LA RESPUESTA DE MEMORIA
-					while(0>recv(SOCKETMEMORIA, seleccionador, sizeof(t_seleccionador), 0));
-					respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
-					recibirDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,respuestaSolicitud);
-					printf("kk\n");
-					// PREPARO LA RESPUESTA A CONSOLA
-					resultado=malloc(sizeof(t_resultadoIniciarPrograma));
-					pid = respuestaSolicitud->pid;
-					resultado->pid=pid;
-					// VERIFICO SI PUEDO PASAR A NEW
-					if (respuestaSolicitud->respuesta==OK){
-						printf("en respuesta ok\n");
-						// AGREGO EL PID A LA COLA DE NEWS
-						pthread_mutex_lock(&mutexColaNew);
-						CANTIDADNEWS++;
-						COLANEW = realloc (COLANEW,(CANTIDADNEWS) * sizeof(COLANEW[0]));
-						COLANEW[CANTIDADNEWS-1]=pid;
-						pthread_mutex_unlock(&mutexColaNew);
-						resultado->resultado=1;
-					}
-					else if (respuestaSolicitud->respuesta==FAIL){
-						printf("en respuesta fail\n");
-					 	resultado->resultado=0;
-					 	// AGREGO EL PID A LA COLA DE EXIT
-						pthread_mutex_lock(&mutexColaExit);
-						CANTIDADEXITS++;
-						printf("ww\n");
-						COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS) * sizeof(int));
-						printf("ww\n");
-						COLAEXIT[CANTIDADEXITS-1]=pid;
-						pthread_mutex_unlock(&mutexColaExit);
+			while(0>(rv=recv(socket, seleccionador, sizeof(t_seleccionador), 0)));
+		if (rv==0)
+		{
+			printf("asd\n");
+			estaComunicacion=0;
+		}
+		else{
+			switch(seleccionador->tipoPaquete){
+					case PATH:	// RECIBIMOS EL PATH DE UN PROGRAMA ANSISOP A EJECUTAR Y SU PID
+						// RECIBO EL PATH
+						path = malloc (sizeof(t_path));
+						recibirDinamico(PATH, socket, path);
+						while(0>recv(socket,&idConsola,sizeof(int),0));
+						// GENERO EL PID
+						pid = ULTIMOPID;
+						pthread_mutex_lock(&mutexPid);
+						ULTIMOPID++;
+						pthread_mutex_unlock(&mutexPid);
+						// GUARDO SOCKET DE LA CONSOLA INDEXADO CON EL PID
+						pthread_mutex_lock(&mutexSocketsConsola);
+						CANTIDADSOCKETSCONSOLA++;
+						SOCKETSCONSOLA = realloc (SOCKETSCONSOLA,(CANTIDADSOCKETSCONSOLA) * sizeof(SOCKETSCONSOLA[0]));
+						SOCKETSCONSOLA[CANTIDADSOCKETSCONSOLA-1]=idConsola;
+						pthread_mutex_unlock(&mutexSocketsConsola);
+						// CALCULO LA CANTIDAD DE PAGINAS
+						int cantPaginasCodigo = calcularPaginas(TAMPAGINA,path->tamanio);
+						// GENERO LA METADATA DEL SCRIPT
+						printf("path->path: %s.\n", path->path);
+						metadata=metadata_desde_literal(path->path);
+						// CREO EL PCB
+						t_pcb * pcb;
+						pcb=malloc(sizeof(t_pcb));
+						pcb->pid = pid;
+						pcb->estado = NEW;
+						pcb->rafagasEjecutadas=0;
+						pcb->privilegiadasEjecutadas=0;
+						pcb->paginasHeap=0;
+						pcb->alocaciones=0;
+						pcb->bytesAlocados=0;
+						pcb->liberaciones=0;
+						pcb->bytesLiberados=0;
+						pcb->cantidadArchivos=0;
+						pcb->programCounter=0;
+						pcb->paginasCodigo=cantPaginasCodigo;
+						pcb->posicionStack=0;
+						pcb->cantidadInstrucciones=metadata->instrucciones_size;
+						pcb->indiceCodigo=malloc(metadata->instrucciones_size*sizeof(t_intructions));
+						memcpy(pcb->indiceCodigo,metadata->instrucciones_serializado,metadata->instrucciones_size*sizeof(t_intructions));
+						pcb->indiceEtiquetas.etiquetas_size=-1;
+						pcb->indiceEtiquetas.etiquetas_size=metadata->etiquetas_size;
+						pcb->indiceEtiquetas.etiquetas=calloc(1,metadata->etiquetas_size);
+						memcpy(pcb->indiceEtiquetas.etiquetas,metadata->etiquetas,metadata->etiquetas_size);
+						printf("metadata->etiquetas_size: %i.\n", metadata->etiquetas_size);
+						printf("metadata->etiquetas: %.*s.\n",metadata->etiquetas_size,metadata->etiquetas);
+						printf("metadata->cantidad_de_etiquetas: %i.\n",metadata->cantidad_de_etiquetas);
+						
+						pthread_mutex_lock(&mutexAlocar);
+						CANTTABLAHEAP++;
+						printf("CANTHEAP: %i\n", CANTTABLAHEAP);
+						tablaHeap=realloc(tablaHeap,CANTTABLAHEAP*sizeof(t_heapGlobal));
+						tablaHeap[CANTTABLAHEAP-1].pid=pcb->pid;
+						tablaHeap[CANTTABLAHEAP-1].cantPaginas=0;
+						tablaHeap[CANTTABLAHEAP-1].paginas=malloc(tablaHeap[CANTTABLAHEAP-1].cantPaginas*sizeof(t_heapProceso));
+						pthread_mutex_unlock(&mutexAlocar);
+						pcb->cantidadStack=1;
+						pcb->indiceStack=malloc(sizeof(t_stack));
+						pcb->indiceStack[0].cantidadVariables=0;
+						pcb->indiceStack[0].cantidadArgumentos=0;
+						pcb->exitCode=1;
+						// LO AGREGO A LA TABLA
+						metadata_destruir(metadata);
 						pthread_mutex_lock(&mutexPcbs);
-						printf("qq\n" );
-						printf("%i\n", pid);
-						PCBS[pid].exitCode=-1;
-						printf("qq\n");
+						CANTIDADPCBS++;
+						PCBS = realloc (PCBS,(CANTIDADPCBS) * sizeof(PCBS[0]));
+						PCBS[CANTIDADPCBS-1]=*pcb;
 						pthread_mutex_unlock(&mutexPcbs);
-						cambiarEstado(pid,EXIT);
-						resultado->resultado=1;
-					}
-					printf("asdasddas\n");
-					// ENVIO RESPUESTA A CONSOLA
-					enviarDinamico(RESULTADOINICIARPROGRAMA,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],resultado);
-					// LIBERO MEMORIA
-					free(respuestaSolicitud);
-					free(resultado);
-				break;
-				case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
-					recibirDinamico(FINALIZARPROGRAMA,socket,&PidAFinalizar);
-					finalizarPid(PidAFinalizar,-7);
-				break;
-				case ARRAYPIDS: 
-					arrayPids=malloc(sizeof(t_arrayPids));
-					recibirDinamico(ARRAYPIDS,socket,arrayPids);
-					for (i = 0; i < arrayPids->cantidad; i++)
-					{
-						finalizarPid(arrayPids->pids[i],-6);
-					}
-				break;
-				case SOLICITUDPCB:
-					// INICIO DE HILO PLANIFICADOR
-					dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
-        			dataDePlanificacion->socket=socket;
-        			pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDePlanificacion);
-					estaComunicacion=0;
-        		break;
-        		case SOLICITUDMEMORIA:
-        			
-        		break;
-		    }
-		free(seleccionador);
-	}
+						// SOLICITUD DE MEMORIA
+						solicitudMemoria=calloc(1,sizeof(t_solicitudMemoria));
+						solicitudMemoria->tamanioCodigo=path->tamanio;
+						solicitudMemoria->codigo=path->path;
+						solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
+						solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
+						solicitudMemoria->pid=pid;
+						printf("%i\n", solicitudMemoria->tamanioCodigo);
+						printf("%i\n", solicitudMemoria->cantidadPaginasCodigo);
+						printf("%i\n", solicitudMemoria->pid);
+						enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
+						//LIBERO MEMORIA
+						free(path);
+						free(solicitudMemoria);
+						free(pcb);
+						
+						// RECIBO LA RESPUESTA DE MEMORIA
+						respuestaSolicitud=malloc(sizeof(t_solicitudMemoria));
+						while(0>recv(SOCKETMEMORIA, &(respuestaSolicitud->respuesta), sizeof(int), 0));
+						printf("kk\n");
+						printf("respuestaSolicitud. %i\n", respuestaSolicitud->pid);
+						printf("respuestaSolicitud. %i\n", respuestaSolicitud->tamanioCodigo);
+						printf("respuestaSolicitud. %i\n", respuestaSolicitud->cantidadPaginasCodigo);
+						printf("respuestaSolicitud. %i\n", respuestaSolicitud->cantidadPaginasStack);
+						printf("respuestaSolicitud. %i\n", respuestaSolicitud->respuesta);
+						// PREPARO LA RESPUESTA A CONSOLA
+						resultado=malloc(sizeof(t_resultadoIniciarPrograma));
+						resultado->pid=pid;
+						// VERIFICO SI PUEDO PASAR A NEW
+						if (respuestaSolicitud->respuesta==OK){
+							printf("en respuesta ok\n");
+							// AGREGO EL PID A LA COLA DE NEWS
+							pthread_mutex_lock(&mutexColaNew);
+							CANTIDADNEWS++;
+							COLANEW = realloc (COLANEW,(CANTIDADNEWS) * sizeof(COLANEW[0]));
+							COLANEW[CANTIDADNEWS-1]=pid;
+							pthread_mutex_unlock(&mutexColaNew);
+							resultado->resultado=1;
+						}
+						else if (respuestaSolicitud->respuesta==FAIL){
+							printf("en respuesta fail\n");
+						 	resultado->resultado=0;
+						 	// AGREGO EL PID A LA COLA DE EXIT
+							pthread_mutex_lock(&mutexColaExit);
+							CANTIDADEXITS++;
+							printf("ww\n");
+							COLAEXIT = realloc (COLAEXIT,(CANTIDADEXITS) * sizeof(int));
+							printf("ww\n");
+							COLAEXIT[CANTIDADEXITS-1]=pid;
+							pthread_mutex_unlock(&mutexColaExit);
+							pthread_mutex_lock(&mutexPcbs);
+							printf("qq\n" );
+							printf("%i\n", pid);
+							PCBS[pid].exitCode=-1;
+							printf("qq\n");
+							pthread_mutex_unlock(&mutexPcbs);
+							cambiarEstado(pid,EXIT);
+							resultado->resultado=1;
+						}
+						printf("asdasddas\n");
+						// ENVIO RESPUESTA A CONSOLA
+						enviarDinamico(RESULTADOINICIARPROGRAMA,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],resultado);
+						// LIBERO MEMORIA
+						free(respuestaSolicitud);
+						free(resultado);
+					break;
+					case FINALIZARPROGRAMA: // RECIBIMOS EL PID DE UN PROGRAMA ANSISOP A FINALIZAR
+						recibirDinamico(FINALIZARPROGRAMA,socket,&PidAFinalizar);
+						finalizarPid(PidAFinalizar,-7);
+					break;
+					case ARRAYPIDS: 
+						arrayPids=malloc(sizeof(t_arrayPids));
+						recibirDinamico(ARRAYPIDS,socket,arrayPids);
+						for (i = 0; i < arrayPids->cantidad; i++)
+						{
+							finalizarPid(arrayPids->pids[i],-6);
+						}
+					break;
+					case SOLICITUDPCB:
+						// INICIO DE HILO PLANIFICADOR
+						dataDePlanificacion=malloc(sizeof(dataParaComunicarse));
+	        			dataDePlanificacion->socket=socket;
+	        			pthread_create(&hiloPlanificacion,NULL,(void *)planificar,dataDePlanificacion);
+						estaComunicacion=0;
+	        		break;
+	        		case SOLICITUDMEMORIA:
+	        			
+	        		break;
+			    }
+			free(seleccionador);
+		}
+			
+		}
 }
 
 void aceptar(dataParaComunicarse * dataParaAceptar){

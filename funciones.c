@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <commons/config.h>
+#include <commons/bitarray.h>
 #include <time.h>
 
 #define OK 1
@@ -28,7 +29,7 @@
 #define KERNEL 0
 	#define ARRAYPIDS 51
 #define MEMORIA 1
-	#define SOLICITUDMEMORIA 0
+	#define SOLICITUDMEMORIA 70
 	#define RESULTADOINICIARPROGRAMA 23
 	#define SOLICITUDINFOPROG 1
 	#define ESCRIBIRMEMORIA 2
@@ -684,9 +685,10 @@ void dserial_solicitudMemoria(t_solicitudMemoria * solicitud, int unSocket)
 
 	while(0>=recv(unSocket,&(solicitud->tamanioCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
+	printf("tamanioCodigo: %i\n", solicitud->tamanioCodigo);
 	dserial_string(&(solicitud->codigo),unSocket);
 	send(unSocket,buffer, sizeof(int),0);
-
+	printf("holabb\n");
 	while(0>=recv(unSocket,&(solicitud->cantidadPaginasCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>=recv(unSocket,&(solicitud->cantidadPaginasStack),sizeof(int),0));
@@ -1544,3 +1546,47 @@ int ultimaPagina=0;
 	
 	}return ultimaPagina;
 }
+int  * asignarBloques(int unaCantidad, t_bitarray** bitarray,int tamanioBitarray) // devuelvo un vector de los numeros de bloques asignados, si no hay bloques libres devuelvo el vector con -1
+{	int unBit=0;
+	int asignados=0;
+	int i;
+	int * bloquesAsignados=calloc(unaCantidad,sizeof(int));
+	while( asignados < unaCantidad && unBit<tamanioBitarray)
+		{ 
+		if( (int)bitarray_test_bit(*bitarray,unBit)==0)
+			{
+				bitarray_set_bit(*bitarray,unBit);
+				bloquesAsignados[asignados]=unBit;
+				asignados++;
+			}
+			unBit++;
+		}
+		if(!(unBit<tamanioBitarray))
+		{
+			for ( i = 0; i < unaCantidad; ++i)
+			{
+				bloquesAsignados[i]=-1;
+			}
+		}
+		return bloquesAsignados;
+		
+}
+void ultimoDirectorio(char * unPath,char** laDir)
+{	int unCaracter;
+	int tamanio=strlen(unPath);
+	for(unCaracter=tamanio;unCaracter>0;unCaracter--)
+	{
+		if(unPath[unCaracter]=='/')
+		{	
+			tamanio=unCaracter;
+			*laDir=calloc(1,tamanio+2);	
+			memmove(*laDir,unPath,tamanio+1);
+			memmove(*laDir+tamanio+1,"\0",1);
+			fflush(stdout);
+			
+			break;
+		}
+		
+	}
+}
+
