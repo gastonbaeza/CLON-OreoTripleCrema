@@ -1590,10 +1590,10 @@ void ultimoDirectorio(char * unPath,char** laDir)
 	}
 }
 
-char * enlistadorDeBloques(int * bloquesAsignados, int bloquesAsignados)
+char * enlistadorDeBloques(int * bloquesAsignados, int cantidadAsignados)
 {	int unBloque=0;
-	char * lista=malloc(bloquesAsignados+bloquesAsignados-1+2+1); // bloques+comas+corchetes+barraceroF
-	for (unBloque = 0; unBloque < bloquesAsignados; unBloque++)
+	char * lista=malloc(cantidadAsignados+cantidadAsignados-1+2+1); // bloques+comas+corchetes+barraceroF
+	for (unBloque = 0; unBloque < cantidadAsignados; unBloque++)
 	{
 		
 	}
