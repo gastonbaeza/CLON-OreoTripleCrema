@@ -1558,12 +1558,11 @@ int  * asignarBloques(int unaCantidad, t_bitarray** bitarray,int tamanioBitarray
 	int * bloquesAsignados=calloc(unaCantidad,sizeof(int));
 	while( asignados < unaCantidad && unBit<tamanioBitarray)
 		{ 
-		if( (int)bitarray_test_bit(*bitarray,unBit)==0)
+		if(!bitarray_test_bit(*bitarray,unBit))
 			{
 				bitarray_set_bit(*bitarray,unBit);
 				bloquesAsignados[asignados]=unBit;
 				asignados++;
-				printf("%i\n", bloquesAsignados[asignados]);
 			}
 			unBit++;
 		}
@@ -1617,7 +1616,7 @@ void ultimoDirectorio(char * unPath,char** laDir)
 
 char * enlistadorDeBloques(int * bloquesAsignados, int cantidadAsignados)
 {	int unBloque=0;
-	char * lista=malloc(cantidadAsignados+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
+	char * lista=calloc(1,cantidadAsignados+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
 	char * aux=calloc(1,10);
 	strcpy(lista,"["); 
 	for (unBloque = 0; unBloque < cantidadAsignados; unBloque++)
@@ -1634,7 +1633,6 @@ char * enlistadorDeBloques(int * bloquesAsignados, int cantidadAsignados)
 	 	}
 	}
 	free(aux);
-	printf("%s\n",lista );
 	return lista;
 
 }
