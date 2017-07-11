@@ -27,7 +27,7 @@ void serial_string(char * unString,int tamanio,int unSocket);
 int cantidadBloquesLibres(int MARCOS, t_estructuraADM * bloquesAdmin);
 int cantidadBloquesOcupados(int MARCOS, t_estructuraADM * bloquesAdmin);
 void handshakeServer(int unSocket,int unServer, void * unBuffer);
-void handshakeCliente(int unSocket, int unCliente, void * unBuffer);
+void handshakeCliente(int unSocket, int unCliente, void ** unBuffer);
 void pagaraprata();
 
 #endif

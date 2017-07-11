@@ -366,7 +366,7 @@ while(flagHilo) {
 	 								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
 	 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
 	 								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
-	 								printf("el valor es %s\n",bytesAAlmacenar->valor );
+	 								printf("el valor es %s\n",(char*)bytesAAlmacenar->valor );
 									if(existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS)==-1)
 									{	confirmacion=-1;
 										send(unData, &confirmacion, sizeof(int),0);

@@ -118,7 +118,13 @@ int deDondeEmpiezoALeer(int*offset, int*tamanioBloque){
 	int inicioLectura= *offset%(*tamanioBloque);
 	return inicioLectura;
 }
-
+void strip(char** string){
+	int i ;
+	for(i=0;i<string_length(*string); i++){
+		if((*string)[i]=='\n' || (*string)[i]=='\r' )
+			(*string)[i]='\0';
+	}
+}
 char* obtenerBloque(char**BLOQUES, int*numeroBloque){
 	char* bloque=BLOQUES[*numeroBloque];
 	return bloque;
@@ -141,21 +147,6 @@ FILE* getSiguiente(char**BLOQUES,int index){
 	return f;
 }
 
-char *strip(const char *s) {
-    char *p = malloc(strlen(s) + 1);
-    if(p) {
-        char *p2 = p;
-        while(*s != '\0') {
-            if(*s != '\t' && *s != '\n' && *s != ' ') {
-                *p2++ = *s++;
-            } else {
-                ++s;
-            }
-        }
-        *p2 = '\0';
-    }
-    return p;
-}
 
 int cantidadElementos(char* cadena){
 	int cont=0,i=0;
@@ -173,6 +164,7 @@ t_config *CFG;
 t_config * cfgMetadata;
 CFG = config_create("fileSystemCFG.txt");
 PUERTO= config_get_string_value(CFG ,"PUERTO");
+
 PUNTO_MONTAJE= config_get_string_value(CFG ,"PUNTO_MONTAJE");
 printf("Configuración:\nPUERTO = %s\nPUNTO_MONTAJE = %s\n",PUERTO,PUNTO_MONTAJE);
 
@@ -212,6 +204,7 @@ printf("%s \n", "El Servidor se encuentra OK para escuchar conexiones.");
 
  while((socketKernel = accept(listenningSocket, (struct sockaddr *)&addr,&addrlen)) < 0);
  handshakeServer(socketKernel,FILESYSTEM,(void*)unBuffer);
+ free(unBuffer);
  t_path *path;
 
 int unBit=0;
@@ -303,7 +296,7 @@ char*rutaFinal;
 char*bloquesArray,*bloquesFinal;
 int tamanio;
 char*unBloque;
-int TAMANIO;
+int TAMANIO,totalBloques;
 int cantidadBloques,primerBloqueAEscribir,cantAPedir,offsetAEscribir;
 t_paqueteFS* resultado;
 char * auxChar,*ptoMont;
@@ -327,8 +320,10 @@ while(1){
 						path=calloc(1,sizeof(t_path));
 						recibirDinamico(VALIDARARCHIVO,socketKernel,path);
 						auxChar=calloc(1,PATH_MAX);
-						strcpy(auxChar,strip(ARCHIVOS_MONTAJE));
-						if( access( strcat(auxChar,strip(path->path)), F_OK ) != -1 ) {
+						strip(&ARCHIVOS_MONTAJE);
+						strcpy(auxChar,ARCHIVOS_MONTAJE);
+						strip(&path->path);
+						if( access( strcat(auxChar,path->path), F_OK ) != -1 ) {
 							confirmacion=1;
 							printf("%s \n", "Validado, troesma.\n");
 						} else {
@@ -351,14 +346,14 @@ while(1){
 			
 			path=calloc(1,sizeof(t_path));
 			recibirDinamico(CREARARCHIVOFS,socketKernel,path);
-			path->path=strip(path->path);
+			strip(&path->path);
 			direccion=strcat(direccion,"/Archivos"); printf("direccion archivos %s\n",direccion );
 			direccion=strcat(direccion,path->path);
 			ultimoDirectorio(direccion,&soloDir); printf("%s\n",soloDir ); 
 
 			makeDir(soloDir,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-			bloquesAsignados=(int*)asignarBloques(1,&bitarray,bloques);
-			listaBloques=(char*)enlistadorDeBloques(bloquesAsignados,1);
+			asignarBloques(&bloquesAsignados,1,&bitarray,bloques);
+			enlistadorDeBloques(&listaBloques,bloquesAsignados,1);
 			crearBloques(listaBloques,PUNTO_MONTAJE,tamBloques);
 			strcpy(pegador,"BLOQUES=");
 			listaBloques=strcat(pegador,listaBloques);printf("lo que va en la conf %s\n",listaBloques );
@@ -425,7 +420,7 @@ while(1){
 				CFG = config_create(auxChar);
 				printf("llegamos aca: %p\n",CFG);
 				TAMANIO= config_get_int_value(CFG ,"TAMANIO");
-				printf("tamaño: %i.\n", tamanio);
+				printf("tamaño: %i.\n", TAMANIO);
 				BLOQUES= config_get_array_value(CFG ,"BLOQUES");
 				printf("config leido\n");
 				bloqueDondeEstoy=calloc(1,200);
@@ -445,7 +440,9 @@ while(1){
 				offset=deDondeEmpiezoALeer(&(leerArchivoFS->offset),&tamBloques);
 				fseek(f,deDondeEmpiezoALeer(&(leerArchivoFS->offset),&tamBloques),SEEK_SET);
 				resultado=calloc(1,sizeof(t_paqueteFS));
-				auxResultado=resultado->paquete=calloc(1,leerArchivoFS->size);
+				printf("leerArchivoFS->size: %i.\n", leerArchivoFS->size);
+				resultado->paquete=malloc(leerArchivoFS->size);
+				auxResultado=resultado->paquete;
 				if (offset+leerArchivoFS->size<tamBloques)
 				{
 					fread(auxResultado,leerArchivoFS->size,1,f);
@@ -476,6 +473,10 @@ while(1){
 				i=1;
 				printf("aca\n");
 				send(socketKernel,&i,sizeof(int),0);
+				unBuffer=malloc(sizeof(int));
+				*unBuffer=1;
+				while(0>recv(socketKernel,unBuffer,sizeof(int),0));
+				free(unBuffer);
 				printf("kk\n");
 				printf("resultado->paquete: %s\n",(char*)resultado->paquete);
 				printf("resultado->tamaño: %i.\n", resultado->tamanio);
@@ -488,7 +489,6 @@ while(1){
 				free(leerArchivoFS);
 				free(auxChar);
 				free(bloqueDondeEstoy);
-				free(auxResultado);
 				free(resultado->paquete);
 				free(resultado);
 				free(bloqueConBin);
@@ -510,9 +510,12 @@ while(1){
 			printf("size: %i\n", escribirArchivoFS->size);
 			printf("offset: %i\n",escribirArchivoFS->offset);
 			auxChar=calloc(1,PATH_MAX);
-			strcpy(auxChar,strip(ARCHIVOS_MONTAJE));
-			strcat(auxChar,strip(escribirArchivoFS->path));
-			printf("La ruta del archivo es: %s\n", strip(auxChar));
+			strip(&ARCHIVOS_MONTAJE);
+			strcpy(auxChar,ARCHIVOS_MONTAJE);
+			strip(&escribirArchivoFS->path);
+			strcat(auxChar,escribirArchivoFS->path);
+			strip(&auxChar);
+			printf("La ruta del archivo es: %s\n", auxChar);
 			CFG = config_create(auxChar);
 			rv=1;
 				// TAMANIO= config_get_int_value(CFG ,"TAMANIO");
@@ -531,8 +534,8 @@ while(1){
 					totalBloques=cantAPedir+cantidadBloques;
 					if (hayBloquesLibres(cantAPedir,&bitarray,metadataFS->cantBloques))
 					{
-						bloquesAsignados=(int*)asignarBloques(cantAPedir,&bitarray,metadataFS->cantBloques);
-						bloquesAsignadosChar=(char*)enlistadorDeBloques(bloquesAsignados,cantAPedir);
+						asignarBloques(&bloquesAsignados,cantAPedir,&bitarray,metadataFS->cantBloques);
+						enlistadorDeBloques(&bloquesAsignadosChar,bloquesAsignados,cantAPedir);
 						printf("Los bloques nuevos que se asignaron son: %s.\n", bloquesAsignadosChar);
 						crearBloques(bloquesAsignadosChar,PUNTO_MONTAJE,tamBloques);
 						printf("saliendo hayBloquesLibres\n");
@@ -547,6 +550,8 @@ while(1){
 					strcat(bloquesArray,",");
 					strcat(bloquesArray,bloquesAsignadosChar);
 					printf("Finalmente mis bloques son: %s\n",bloquesArray);
+					free(bloquesAsignados);
+					free(bloquesAsignadosChar);
 				}
 				else{
 					totalBloques=cantidadBloques;
@@ -556,10 +561,11 @@ while(1){
 				{
 					offsetAEscribir=deDondeEmpiezoALeer(&(escribirArchivoFS->offset),&tamBloques);
 					primerBloqueAEscribir=escribirArchivoFS->offset/tamBloques;
-					strcpy(ptoMont,strip(BLOQUES_MONTAJE));
+					strip(&BLOQUES_MONTAJE);
+					strcpy(ptoMont,BLOQUES_MONTAJE);
 					strcat(ptoMont,"/");
 					unBloque=calloc(1,20);
-					bloquesFinal=calloc(1,strlen(bloquesArray));
+					bloquesFinal=calloc(1,strlen(bloquesArray)+1);
 					strcpy(bloquesFinal,bloquesArray);
 					strcpy(unBloque,"-");
 					bloquesArray=strcat(unBloque,bloquesArray);
@@ -596,7 +602,8 @@ while(1){
 					fclose(f);
 					i=primerBloqueAEscribir+1;
 					while(escribirArchivoFS->size>0){
-						strcpy(ptoMont,strip(BLOQUES_MONTAJE));
+						strip(&BLOQUES_MONTAJE);
+						strcpy(ptoMont,BLOQUES_MONTAJE);
 						strcat(ptoMont,"/");
 						if (i+1==cantidadBloques+cantAPedir)
 							unBloque=strtok(NULL,"]");
@@ -634,8 +641,6 @@ while(1){
 				send(socketKernel,&rv,sizeof(int),0);
 				free(ptoMont);
 				free(auxChar);
-				free(bloquesAsignados);
-				free(bloquesAsignadosChar);
 				free(unBloque);
 				free(escribirArchivoFS->path);
 				free(escribirArchivoFS->buffer);

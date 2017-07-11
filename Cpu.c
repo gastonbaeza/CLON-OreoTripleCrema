@@ -3,6 +3,7 @@
 #include <parser/parser.h>
 #include <commons/collections/list.h>
 #include <commons/config.h>
+#include <commons/string.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -127,20 +128,12 @@ void liberarContenidoPcb(){
 	free(pcb);
 }
 
-char* limpiar_string(char* s){
-    char *p = malloc(strlen(s) + 1);
-    if(p) {
-        char *p2 = p;
-        while(*s != '\0') {
-            if(*s != '\t' && *s != '\n' && *s != ' ' && *s != '\r') {
-                *p2++ = *s++;
-            } else {
-                ++s;
-            }
-        }
-        *p2 = '\0';
-    }
-    return p;
+void limpiar_string(char** string){
+	int i ;
+	for(i=0;i<string_length(*string); i++){
+		if((*string)[i]=='\n' || (*string)[i]=='\r' )
+			(*string)[i]='\0';
+	}
 }
 
 void posicionarPC(int pos){
@@ -331,7 +324,7 @@ void posicionarPC(int pos){
 			bytes->size=SIZE;
 			sprintf (buffer, "%d",valor);
 			bytes->valor=buffer;
-			printf("este es el valor estringeado %s\n", bytes->valor);
+			printf("este es el valor estringeado %s\n", (char*)bytes->valor);
 			printf("este es el valor pagina %i\n", bytes->pagina);
 			printf("este es el valor offset %i\n", bytes->offset);
 			printf("este es el valor size %i\n", bytes->size);
@@ -345,7 +338,7 @@ void posicionarPC(int pos){
 				printf("me devolvio error\n");
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
 			}
-			printf("%s\n", bytes->valor);
+			printf("%s\n",(char*) bytes->valor);
 			free(bytes);
 		}
 
@@ -409,7 +402,8 @@ void posicionarPC(int pos){
 			printf("en cpu_irAlLabel\n");
 			int i,pos;
 			printf("%s\n",nombre_etiqueta );
-			pos=metadata_buscar_etiqueta(limpiar_string(nombre_etiqueta), pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
+			limpiar_string(&nombre_etiqueta);
+			pos=metadata_buscar_etiqueta(nombre_etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
 			printf("pos:%i\n", pos);
 			pcb->programCounter=pos;
 		}
@@ -430,7 +424,7 @@ void posicionarPC(int pos){
 			printf("en cpu_llamarSinRetorno\n");
 			int i,pos;
 			nuevoNivelStack();
-			etiqueta=limpiar_string(etiqueta);
+			limpiar_string(&etiqueta);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
 			pcb->programCounter=pos;
 		}
@@ -457,7 +451,7 @@ void posicionarPC(int pos){
 			pcb->indiceStack[pcb->posicionStack].varRetorno.offset=donde_retornar%TAMPAGINA;
 			pcb->indiceStack[pcb->posicionStack].varRetorno.size=SIZE;
 			pthread_mutex_unlock(&mutexPcb);
-			etiqueta=limpiar_string(etiqueta);
+			limpiar_string(&etiqueta);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
 			printf("pcb->indiceEtiquetas.etiquetas: %s.\n", pcb->indiceEtiquetas.etiquetas);
 			printf("pcb->indiceEtiquetas.etiquetas_size: %i.\n", pcb->indiceEtiquetas.etiquetas_size);
@@ -515,7 +509,7 @@ void posicionarPC(int pos){
 			bytes->pagina=pcb->paginasCodigo+pcb->indiceStack[pcb->posicionStack].varRetorno.pagina;
 			bytes->offset=pcb->indiceStack[pcb->posicionStack].varRetorno.offset;
 			bytes->size=pcb->indiceStack[pcb->posicionStack].varRetorno.size;
-			printf("este es el valor estringeado %s\n", bytes->valor);
+			printf("este es el valor estringeado %s\n", (char*)bytes->valor);
 			printf("este es el buffer : %s\n",buffer );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -644,6 +638,7 @@ void posicionarPC(int pos){
 		t_descriptor_archivo cpu_abrir(t_direccion_archivo direccion, t_banderas flags){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_abrir\n");
+					limpiar_string(&direccion);
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
 					abrirArchivo->direccionArchivo=malloc(PATH_MAX);
@@ -781,10 +776,27 @@ void posicionarPC(int pos){
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
 			printf("paso l primero\n");
 			enviarDinamico(PCB,socketKernel,pcb);
+			paqueteFS=malloc(sizeof(t_paqueteFS));
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PAQUETEFS,socketKernel,paqueteFS);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
+			t_almacenarBytes * bytes;
+			bytes=malloc(sizeof(t_almacenarBytes));
+			bytes->valor=calloc(1,tamanio);
+			bytes->pid=PID;
+			bytes->pagina=pcb->paginasCodigo+informacion/TAMPAGINA;
+			bytes->offset=informacion%TAMPAGINA;
+			bytes->size=tamanio;
+			memcpy(bytes->valor,paqueteFS->paquete,tamanio);
+			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			free(paqueteFS->paquete);
+			free(paqueteFS);
+			free(bytes->valor);
+			free(bytes);
+			free(leerArchivo);
+			free(seleccionador);
+
 		}
 
 AnSISOP_funciones functions = {
@@ -842,15 +854,15 @@ void conectarKernel(void){
 
 	getaddrinfo(IP_KERNEL,PUERTO_KERNEL,&hints,&serverInfo);
 	socketKernel = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-	int * buffer;
+	void * buffer;
 	int a=1;
 
 	connect(socketKernel, serverInfo->ai_addr, serverInfo->ai_addrlen);
 
 	
 	freeaddrinfo(serverInfo);
-	int * unBuffer=malloc(sizeof(int));
-	handshakeCliente(socketKernel, CPU, unBuffer);
+	void * unBuffer=malloc(sizeof(int));
+	handshakeCliente(socketKernel, CPU, &unBuffer);
 	free(unBuffer);
 	int recibir;
 	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
@@ -1080,9 +1092,9 @@ int main(){
 
 	connect(socketMemoria, serverInfo->ai_addr, serverInfo->ai_addrlen);
 	freeaddrinfo(serverInfo);
-	int * unBuffer;
+	void * unBuffer;
 	unBuffer=malloc(sizeof(int));
-	handshakeCliente(socketMemoria, CPU, unBuffer);	
+	handshakeCliente(socketMemoria, CPU, &unBuffer);	
 	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
 
 

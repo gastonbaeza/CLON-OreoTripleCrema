@@ -119,15 +119,15 @@ void handshakeServer(int unSocket,int unServer, void * unBuffer)
 	
 
 }
-void handshakeCliente(int unSocket, int unCliente, void * unBuffer)
+void handshakeCliente(int unSocket, int unCliente, void * *unBuffer)
 {
 
 	void * otroBuffer=malloc(sizeof(int));
 	memcpy(otroBuffer,&unCliente,sizeof(int));
 	send(unSocket,otroBuffer, sizeof(int),0);
-	// while(0>=recv(unSocket,unBuffer,sizeof(int),0));
+	// while(0>=recv(unSocket,*unBuffer,sizeof(int),0));
 
-	recv(unSocket,unBuffer,sizeof(int),0);
+	recv(unSocket,*unBuffer,sizeof(int),0);
 
 
 }
@@ -405,6 +405,7 @@ int dserial_string(char ** unString,int unSocket)
 	if (tamanio>0)
 	{
 	while(0>recv(unSocket,*unString,tamanio,0));
+	printf("string recibido: %s.\n", *unString);
 	send(unSocket,buffer1, sizeof(int),0);
 	}
 	free(buffer1);
@@ -424,6 +425,7 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	// }
 	if (tamanio>0)
 	{
+	printf("string a enviar: %s.\n", unString);
 	send(unSocket,unString,tamanio,0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	}
@@ -432,13 +434,12 @@ void serial_string(char * unString,int tamanio,int unSocket)
 
 int dserial_void(void ** unString,int unSocket)
 {	int tamanio;
-	int  unChar;
 	int * buffer1=malloc(sizeof(int));
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
 	printf("tamaño: %i\n", tamanio);
-	*unString=malloc(tamanio+1);
+	*unString=calloc(1,tamanio+1);
 	send(unSocket,buffer1, sizeof(int),0);
 	// for (unChar= 0; unChar <tamanio; unChar++)
 	// {
@@ -455,12 +456,13 @@ int dserial_void(void ** unString,int unSocket)
 return tamanio;
 }
 void serial_void(void * unString,int tamanio,int unSocket)
-{	int  unChar;
+{	
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
+	printf("tamanio: %i\n", tamanio);
 	send(unSocket,&tamanio,sizeof(int),0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	while(0>recv(unSocket,buffer, sizeof(int),0));
 	// for (unChar= 0; unChar < tamanio; unChar++)
 	// {
 	// 	send(unSocket, &unString[unChar],sizeof(char),0);
@@ -469,7 +471,7 @@ void serial_void(void * unString,int tamanio,int unSocket)
 	if (tamanio>0)
 	{
 	send(unSocket,unString,tamanio,0);
-	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	while(0>recv(unSocket,buffer, sizeof(int),0));
 	}
 	free(buffer);
 }
@@ -542,10 +544,13 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 			send(unSocket, &(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0);
 			while(0>=recv(unSocket,buffer, sizeof(int),0));
 		}
-		send(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0);
-		while(0>=recv(unSocket,buffer, sizeof(int),0));
-		send(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0);
-		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		if (i!=0)
+		{
+			send(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0);
+			while(0>=recv(unSocket,buffer, sizeof(int),0));
+			send(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0);
+			while(0>=recv(unSocket,buffer, sizeof(int),0));
+		}
 	}
 	send(unSocket,&(pcb->exitCode),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));free(buffer);
@@ -624,10 +629,13 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 			while(0>recv(unSocket,&(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0));
 			send(unSocket,buffer, sizeof(int),0);
 		}
-		while(0>recv(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0));
-		send(unSocket,buffer, sizeof(int),0);
-		while(0>recv(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0));
-		send(unSocket,buffer, sizeof(int),0);
+		if (i!=0)
+		{
+			while(0>recv(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0));
+			send(unSocket,buffer, sizeof(int),0);
+			while(0>recv(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0));
+			send(unSocket,buffer, sizeof(int),0);
+		}
 	}
 	while(0>recv(unSocket,&(pcb->exitCode),sizeof(int),0));
     send(unSocket,buffer, sizeof(int),0);free(buffer);
@@ -770,7 +778,7 @@ void serial_bytes(t_almacenarBytes * bytes, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(bytes->size),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	serial_string(bytes->valor,20,unSocket);
+	serial_void(bytes->valor,20,unSocket);
 
 	free(buffer);
 }
@@ -787,7 +795,7 @@ void dserial_bytes(t_almacenarBytes * bytes, int unSocket)
 	send(unSocket,buffer, sizeof(int),0);
 	while(0>recv(unSocket,&(bytes->size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	dserial_string(&(bytes->valor),unSocket);
+	dserial_void(&(bytes->valor),unSocket);
 	free(buffer);
 }
 
@@ -1599,17 +1607,17 @@ int ultimaPagina=0;
 	
 	}return ultimaPagina;
 }
-int  * asignarBloques(int unaCantidad, t_bitarray** bitarray,int tamanioBitarray) // devuelvo un vector de los numeros de bloques asignados, si no hay bloques libres devuelvo el vector con -1
+int  * asignarBloques(int ** bloquesAsignados,int unaCantidad, t_bitarray** bitarray,int tamanioBitarray) // devuelvo un vector de los numeros de bloques asignados, si no hay bloques libres devuelvo el vector con -1
 {	int unBit=0;
 	int asignados=0;
 	int i;
-	int * bloquesAsignados=calloc(unaCantidad,sizeof(int));
+	*bloquesAsignados=calloc(unaCantidad,sizeof(int));
 	while( asignados < unaCantidad && unBit<tamanioBitarray)
 		{ 
 		if(!bitarray_test_bit(*bitarray,unBit))
 			{
 				bitarray_set_bit(*bitarray,unBit);
-				bloquesAsignados[asignados]=unBit;
+				(*bloquesAsignados)[asignados]=unBit;
 				asignados++;
 			}
 			unBit++;
@@ -1618,10 +1626,10 @@ int  * asignarBloques(int unaCantidad, t_bitarray** bitarray,int tamanioBitarray
 		{
 			for ( i = 0; i < unaCantidad; ++i)
 			{
-				bloquesAsignados[i]=-1;
+				(*bloquesAsignados)[i]=-1;
 			}
 		}
-		return bloquesAsignados;
+		return *bloquesAsignados;
 		
 }
 
@@ -1662,26 +1670,26 @@ void ultimoDirectorio(char * unPath,char** laDir)
 	}
 }
 
-char * enlistadorDeBloques(int * bloquesAsignados, int cantidadAsignados)
+char * enlistadorDeBloques(char**lista,int * bloquesAsignados, int cantidadAsignados)
 {	int unBloque=0;
-	char * lista=calloc(1,cantidadAsignados+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
+	*lista=calloc(1,cantidadAsignados+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
 	char * aux=calloc(1,10);
-	strcpy(lista,"["); 
+	strcpy(*lista,"["); 
 	for (unBloque = 0; unBloque < cantidadAsignados; unBloque++)
 	{
 		sprintf(aux,"%i",bloquesAsignados[unBloque]);
-		strcat(lista,aux);
+		strcat(*lista,aux);
 		if(unBloque==cantidadAsignados-1)
 		{
-			strcat(lista,"]");
+			strcat(*lista,"]");
 		}
 	 	else
 	 	{
-	 		strcat(lista,",");
+	 		strcat(*lista,",");
 	 	}
 	}
 	free(aux);
-	return lista;
+	return *lista;
 
 }
 void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
