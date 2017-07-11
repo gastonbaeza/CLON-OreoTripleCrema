@@ -132,7 +132,7 @@ char* limpiar_string(char* s){
     if(p) {
         char *p2 = p;
         while(*s != '\0') {
-            if(*s != '\t' && *s != '\n' && *s != ' ') {
+            if(*s != '\t' && *s != '\n' && *s != ' ' && *s != '\r') {
                 *p2++ = *s++;
             } else {
                 ++s;
@@ -747,7 +747,9 @@ void posicionarPC(int pos){
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
 			escribirArchivo->informacion=malloc(tamanio);
+			printf("informacion: %s.\n", (char *) informacion);
 			escribirArchivo->informacion=informacion;
+			printf("escribirArchivo->informacion: %s.\n",(char*) escribirArchivo->informacion);
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
 			enviarDinamico(PCB,socketKernel,pcb);
@@ -777,6 +779,7 @@ void posicionarPC(int pos){
 			leerArchivo->descriptor=descriptor_archivo;
 			leerArchivo->tamanio=tamanio;
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
+			printf("paso l primero\n");
 			enviarDinamico(PCB,socketKernel,pcb);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PAQUETEFS,socketKernel,paqueteFS);

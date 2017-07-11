@@ -268,7 +268,7 @@ typedef struct {
 
 typedef struct {
 				int fdArchivo;
-				char * informacion;
+				void * informacion;
 				int tamanio;
 				
 				}__attribute__((packed))
@@ -320,7 +320,7 @@ typedef struct {
 				char * path;
 				int offset;
 				int size;
-				char * buffer;
+				void * buffer;
 				}__attribute__((packed))
 					t_escribirArchivoFS;
 
@@ -334,7 +334,7 @@ typedef struct {
 
 typedef struct {
 				int tamanio;
-				char * paquete;
+				void * paquete;
 				}__attribute__((packed))
 					t_paqueteFS;
 

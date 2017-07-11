@@ -167,7 +167,7 @@ char *strip(const char *s) {
     if(p) {
         char *p2 = p;
         while(*s != '\0') {
-            if(*s != '\t' && *s != '\n' && *s != ' ') {
+            if(*s != '\t' && *s != '\n' && *s != ' ' && *s != '\r') {
                 *p2++ = *s++;
             } else {
                 ++s;
@@ -777,12 +777,13 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 	t_solicitudAsignar * solicitudPaginaHeap;
 	t_reservar * reservar;
 	while(PLANIFICACIONHABILITADA)
-	{
+	{printf("otro ciclo\n");
 		
 		if (primerAcceso){
 					primerAcceso=0;}
 		else
 			while(0>recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0)){printf("paa\n");}
+		printf("Paquete: %i\n", seleccionador->tipoPaquete);
 		switch(seleccionador->tipoPaquete)
 		{
 			case ESPERONOVEDADES:
@@ -834,6 +835,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				for (i = 0; i < CANTIDADVARS; i++)
 					if (!strcmp(SHARED_VARS[i]+1,strip(solicitudVariable->variable)))
 						send(dataDePlanificacion->socket,&(SHARED_VALUES[i]),sizeof(int),0);
+				free(solicitudVariable->variable);
 				free(solicitudVariable);
 			break;
 			case ASIGNARVARIABLECOMPARTIDA: // CPU QUIERE ASIGNAR UN VALOR A UNA VARIABLE COMPARTIDA
@@ -848,6 +850,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						pthread_mutex_unlock(&mutexCompartidas);
 					}
 				}
+				free(asignarVariable->variable);
 				free(asignarVariable);
 			break;
 			// SEMAFOROS
@@ -908,7 +911,9 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						}
 					}
 				}
+				free(solicitudSemaforo->identificadorSemaforo);
 				free(solicitudSemaforo);
+				printf("fin wait\n");
 			break;
 			case SOLICITUDSEMSIGNAL: // CPU ESTA HACIENDO SIGNAL (VER ESTRUCTURA)
 				solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
@@ -969,7 +974,9 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						}
 					}
 				}
+				free(solicitudSemaforo->identificadorSemaforo);
 				free(solicitudSemaforo);
+				printf("fin signal\n");
 			break;
 			// HEAP
 			case RESERVARESPACIO: // CPU RESERVA LUGAR EN EL HEAP
@@ -1183,12 +1190,14 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				flag=0;
 				for (i = 0; i < proximoFd; i++)
 				{
+					
 					if (!strcmp(tablaArchivos[i].path,abrirArchivo->direccionArchivo))
 					{
 						globalFd=i;
 						estaba=1;
 					}
 				}
+				printf("estaba: %i\n", estaba);
 				if (!estaba)
 				{	path=malloc(sizeof(t_path));
 					path->path=calloc(1,abrirArchivo->tamanio);
@@ -1202,10 +1211,11 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 					globalFd=proximoFd;
 					proximoFd++;
 					CANTTABLAARCHIVOS++;
+					printf("realloc con cantidad: %i\n", CANTTABLAARCHIVOS);
 					tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
 					tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,abrirArchivo->tamanio);
 					tablaArchivos[CANTTABLAARCHIVOS-1].tamanioPath=abrirArchivo->tamanio;
-					memcpy(tablaArchivos[CANTTABLAARCHIVOS-1].path,abrirArchivo->direccionArchivo,abrirArchivo->tamanio);
+					memcpy(tablaArchivos[CANTTABLAARCHIVOS-1].path,strip(abrirArchivo->direccionArchivo),abrirArchivo->tamanio);
 					tablaArchivos[CANTTABLAARCHIVOS-1].vecesAbierto=1;
 					tablaArchivos[CANTTABLAARCHIVOS-1].fd=globalFd;
 					printf("%s\n", tablaArchivos[CANTTABLAARCHIVOS-1].path);
@@ -1215,8 +1225,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 					{
 
 						enviarDinamico(CREARARCHIVOFS,SOCKETFS,path);
-						free(path->path);
-						free(path);
 					}
 					else if (rv==-1 && !(abrirArchivo->flags.creacion)){
 						flag=1;
@@ -1227,7 +1235,9 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 					pthread_mutex_lock(&mutexTablaArchivos);
 					tablaArchivos[globalFd].vecesAbierto++;
 					pthread_mutex_unlock(&mutexTablaArchivos);
-				}if (!flag)
+				}
+				printf("flag: %i\n", flag);
+				if (!flag)
 				{
 					pcb->cantidadArchivos++;
 					if (pcb->cantidadArchivos==1)
@@ -1246,6 +1256,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				fd=malloc(sizeof(t_fdParaLeer));
 				fd->fd=pcb->cantidadArchivos-1+3;
 				enviarDinamico(ABRIOARCHIVO,dataDePlanificacion->socket,fd);
+				free(path->path);
+				free(path);
 				free(fd);
 				free(abrirArchivo->direccionArchivo);
 				free(abrirArchivo);
@@ -1322,6 +1334,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						}
 					}
 				CANTTABLAARCHIVOS--;
+				proximoFd--;
 				tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
 				pthread_mutex_unlock(&mutexTablaArchivos);
 				updatePCB(pcb);
@@ -1346,7 +1359,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				escribirArchivo=malloc(sizeof(t_escribirArchivo));
 				recibirDinamico(ESCRIBIRARCHIVO,dataDePlanificacion->socket,escribirArchivo);
 				while(0>recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0));
-				printf("info: %s\n", escribirArchivo->informacion);
+				printf("info: %s\n", (char*)escribirArchivo->informacion);
 				recibirDinamico(PCB,dataDePlanificacion->socket,pcb);
 				pcb->privilegiadasEjecutadas++;
 				if (escribirArchivo->fdArchivo==1)
@@ -1356,6 +1369,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 					mensaje->tamanio=escribirArchivo->tamanio;
 					mensaje->mensaje=escribirArchivo->informacion;
 					enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
+					free(mensaje->mensaje);
 					free(mensaje);
 				}
 				else{
@@ -1380,7 +1394,7 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						escribirArchivoFS->path=strip(escribirArchivoFS->path);
 						escribirArchivoFS->tamanioPath=strlen(escribirArchivoFS->path);
 						printf("path: %s\n", escribirArchivoFS->path);
-						printf("buffer: %s\n", escribirArchivoFS->buffer);
+						printf("buffer: %s\n", (char*)escribirArchivoFS->buffer);
 						printf("size: %i\n",escribirArchivoFS->size);
 						enviarDinamico(GUARDARDATOSFS,SOCKETFS,escribirArchivoFS);
 						while(0>recv(SOCKETFS,&rv,sizeof(int),0));
@@ -1388,6 +1402,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						{
 							error=-2;
 						}
+						free(escribirArchivoFS->path);
+						free(escribirArchivoFS->buffer);
 						free(escribirArchivoFS);
 					}
 					else{
@@ -1396,18 +1412,24 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 				}
 				updatePCB(pcb);
 				enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
+				free(escribirArchivo->informacion);
 				free(escribirArchivo);
 				
 			break;
 			case LEERARCHIVO: // CPU OBTIENE CONTENIDO DEL ARCHIVO
+			printf("en leer archivo\n");
 				leerArchivo=malloc(sizeof(t_leerArchivo));
 				recibirDinamico(LEERARCHIVO,dataDePlanificacion->socket,leerArchivo);
+				printf("aca\n");
 				while(0>recv(dataDePlanificacion->socket, seleccionador, sizeof(t_seleccionador), 0));
-				
+				printf("aca\n");
 				recibirDinamico(PCB,dataDePlanificacion->socket,pcb);
+				paqueteFS=calloc(1,sizeof(t_paqueteFS));
+				paqueteFS->tamanio=0;
 				pcb->privilegiadasEjecutadas++;
 				if (pcb->referenciaATabla[(leerArchivo->descriptor)-3].flags.lectura)
 				{
+					printf("puede leer\n");
 					leerArchivoFS=malloc(sizeof(t_leerArchivoFS));
 					leerArchivoFS->size=leerArchivo->tamanio;
 					leerArchivoFS->offset=pcb->referenciaATabla[(leerArchivo->descriptor)-3].cursor;
@@ -1419,28 +1441,36 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 							break;
 						}
 					}
+					leerArchivoFS->tamanioPath=strlen(tablaArchivos[i].path);
 					leerArchivoFS->path=calloc(1,leerArchivoFS->tamanioPath);
-					memcpy(leerArchivoFS->path,tablaArchivos[i].path,leerArchivoFS->tamanioPath);
+					printf("path en tabla: %s.\n", tablaArchivos[i].path);
+					strcpy(leerArchivoFS->path,tablaArchivos[i].path);
+					printf("path en paquete: %s.\n", leerArchivoFS->path);
 					leerArchivoFS->path=strip(leerArchivoFS->path);
 					leerArchivoFS->tamanioPath=strlen(leerArchivoFS->path);
 					enviarDinamico(OBTENERDATOSFS,SOCKETFS,leerArchivoFS);
+					printf("aca\n");
 					while(0>recv(SOCKETFS,&rv,sizeof(int),0));
+					printf("kk\n");
 					if (!rv)
 					{
 						error=-3;
+						printf("error\n");
 					}
 					else{
-						paqueteFS=malloc(sizeof(t_paqueteFS));
 						recibirDinamico(PAQUETEFS,SOCKETFS,paqueteFS);
-						enviarDinamico(PAQUETEFS,dataDePlanificacion->socket,paqueteFS);
-						free(paqueteFS);
+						printf("kk2\n");
 					}
+					free(leerArchivoFS->path);
 					free(leerArchivoFS);
 				}
 				else{
 					error=-4;
 				}
 				updatePCB(pcb);
+				enviarDinamico(PAQUETEFS,dataDePlanificacion->socket,paqueteFS);
+				free(paqueteFS->paquete);
+				free(paqueteFS);
 				enviarDinamico(PCB,dataDePlanificacion->socket,pcb);
 				free(leerArchivo);
 				
@@ -1487,7 +1517,6 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						sprintf(aux,"Finalizo correctamente el proceso PID=%i",pid);
 						mensaje=malloc(sizeof(t_mensaje));
 						mensaje->tamanio=strlen(aux);
-						mensaje->mensaje=calloc(1,mensaje->tamanio);
 						mensaje->mensaje=aux;
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
 						// free(mensaje->mensaje);
@@ -1531,10 +1560,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						error=0;
 						mensaje=malloc(sizeof(t_mensaje));
 						mensaje->tamanio=strlen(aux);
-						mensaje->mensaje=calloc(1,mensaje->tamanio);
 						mensaje->mensaje=aux;
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-						// free(mensaje->mensaje);
 						free(mensaje);
 						free(aux);
 				
@@ -1545,10 +1572,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						sprintf(aux,"Pagina invalida");
 						mensaje=malloc(sizeof(t_mensaje));
 						mensaje->tamanio=strlen(aux);
-						mensaje->mensaje=calloc(1,mensaje->tamanio);
 						mensaje->mensaje=aux;
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-						// free(mensaje->mensaje);
 						free(mensaje);
 						free(aux);
 			break;
@@ -1558,10 +1583,8 @@ void planificar(dataParaComunicarse * dataDePlanificacion){
 						sprintf(aux,"Stack overflow");
 						mensaje=malloc(sizeof(t_mensaje));
 						mensaje->tamanio=strlen(aux);
-						mensaje->mensaje=calloc(1,mensaje->tamanio);
 						mensaje->mensaje=aux;
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-						// free(mensaje->mensaje);
 						free(mensaje);
 						free(aux);
 			break;
@@ -1968,6 +1991,7 @@ else if (rv == 0){
 SOCKETFS=socketFS;
 freeaddrinfo(fs);
 // CONFIGURACION DEL SERVIDOR
+tablaArchivos=malloc(1);
 struct addrinfo *serverInfo;
 if ((rv =getaddrinfo(NULL, PUERTO_PROG, &hints, &serverInfo)) != 0)
 	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));

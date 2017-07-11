@@ -430,6 +430,50 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	free(buffer);
 }
 
+int dserial_void(void ** unString,int unSocket)
+{	int tamanio;
+	int  unChar;
+	int * buffer1=malloc(sizeof(int));
+	int b=1;
+	memcpy(buffer1,&b,sizeof(int));
+	while(0>recv(unSocket,&tamanio,sizeof(int),0));
+	printf("tamaño: %i\n", tamanio);
+	*unString=malloc(tamanio+1);
+	send(unSocket,buffer1, sizeof(int),0);
+	// for (unChar= 0; unChar <tamanio; unChar++)
+	// {
+	// 	while(0>=recv(unSocket, &unString[unChar],sizeof(char),0));
+	// 	send(unSocket,buffer1, sizeof(int),0);
+
+	// }
+	if (tamanio>0)
+	{
+	while(0>recv(unSocket,*unString,tamanio,0));
+	send(unSocket,buffer1, sizeof(int),0);
+	}
+	free(buffer1);
+return tamanio;
+}
+void serial_void(void * unString,int tamanio,int unSocket)
+{	int  unChar;
+	int * buffer=malloc(sizeof(int));
+	int a=1;
+	memcpy(buffer,&a,sizeof(int));
+	send(unSocket,&tamanio,sizeof(int),0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	// for (unChar= 0; unChar < tamanio; unChar++)
+	// {
+	// 	send(unSocket, &unString[unChar],sizeof(char),0);
+	// 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	// }
+	if (tamanio>0)
+	{
+	send(unSocket,unString,tamanio,0);
+	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	}
+	free(buffer);
+}
+
 void serial_pcb(t_pcb * pcb, int unSocket)
 {	int * buffer=malloc(sizeof(int));
 	int a=1;
@@ -898,30 +942,31 @@ void serial_guardarDatosFs(t_escribirArchivoFS * escribirArchivoFS, int unSocket
 {
 	serial_string(escribirArchivoFS->path,escribirArchivoFS->tamanioPath,unSocket);
 	serial_int(&(escribirArchivoFS->offset),unSocket);
-	serial_string(escribirArchivoFS->buffer,escribirArchivoFS->size,unSocket);
+	serial_void(escribirArchivoFS->buffer,escribirArchivoFS->size,unSocket);
 }
 void dserial_guardarDatosFs(t_escribirArchivoFS * escribirArchivoFS, int unSocket)
 {	
 	escribirArchivoFS->tamanioPath=dserial_string(&(escribirArchivoFS->path),unSocket);
 	dserial_int(&(escribirArchivoFS->offset),unSocket);
-	escribirArchivoFS->size=dserial_string(&(escribirArchivoFS->buffer),unSocket);
+	escribirArchivoFS->size=dserial_void(&(escribirArchivoFS->buffer),unSocket);
 	}
 void serial_paqueteFs(t_paqueteFS * paqueteFS, int unSocket)
 {
-	serial_string(paqueteFS->paquete,paqueteFS->tamanio,unSocket);
+	serial_void(paqueteFS->paquete,paqueteFS->tamanio,unSocket);
 }
 void dserial_paqueteFs(t_paqueteFS * paqueteFS, int unSocket)
 {	
-	paqueteFS->tamanio=dserial_string(&(paqueteFS->paquete),unSocket);
+	paqueteFS->tamanio=dserial_void(&(paqueteFS->paquete),unSocket);
 }
 void serial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {
-	serial_string(escribirArchivo->informacion,escribirArchivo->tamanio,unSocket); 
+
+	serial_void(escribirArchivo->informacion,escribirArchivo->tamanio,unSocket); 
 	serial_int(&(escribirArchivo->fdArchivo),unSocket);
 }
 void dserial_escribirArchivo(t_escribirArchivo * escribirArchivo, int unSocket)
 {	
-	escribirArchivo->tamanio=dserial_string(&(escribirArchivo->informacion),unSocket);
+	escribirArchivo->tamanio=dserial_void(&(escribirArchivo->informacion),unSocket);
 	dserial_int(&(escribirArchivo->fdArchivo),unSocket);
 }
 void serial_leerArchivo(t_leerArchivo * leerArchivo, int unSocket)
@@ -1057,12 +1102,15 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 		 case LEERARCHIVO:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_leerArchivo((t_leerArchivo *)paquete,unSocket);
+		 	break;
 		 case OBTENERDATOSFS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_obtenerDatosFs((t_leerArchivoFS *)paquete,unSocket);
+		 	break;
 		 case GUARDARDATOSFS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_guardarDatosFs((t_escribirArchivoFS *)paquete,unSocket);
+		 	break;
 		 case PAQUETEFS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 		 	serial_paqueteFs((t_paqueteFS *)paquete,unSocket);
