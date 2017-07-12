@@ -119,6 +119,8 @@ void handshakeServer(int unSocket,int unServer, void * unBuffer)
 	
 
 }
+void retardoMemoria(int retardo)
+{sleep(retardo*1000);}
 void handshakeCliente(int unSocket, int unCliente, void * *unBuffer)
 {
 
@@ -128,7 +130,7 @@ void handshakeCliente(int unSocket, int unCliente, void * *unBuffer)
 	// while(0>=recv(unSocket,*unBuffer,sizeof(int),0));
 
 	recv(unSocket,*unBuffer,sizeof(int),0);
-
+	free(otroBuffer);
 
 }
 void generarDumpCache( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int MARCO_SIZE)
@@ -439,7 +441,7 @@ int dserial_void(void ** unString,int unSocket)
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
 	printf("tamaño: %i\n", tamanio);
-	*unString=calloc(1,tamanio+1);
+	*unString=malloc(tamanio+1);
 	send(unSocket,buffer1, sizeof(int),0);
 	// for (unChar= 0; unChar <tamanio; unChar++)
 	// {
@@ -1388,7 +1390,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
          *marco=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); printf("a ver ese marco %i\n", *marco );
          if(*marco!=-1)
          {
-         	agregarSiguienteEnOverflow(indice,marco,overflow);
+         	agregarSiguienteEnOverflow(indice,&marco,overflow);
         	 bloquesAdmin[*marco].estado=1;
         	bloquesAdmin[*marco].pid=unPid;
         	bloquesAdmin[*marco].pagina=unFrame;
@@ -1459,12 +1461,12 @@ int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAd
 }
 
 /* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
-void agregarSiguienteEnOverflow(int pos_inicial, int * nro_frame, t_list**overflow) {
-	int * aux=malloc(4);
-	printf(" el marco en agregarsiguente es %i\n",*nro_frame );
-	memcpy(aux,nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
+void agregarSiguienteEnOverflow(int pos_inicial, int ** nro_frame, t_list**overflow) {
+	// int * aux=malloc(4);
+	printf(" el marco en agregarsiguente es %i\n",**nro_frame );
+	// memcpy(aux,nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
 	printf("pos inicial: %i\n", pos_inicial);
-    list_add(overflow[pos_inicial], aux);
+    list_add(overflow[pos_inicial], *nro_frame);
     printf("pase add\n");
     
 }
@@ -1722,3 +1724,4 @@ void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
 	free(direccionBloques);
 	printf("%s\n","genere los Bloques" );
 }
+
