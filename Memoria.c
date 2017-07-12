@@ -67,7 +67,9 @@
 #define PCB 3
 #define PIDSIZE 1
 #define MEMORIASIZE 0
-int retardo;
+int retardo=0;
+pthread_mutex_t controlMemoria;
+
 t_estructuraADM * bloquesAdmin;
 int tamPagina;
 t_list * paginasLiberadas;
@@ -114,6 +116,7 @@ ENTRADAS_CACHE= config_get_int_value(CFG ,"ENTRADAS_CACHE");
 CACHE_X_PROC= config_get_int_value(CFG ,"CACHE_X_PROC");
 REEMPLAZO_CACHE= config_get_string_value(CFG ,"REEMPLAZO_CACHE");
 RETARDO_MEMORIA= config_get_int_value(CFG ,"RETARDO_MEMORIA");
+fflush(stdout);
 printf("Configuración:\nPUERTO = %s,\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s,\nMARCOS = %i,\nMARCO_SIZE = %i,\nENTRADAS_CACHE = %i,\nCACHE_X_PROC = %i,\nREEMPLAZO_CACHE = %s,\nRETARDO_MEMORIA = %i.\n"
 		,PUERTO,IP_KERNEL,PUERTO_KERNEL,MARCOS,MARCO_SIZE,ENTRADAS_CACHE,CACHE_X_PROC,REEMPLAZO_CACHE,RETARDO_MEMORIA);
 
@@ -154,6 +157,7 @@ pthread_t hiloAceptador;
 dataParaComunicarse *unData;
 unData=malloc(sizeof(dataParaComunicarse));
 unData->socket = listenningSocket;
+pthread_mutex_init(&controlMemoria,NULL);
 
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
 
@@ -204,11 +208,16 @@ free(memoria);free(cache);
 free(bloquesAdmin); 
 free(asignador);
 free(marcos);
-free(memoriaCache); 
+free(memoriaCache); int unaLista;
+for ( unaLista = 0; unaLista < MARCOS; unaLista++)
+{
+	list_destroy(overflow[unaLista]);
+}
 free(overflow); 
 free(unData);
 
 }
+
 
 
 
@@ -220,7 +229,7 @@ int unData=*socket;
 int a=1;
 t_seleccionador * seleccionador;
 int entrada;
-void * paquete;
+char * paquete;
 int paginasRequeridas;
 int stackRequeridas;
 int indice;
@@ -234,6 +243,7 @@ int * marco;
 int pedidos;
 t_solicitudAsignar * pedidoAsignacion;
 int ultimaPagina;
+int mLibre=0;
 int flagHilo=1,rv;
 while(flagHilo) {
 		seleccionador=calloc(1,8);
@@ -259,21 +269,24 @@ while(flagHilo) {
 	 							
 	 							paginasRequeridas=solicitud->cantidadPaginasCodigo;
 	 							stackRequeridas=solicitud->cantidadPaginasStack;
-	 							
+	 							pthread_mutex_lock(&controlMemoria);
+	 							/*usleep(retardo*1000);*/
 	 							if(hayPaginasLibres(paginasRequeridas+stackRequeridas,bloquesAdmin,MARCOS)==-1) 
-	 							{ 
+	 							{ pthread_mutex_unlock(&controlMemoria);
 	 							solicitud->respuesta=FAIL;
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
 	 							}
 
 	 							else
-	 							{ //mandarOK memoria
+	 							{pthread_mutex_unlock(&controlMemoria); //mandarOK memoria
 	 							solicitud->respuesta=OK;
 	 						
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
-	 							
+	 							pthread_mutex_lock(&controlMemoria);
+	 							/*usleep(retardo*1000);*/
 								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
-	 							
+	 							printf(" que hay en esta posicion %i\n", *(int*)list_get(overflow[0],0));
+	 							pthread_mutex_unlock(&controlMemoria);
 								if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
 	 							else printf("%s\n","algo malo paso en la reserva" );
 	 							free(solicitud->codigo);
@@ -296,28 +309,35 @@ while(flagHilo) {
 	 										printf("pagina: %i\n",peticionBytes->pagina );
 	 										printf("size: %i\n", peticionBytes->size);
 	 										printf("offset: %i\n", peticionBytes->offset);
+	 										pthread_mutex_lock(&controlMemoria);
+	 										/*usleep(retardo*1000);*/
 	 										if(-1==existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
-											{	confirmacion=-1;
+											{	
+												pthread_mutex_unlock(&controlMemoria);confirmacion=-1;
 												send(unData, &confirmacion, sizeof(int),0);
 											}
-											else{
+											else{pthread_mutex_unlock(&controlMemoria);
 												confirmacion=1;
 												send(unData, &confirmacion, sizeof(int),0);
+											pthread_mutex_lock(&controlMemoria);
+
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
-	 										{//lo busco en cache
+	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en cache
 	 											printf("entre a cache\n");
 	 											
 	 											paquete=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
 	 											printf("%s\n","cargue el paquete con la solicitud" );
 	 										}
 	 										else
-	 										{//lo busco en memoria
+	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en memoria
 	 											printf("estoy buscando la cosa en memoria porque no estaba en cache%s\n"," " );
 	 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); printf("el indice en memoria: %i\n",indice );
 	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
+	 											pthread_mutex_lock(&controlMemoria);
+	 											/*usleep(retardo*1000);*/
 	 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
 	 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE);
-	 											//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
+	 											pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
 	 										}	
 	 											buffer=calloc(1,sizeof(int));
 												memcpy(buffer,&a,sizeof(int));
@@ -326,7 +346,7 @@ while(flagHilo) {
 												
 	 											printf("solicbytes\n");
 	 											send(unData,paquete,peticionBytes->size,0);
-	 											printf("paquete: %s\n", (char*)paquete);
+	 											printf("paquete: %s\n", paquete);
 	 										}
 	 											free(paquete);
 	 											free(peticionBytes);
@@ -334,47 +354,68 @@ while(flagHilo) {
 	 					case ASIGNARPAGINAS: //: [Identificador del Programa] [Páginas requeridas]
 	 										pedidoAsignacion=calloc(1,sizeof(t_solicitudAsignar));
 	 										recibirDinamico(ASIGNARPAGINAS,unData,pedidoAsignacion);
+	 										printf("%s\n", "recibi la asignacion de paginas");
+	 										pthread_mutex_lock(&controlMemoria);
+	 										/*usleep(retardo*1000);*/
 	 										if(hayPaginasLibres(pedidoAsignacion->paginasAAsignar,bloquesAdmin,MARCOS)==-1) 
-	 										{ 
+	 										{ pthread_mutex_unlock(&controlMemoria);
 	 											confirmacion=-1;
 												send(unData, &confirmacion, sizeof(int),0);
 	 										}
-	 										else{
+	 										else{pthread_mutex_unlock(&controlMemoria);
+	 											printf("%s\n","tengo paginas para darte " );
 	 											confirmacion=0;
+	 											fflush(stdout);printf("%s\n","antes del malloc" );
 	 											marco=calloc(1,sizeof(int));
+	 											printf("%s\n","despues del calloc" );
 	 											for(pedidos=0;pedidos<pedidoAsignacion->paginasAAsignar;pedidos++)
-	 											{
+	 											{pthread_mutex_lock(&controlMemoria);
+	 												printf("%s\n","entre al for" );
+	 												/*usleep(retardo*1000);*/
 												ultimaPagina=buscarUltimaPaginaAsignada(pedidoAsignacion->pid,bloquesAdmin,MARCOS);
+												printf("la ultima pagina es %i\n",ultimaPagina );
+												pthread_mutex_unlock(&controlMemoria);
 	        									ultimaPagina++;
 												indice=calcularPosicion(pedidoAsignacion->pid,ultimaPagina,MARCOS);
-	         									*marco=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin); 
+												printf("el indice es  %i\n",indice );
+												pthread_mutex_lock(&controlMemoria);
+												/*usleep(retardo*1000);*/
+												mLibre=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin);
+	         									memcpy(marco,&mLibre,sizeof(int)); 
+	         									printf("elmarco libre es %i\n",*marco );
+
 	         									if(*marco!=-1)
 	         									{
-	         									agregarSiguienteEnOverflow(indice,marco,overflow);
+	         									agregarSiguienteEnOverflow(indice,&marco,overflow);
 	        									 bloquesAdmin[*marco].estado=1;
 	        									bloquesAdmin[*marco].pid=pedidoAsignacion->pid;
 	        									bloquesAdmin[*marco].pagina=ultimaPagina;
+	        									pthread_mutex_unlock(&controlMemoria);
 	 											send(unData, &confirmacion, sizeof(int),0);
-	 											}else printf("se rompio algo\n");
-												} free(marco);}free(pedidoAsignacion);
+	 											}else{pthread_mutex_unlock(&controlMemoria);printf("se rompio algo\n");} 
+												} 
+											}free(pedidoAsignacion);free(marco);
 								 			
 	 					break;
 	 					case ALMACENARBYTES:	
 	 								bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
-									bytesAAlmacenar->valor=calloc(1,20);
+									// bytesAAlmacenar->valor=calloc(1,20); dserial_void ya le hace malloc
 	 								printf("esperando bytes almacenar\n");
 	 								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
 	 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
 	 								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
 	 								printf("el valor es %s\n",(char*)bytesAAlmacenar->valor );
+	 								pthread_mutex_lock(&controlMemoria);
+	 								/*usleep(retardo*1000);*/
 									if(existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS)==-1)
-									{	confirmacion=-1;
+									{	pthread_mutex_unlock(&controlMemoria);
+										confirmacion=-1;
 										send(unData, &confirmacion, sizeof(int),0);
 									}
 									else
-									{
+									{/*usleep(retardo*1000);*/
 									almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
-									confirmacion=0;
+									confirmacion=0;pthread_mutex_unlock(&controlMemoria);
 									send(unData, &confirmacion, sizeof(int),0);
 									}free(bytesAAlmacenar->valor);
 									free(bytesAAlmacenar);
@@ -385,7 +426,10 @@ while(flagHilo) {
 												memcpy(buffer,&a,sizeof(int));
 	 											while(0>recv(unData,pidALiberar,sizeof(int),0));
 	 											printf("pid:%i\n", *pidALiberar);
+	 											pthread_mutex_lock(&controlMemoria);
+	 											/*usleep(retardo*1000);*/
 	 											liberarPaginas(pidALiberar,bloquesAdmin,marcos,MARCOS,overflow,MARCO_SIZE);
+	 											pthread_mutex_unlock(&controlMemoria);
 	 											free(buffer);free(pidALiberar);
 	 							 
 	 					break;
@@ -400,6 +444,7 @@ while(flagHilo) {
 			}
  				free(seleccionador);
 }//while
+//free(*marco);
 
 }	
 
@@ -458,10 +503,12 @@ void consolaMemoria()
 						break;
 						case MEMORIA:
 										system("clear");
+										/*usleep(retardo*1000);*/
 										generarDumpMemoria(asignador,MARCOS,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						case TABLA:
 										system("clear");
+										/*usleep(retardo*1000);*/
 										generarDumpAdministrativas(bloquesAdmin, MARCOS);	printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						case PID:		system("clear");
@@ -469,6 +516,7 @@ void consolaMemoria()
 										getchar();
 										scanf("%d",&pid);
 										printf("%i",pid);
+										/*usleep(retardo*1000);*/
 										generarDumpProceso(bloquesAdmin,MARCOS,pid,marcos); printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 						break;
 						case 4 : system("clear");
@@ -521,6 +569,7 @@ void consolaMemoria()
 	default:	
 	break;
 	}
+	free(instruccionConsola);
 	}
 }
 
