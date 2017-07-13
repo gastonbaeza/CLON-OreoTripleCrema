@@ -196,7 +196,7 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 		}
 	} 
 	
-	memmove((memoriaCache[entrada]).contenido,buffer,tamanio+1);
+	memmove((memoriaCache[entrada]).contenido,buffer,tamanio);
 	
 	// printf("memoriaCache[entrada].contenido: %s.\n",(char*)(memoriaCache[entrada]).contenido );
 	
@@ -205,10 +205,11 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 	(memoriaCache[entrada]).frame=pagina;
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 }
-void * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
-{	void * buffer=malloc(tamanio);
+char * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+{	char * buffer=calloc(1,tamanio);
 	int entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE);
-	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio);
+	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio-1);
+	strcat(buffer,"\0");
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 	return buffer;
 }
@@ -292,14 +293,18 @@ void generarDumpAdministrativas(t_estructuraADM * bloquesAdmin, int MARCOS)
 		
 		fflush(stdout);printf("proceso: %i|",*proceso);
 	}printf("%s\n"," " );
+	list_destroy(procesosActivos);
+
 }
 void buscarProcesosActivos(t_list * procesosActivos, t_estructuraADM * bloquesAdmin, int MARCOS)
  {
  	int unaAdmin;
+ 	int * unPid=calloc(1,sizeof(int));
  	for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
  	{
 		if(bloquesAdmin[unaAdmin].pid!=(-1))
-			{ list_add(procesosActivos,&bloquesAdmin[unaAdmin].pid);}
+			{ 	memcpy(unPid,&bloquesAdmin,sizeof(int));
+				list_add(procesosActivos,unPid);}
 
 	}
 }
@@ -1379,6 +1384,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
  {    
 	 int indice;
      int unFrame=0;
+     int mLibre=0;
      int * marco=calloc(1,sizeof(int));
      int paginasCargadas=0;
      int tamanioAPegar=MARCO_SIZE*sizeof(char);
@@ -1387,7 +1393,8 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   
      	indice=calcularPosicion(unPid,unFrame,MARCOS); printf("que carajos este indice %i\n",indice );
-         *marco=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); printf("a ver ese marco %i\n", *marco );
+         mLibre=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); printf("a ver ese marco %i\n", *marco );
+         memcpy(marco,&mLibre,sizeof(int));
          if(*marco!=-1)
          {
          	agregarSiguienteEnOverflow(indice,&marco,overflow);
@@ -1406,7 +1413,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 	    		}
     		
     	paginasCargadas++;
-    	} else {return -1;}
+    	} else { free(marco);return -1;}
      }
      free(marco);
      return 1;
@@ -1450,23 +1457,24 @@ int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAd
     printf("%s\n","estoy en buscarEnOverlow" );
     int i = 0;
     int frameDelIndice;printf("el indice que entra es :%i\n", indice);
-    int  *miFrame=malloc(sizeof(int)); printf("%s\n","declare miFrame" );printf("size %i\n", list_size(overflow[indice]));
+    int  miFrame; printf("%s\n","declare miFrame" );printf("size %i\n", list_size(overflow[indice]));
     for (i = 0; i < list_size(overflow[indice]); i++) { printf("%s\n","mira mama un for" );
     	frameDelIndice=*(int*)list_get(overflow[indice], i);printf("frameDelIndice es: %i\n",frameDelIndice );
         if ((esPaginaCorrecta(frameDelIndice, pid, pagina,bloquesAdmin,MARCOS))!=-1) { printf("%s\n","pase el casteo chamanico ultraduper" );
-            miFrame= (int*)(list_get(overflow[indice], i)); printf("el señor frame es : %i\n",*miFrame );
-            return *miFrame;
+            memcpy(&miFrame,(list_get(overflow[indice], i)),sizeof(int)); printf("el señor frame es : %i\n",miFrame );
+            return miFrame;
         }
     }return -1;
 }
 
 /* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
 void agregarSiguienteEnOverflow(int pos_inicial, int ** nro_frame, t_list**overflow) {
-	// int * aux=malloc(4);
+	int * aux=malloc(4);
 	printf(" el marco en agregarsiguente es %i\n",**nro_frame );
-	// memcpy(aux,nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
+	 memcpy(aux,*nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
 	printf("pos inicial: %i\n", pos_inicial);
-    list_add(overflow[pos_inicial], *nro_frame);
+    list_add(overflow[pos_inicial], aux);
+    printf(" despues de guardar en la lista %i\n", *(int*)list_get(overflow[pos_inicial],0));
     printf("pase add\n");
     
 }
@@ -1477,7 +1485,7 @@ void borrarDeOverflow(int posicion, int frame, t_list**overflow) {
     int index_frame;
 
     for (i = 0; i < list_size(overflow[posicion]); i++) {
-        if (frame == (int) list_get(overflow[posicion], i)) {
+        if (frame == *(int*) list_get(overflow[posicion], i)) {
             index_frame = i;
             i = list_size(overflow[posicion]);
         }
@@ -1493,19 +1501,22 @@ if(((bloquesAdmin[frame].pid)==pid) && ((bloquesAdmin[frame]).pagina==pagina)) {
 	else {return -1;}
 }
 void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco * marcos, int MARCOS, t_list ** overflow,int MARCO_SIZE)
-{	int unMarco;
-	int entrada;
-	int indice;
+{	printf("%s\n"," ************************AQUI SE VIENE LO BUENO JOVEN**************************************" );
+	int unMarco=0;
+	int entrada=0;
+	int indice=0;
 	for ( unMarco = 0; unMarco < MARCOS; unMarco++)
 	{
 		if (bloquesAdmin[unMarco].pid==*pidALiberar)
-		{
+		{	printf("el pid a liberar es %i\n", *pidALiberar );
 			indice=calcularPosicion(bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,MARCOS);
-			entrada=buscarEnOverflow(indice,bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,bloquesAdmin,MARCOS,overflow);
+			entrada=buscarEnOverflow(indice,bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,bloquesAdmin,MARCOS,overflow); printf("entrada a cleanear %i\n",entrada );
 			marcos[entrada].numeroPagina=calloc(1,MARCO_SIZE);
 			bloquesAdmin[entrada].estado=0;
 			bloquesAdmin[entrada].pid=-1;
 			bloquesAdmin[entrada].pagina=-1;
+			printf("%s\n","solo queda borrar de of" );
+			borrarDeOverflow(indice,entrada,overflow);
 
 		}
 	}
