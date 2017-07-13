@@ -94,14 +94,14 @@ void nuevoNivelStack(){
 	pcb->indiceStack[pcb->posicionStack].varRetorno.offset=-1;
 	pcb->indiceStack[pcb->posicionStack].varRetorno.size=-1;
 	pcb->indiceStack[pcb->posicionStack].posRetorno=pcb->programCounter;
-	pcb->indiceStack[pcb->posicionStack].variables=malloc(1);
-	pcb->indiceStack[pcb->posicionStack].argumentos=malloc(1);
 	pthread_mutex_unlock(&mutexPcb);
 }
 
 void finalizarNivelStack(){
 	pthread_mutex_lock(&mutexPcb);
 	pcb->programCounter=pcb->indiceStack[pcb->posicionStack].posRetorno;
+	free(pcb->indiceStack[pcb->posicionStack].variables);
+	free(pcb->indiceStack[pcb->posicionStack].argumentos);
 	pcb->cantidadStack--;
 	pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
 	pcb->posicionStack--;
@@ -124,6 +124,7 @@ void liberarContenidoPcb(){
 			free(pcb->indiceStack[i].variables);
 		}
 	}
+	free(pcb->indiceEtiquetas.etiquetas);
 	free(pcb->indiceStack);
 	free(pcb);
 }
@@ -166,10 +167,16 @@ void posicionarPC(int pos){
 			printf("en cpu_definirVariable\n");
 			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
-				printf("argumento\n");
 				pthread_mutex_lock(&mutexPcb);
 				pcb->indiceStack[pcb->posicionStack].cantidadArgumentos++;
-				pcb->indiceStack[pcb->posicionStack].argumentos=realloc(pcb->indiceStack->argumentos,pcb->indiceStack[pcb->posicionStack].cantidadArgumentos*sizeof(t_argumento));
+				if (pcb->indiceStack[pcb->posicionStack].cantidadArgumentos==1)
+				{
+					pcb->indiceStack[pcb->posicionStack].argumentos=malloc(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos*sizeof(t_argumento));
+				}
+				else{
+
+					pcb->indiceStack[pcb->posicionStack].argumentos=realloc(pcb->indiceStack[pcb->posicionStack].argumentos,pcb->indiceStack[pcb->posicionStack].cantidadArgumentos*sizeof(t_argumento));
+				}
 				pcb->indiceStack[pcb->posicionStack].argumentos[pcb->indiceStack[pcb->posicionStack].cantidadArgumentos-1].id=identificador_variable;
 				pcb->indiceStack[pcb->posicionStack].argumentos[pcb->indiceStack[pcb->posicionStack].cantidadArgumentos-1].pagina=PROXIMAPAG;
 				pcb->indiceStack[pcb->posicionStack].argumentos[pcb->indiceStack[pcb->posicionStack].cantidadArgumentos-1].offset=PROXIMOOFFSET;
@@ -188,20 +195,16 @@ void posicionarPC(int pos){
 			}
 			else // es una variable
 			{
-				printf("variable\n");
 				pthread_mutex_lock(&mutexPcb);
 				pcb->indiceStack[pcb->posicionStack].cantidadVariables++;
-				printf("%i\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables );
-				printf("%i\n",sizeof(t_variable) );
-				printf("%p\n", pcb->indiceStack[pcb->posicionStack].variables);
-				printf("%i\n",pcb->cantidadStack );
 				pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
-				printf("antes realloc\n");
-				printf("%i\n", pcb->indiceStack[pcb->posicionStack].cantidadVariables);
-				printf("%i\n", pcb->posicionStack);
-				printf("%i\n", pcb->indiceStack[pcb->posicionStack].variables[0].pagina);
-				pcb->indiceStack[pcb->posicionStack].variables=realloc(pcb->indiceStack[pcb->posicionStack].variables,pcb->indiceStack[pcb->posicionStack].cantidadVariables*sizeof(t_variable));
-				printf("despues realloc\n");
+				if (pcb->indiceStack[pcb->posicionStack].cantidadVariables==1)
+				{
+					pcb->indiceStack[pcb->posicionStack].variables=malloc(pcb->indiceStack[pcb->posicionStack].cantidadVariables*sizeof(t_variable));
+				}
+				else{
+					pcb->indiceStack[pcb->posicionStack].variables=realloc(pcb->indiceStack[pcb->posicionStack].variables,pcb->indiceStack[pcb->posicionStack].cantidadVariables*sizeof(t_variable));
+				}
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].id=identificador_variable;
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].pagina=PROXIMAPAG;
 				pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].offset=PROXIMOOFFSET;
@@ -216,8 +219,6 @@ void posicionarPC(int pos){
 					PROXIMOOFFSET+=SIZE;
 				}
 				pthread_mutex_unlock(&mutexPcb);
-				printf("antes return\n");
-				printf("cantidadVariables: %i.\n", pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 				return (pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[pcb->indiceStack[pcb->posicionStack].cantidadVariables-1].offset);
 			}
 		}
@@ -313,7 +314,7 @@ void posicionarPC(int pos){
 			printf("en cpu_asignar\n");
 			printf("direccion a asignar: %i.\n",direccion_variable );
 			printf("valor a asignar: %i.\n", valor);
-			char buffer[20];
+			char * buffer=calloc(1,20);
 			int offset,pagina,rv;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -340,6 +341,7 @@ void posicionarPC(int pos){
 			}
 			printf("%s\n",(char*) bytes->valor);
 			free(bytes);
+			free(buffer);
 		}
 
 		/*
@@ -582,6 +584,7 @@ void posicionarPC(int pos){
 			t_reservarEspacioMemoria * reservarEspacioMemoria;
 			reservarEspacioMemoria=malloc(sizeof(t_reservarEspacioMemoria));
 			reservarEspacioMemoria->espacio=espacio;
+			printf("alocar%i\n",reservarEspacioMemoria->espacio );
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
 			enviarDinamico(PCB,socketKernel,pcb);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
@@ -741,15 +744,19 @@ void posicionarPC(int pos){
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
-			escribirArchivo->informacion=malloc(tamanio);
+			escribirArchivo->informacion=malloc(tamanio+1);
 			printf("informacion: %s.\n", (char *) informacion);
-			escribirArchivo->informacion=informacion;
+			memcpy(escribirArchivo->informacion,informacion,tamanio);
+			strcat(escribirArchivo->informacion,"\0");
 			printf("escribirArchivo->informacion: %s.\n",(char*) escribirArchivo->informacion);
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
 			enviarDinamico(PCB,socketKernel,pcb);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
+			free(seleccionador);
+			free(escribirArchivo->informacion);
+			free(escribirArchivo);
 		}
 
 		/*
@@ -825,7 +832,7 @@ AnSISOP_kernel kernel_functions = {
 		.AnSISOP_leer=cpu_leer,
 };
 
-void iniciarEjecucion(char * const linea){
+void iniciarEjecucion(char *  linea){
 
 		
 
@@ -836,7 +843,7 @@ void iniciarEjecucion(char * const linea){
 		printf("\t Evaluando -> %s", linea);
 		analizadorLinea(linea, &functions, &kernel_functions);
 		printf("ya esta?\n");
-		free(linea);
+		
 
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
 			
@@ -865,7 +872,7 @@ void conectarKernel(void){
 	handshakeCliente(socketKernel, CPU, &unBuffer);
 	free(unBuffer);
 	int recibir;
-	t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
+	t_seleccionador * seleccionador;
 	char * linea;
 	int primerAcceso=1;
 	int j,k;
@@ -873,6 +880,7 @@ void conectarKernel(void){
 
 t_peticionBytes * peticion;
 while(1) {
+	seleccionador=malloc(sizeof(t_seleccionador));
 		if (primerAcceso){
 					primerAcceso=0;}
 		else
@@ -906,14 +914,14 @@ while(1) {
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
 								perror("asd:");
 							}
 							if (rv==1)
 							{
-								linea=calloc(1,peticion->size);
+								linea=calloc(1,peticion->size+1);
 								printf("esperandoLinea\n");
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
@@ -924,6 +932,7 @@ while(1) {
 								enviarDinamico(PAGINAINVALIDA,socketKernel,1);
 							}
 							free(peticion);
+							free(linea);
 		 					break;							
 		case CONTINUAR:
 							printf("en continuar\n");
@@ -962,14 +971,14 @@ while(1) {
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset;			
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;			
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
 								perror("asd:");
 							}
 							if (rv==1)
 							{
-								linea=calloc(1,peticion->size);
+								linea=calloc(1,peticion->size+1);
 								printf("esperandoLinea\n");
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
@@ -980,6 +989,7 @@ while(1) {
 								enviarDinamico(PAGINAINVALIDA,socketKernel,1);
 							}
 							free(peticion);
+							free(linea);
 		break;
 
  		case FINALIZARPROCESO: 
@@ -1018,8 +1028,9 @@ while(1) {
  								}
  								liberarContenidoPcb();		
  		break;
-}}
+}
 free(seleccionador);
+}
 }	
 
 
