@@ -622,7 +622,10 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 	{
 		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
-		pcb->indiceStack[i].argumentos=malloc(pcb->indiceStack[i].cantidadArgumentos*sizeof(t_argumento));
+		if (pcb->indiceStack[i].cantidadArgumentos)
+		{
+			pcb->indiceStack[i].argumentos=malloc(pcb->indiceStack[i].cantidadArgumentos*sizeof(t_argumento));
+		}
 		for (j = 0; j < pcb->indiceStack[i].cantidadArgumentos; j++)
 		{
 			while(0>recv(unSocket,&(pcb->indiceStack[i].argumentos[j]),sizeof(t_argumento),0));
@@ -630,7 +633,10 @@ void dserial_pcb(t_pcb* pcb, int unSocket)
 		}
 		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
-		pcb->indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
+		if (pcb->indiceStack[i].cantidadVariables)
+		{
+			pcb->indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
+		}
 		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
 		{
 			while(0>recv(unSocket,&(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0));
