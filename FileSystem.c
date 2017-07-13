@@ -309,8 +309,14 @@ FILE*f;
 char**BLOQUES;
 t_escribirArchivoFS * escribirArchivoFS;
 t_leerArchivoFS * leerArchivoFS;
+rv=1;
 while(1){
-	while(0>recv(socketKernel,seleccionador,sizeof(t_seleccionador),0));
+	while(0>=(rv=recv(socketKernel,seleccionador,sizeof(t_seleccionador),0))){
+		if (rv==0)
+		{
+			exit(0);
+		}
+	}
 	
 		switch (seleccionador->tipoPaquete)
 		{

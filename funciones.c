@@ -563,94 +563,103 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));free(buffer);
 }
 
-void dserial_pcb(t_pcb* pcb, int unSocket)
+void dserial_pcb(t_pcb** pcb, int unSocket)
 {	
 	int * buffer=malloc(sizeof(int));
 	int a=1,j,i;
 	memcpy(buffer,&a,sizeof(int));
-	while(0>recv(unSocket,&(pcb->pid),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->pid),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->programCounter),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->programCounter),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->estado),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->estado),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->rafagasEjecutadas),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->rafagasEjecutadas),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->privilegiadasEjecutadas),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->privilegiadasEjecutadas),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->paginasHeap),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->paginasHeap),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->alocaciones),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->alocaciones),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->bytesAlocados),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->bytesAlocados),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->liberaciones),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->liberaciones),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->bytesLiberados),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->bytesLiberados),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->cantidadArchivos),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->cantidadArchivos),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	pcb->referenciaATabla=malloc(sizeof(t_tablaArchivosDeProcesos)*pcb->cantidadArchivos);
-	for (i = 0; i < pcb->cantidadArchivos; i++)
+	if ((*pcb)->cantidadArchivos)
 	{
-		while(0>recv(unSocket,&(pcb->referenciaATabla[i].flags),sizeof(t_banderas),0));
+		(*pcb)->referenciaATabla=malloc(sizeof(t_tablaArchivosDeProcesos)*(*pcb)->cantidadArchivos);
+	}
+	for (i = 0; i < (*pcb)->cantidadArchivos; i++)
+	{
+		while(0>recv(unSocket,&((*pcb)->referenciaATabla[i].flags),sizeof(t_banderas),0));
 		send(unSocket,buffer, sizeof(int),0);
-		while(0>recv(unSocket,&(pcb->referenciaATabla[i].globalFd),sizeof(int),0));
+		while(0>recv(unSocket,&((*pcb)->referenciaATabla[i].globalFd),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
-		while(0>recv(unSocket,&(pcb->referenciaATabla[i].cursor),sizeof(int),0));
+		while(0>recv(unSocket,&((*pcb)->referenciaATabla[i].cursor),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);			
 	}
-	while(0>recv(unSocket,&(pcb->paginasCodigo),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->paginasCodigo),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->posicionStack),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->posicionStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	while(0>recv(unSocket,&(pcb->cantidadInstrucciones),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->cantidadInstrucciones),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	pcb->indiceCodigo=malloc(pcb->cantidadInstrucciones*sizeof(t_intructions));
-	for (i = 0; i < pcb->cantidadInstrucciones; i++)
+	if ((*pcb)->cantidadInstrucciones)
 	{
-		while(0>recv(unSocket,&(pcb->indiceCodigo[i]),sizeof(t_intructions),0));
+		(*pcb)->indiceCodigo=malloc(sizeof(t_intructions)*(*pcb)->cantidadInstrucciones);
+	}
+	for (i = 0; i < (*pcb)->cantidadInstrucciones; i++)
+	{
+		while(0>recv(unSocket,&((*pcb)->indiceCodigo[i]),sizeof(t_intructions),0));
 		send(unSocket,buffer, sizeof(int),0);
 	}
-	while(0>recv(unSocket,&(pcb->indiceEtiquetas.etiquetas_size),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->indiceEtiquetas.etiquetas_size),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	dserial_string(&(pcb->indiceEtiquetas.etiquetas),unSocket);
-	while(0>recv(unSocket,&(pcb->cantidadStack),sizeof(int),0));
+	dserial_string(&((*pcb)->indiceEtiquetas.etiquetas),unSocket);
+	while(0>recv(unSocket,&((*pcb)->cantidadStack),sizeof(int),0));
 	send(unSocket,buffer, sizeof(int),0);
-	pcb->indiceStack=malloc(pcb->cantidadStack*sizeof(t_stack));
-	for (i = 0; i < pcb->cantidadStack; i++)
+	if ((*pcb)->cantidadStack)
 	{
-		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadArgumentos),sizeof(int),0));
+		(*pcb)->indiceStack=malloc((*pcb)->cantidadStack*sizeof(t_stack));
+	}
+	for (i = 0; i < (*pcb)->cantidadStack; i++)
+	{
+		while(0>recv(unSocket,&((*pcb)->indiceStack[i].cantidadArgumentos),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
-		if (pcb->indiceStack[i].cantidadArgumentos)
+		if ((*pcb)->indiceStack[i].cantidadArgumentos)
 		{
-			pcb->indiceStack[i].argumentos=malloc(pcb->indiceStack[i].cantidadArgumentos*sizeof(t_argumento));
+			(*pcb)->indiceStack[i].argumentos=malloc((*pcb)->indiceStack[i].cantidadArgumentos*sizeof(t_argumento));
 		}
-		for (j = 0; j < pcb->indiceStack[i].cantidadArgumentos; j++)
+		for (j = 0; j < (*pcb)->indiceStack[i].cantidadArgumentos; j++)
 		{
-			while(0>recv(unSocket,&(pcb->indiceStack[i].argumentos[j]),sizeof(t_argumento),0));
+			while(0>recv(unSocket,&((*pcb)->indiceStack[i].argumentos[j]),sizeof(t_argumento),0));
 			send(unSocket,buffer, sizeof(int),0);
 		}
-		while(0>recv(unSocket,&(pcb->indiceStack[i].cantidadVariables),sizeof(int),0));
+		while(0>recv(unSocket,&((*pcb)->indiceStack[i].cantidadVariables),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
-		if (pcb->indiceStack[i].cantidadVariables)
+		if ((*pcb)->indiceStack[i].cantidadVariables)
 		{
-			pcb->indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
+			(*pcb)->indiceStack[i].variables=malloc((*pcb)->indiceStack[i].cantidadVariables*sizeof(t_variable));
 		}
-		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
+		for (j = 0; j < (*pcb)->indiceStack[i].cantidadVariables; j++)
 		{
-			while(0>recv(unSocket,&(pcb->indiceStack[i].variables[j]),sizeof(t_variable),0));
+			while(0>recv(unSocket,&((*pcb)->indiceStack[i].variables[j]),sizeof(t_variable),0));
 			send(unSocket,buffer, sizeof(int),0);
 		}
 		if (i!=0)
 		{
-			while(0>recv(unSocket,&(pcb->indiceStack[i].posRetorno),sizeof(int),0));
+			while(0>recv(unSocket,&((*pcb)->indiceStack[i].posRetorno),sizeof(int),0));
 			send(unSocket,buffer, sizeof(int),0);
-			while(0>recv(unSocket,&(pcb->indiceStack[i].varRetorno),sizeof(t_posMemoria),0));
+			while(0>recv(unSocket,&((*pcb)->indiceStack[i].varRetorno),sizeof(t_posMemoria),0));
 			send(unSocket,buffer, sizeof(int),0);
 		}
 	}
-	while(0>recv(unSocket,&(pcb->exitCode),sizeof(int),0));
+	while(0>recv(unSocket,&((*pcb)->exitCode),sizeof(int),0));
     send(unSocket,buffer, sizeof(int),0);free(buffer);
 }
 void dserial_programaSalida(t_programaSalida * programaSalida, int unSocket)
@@ -1201,10 +1210,10 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 		break;
 
 		case PCB:	
-					dserial_pcb((t_pcb *)paquete,unSocket);
+					dserial_pcb((t_pcb **)&paquete,unSocket);
 		break;
 		case PCBFINALIZADO:	case PCBFINALIZADOPORCONSOLA: case PCBERROR: case PCBQUANTUM: case PCBBLOQUEADO:
-					dserial_pcb((t_pcb *)paquete,unSocket);
+					dserial_pcb((t_pcb **)&paquete,unSocket);
 		break;
 		case RESULTADOINICIARPROGRAMA:
 					dserial_resultadoIniciarPrograma((t_resultadoIniciarPrograma*)paquete,unSocket);

@@ -641,10 +641,12 @@ void posicionarPC(int pos){
 		t_descriptor_archivo cpu_abrir(t_direccion_archivo direccion, t_banderas flags){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_abrir\n");
+			printf("flags: C=%i,L=%i,E=%i.\n", flags.creacion,flags.lectura,flags.escritura);
+			printf("direccion: %s.\n", direccion);
 					limpiar_string(&direccion);
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
-					abrirArchivo->direccionArchivo=malloc(PATH_MAX);
+					abrirArchivo->direccionArchivo=malloc(strlen(direccion)+1);
 					strcpy(abrirArchivo->direccionArchivo,direccion);
 					abrirArchivo->tamanio=strlen(abrirArchivo->direccionArchivo);
 					memcpy(&(abrirArchivo->flags),&flags,sizeof(t_banderas));

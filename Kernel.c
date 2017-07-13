@@ -18,6 +18,7 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <linux/limits.h>
 
@@ -378,7 +379,7 @@ int estaExec(int pid){
 void liberarContenidoPcb(t_pcb ** pcb){
 	int i;
 	free((*pcb)->indiceCodigo);
-	if ((*pcb)->cantidadArchivos);
+	if ((*pcb)->cantidadArchivos)
 	{
 		free((*pcb)->referenciaATabla);
 	}
@@ -400,8 +401,7 @@ void liberarContenidoPcb(t_pcb ** pcb){
 void liberarContenidoPcbTabla(int pid){
 	int i,j;
 	free((PCBS[pid]).indiceCodigo);
-	printf("cantARchs: %i.\n", (PCBS[pid]).cantidadArchivos);
-	if ((PCBS[pid]).cantidadArchivos);
+	if ((PCBS[pid]).cantidadArchivos)
 	{
 		free((PCBS[pid]).referenciaATabla);
 	}
@@ -1328,25 +1328,25 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 					path->tamanio=strlen(path->path);
 					enviarDinamico(VALIDARARCHIVO,SOCKETFS,path);
 					while(0>recv(SOCKETFS,&rv,sizeof(int),0));
-					
-					pthread_mutex_lock(&mutexTablaArchivos);
-					globalFd=proximoFd;
-					proximoFd++;
-					CANTTABLAARCHIVOS++;
-					printf("realloc con cantidad: %i\n", CANTTABLAARCHIVOS);
-					tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
-					tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,path->tamanio);
-					tablaArchivos[CANTTABLAARCHIVOS-1].tamanioPath=path->tamanio;
-					strip(&(abrirArchivo->direccionArchivo));
-					strcpy(tablaArchivos[CANTTABLAARCHIVOS-1].path,abrirArchivo->direccionArchivo);
-					tablaArchivos[CANTTABLAARCHIVOS-1].vecesAbierto=1;
-					tablaArchivos[CANTTABLAARCHIVOS-1].fd=globalFd;
-					printf("%s\n", tablaArchivos[CANTTABLAARCHIVOS-1].path);
-					pthread_mutex_unlock(&mutexTablaArchivos);
+					printf("abrirArchivo->flags.creacion: %i\n",abrirArchivo->flags.creacion );
+					printf("rv: %i\n", rv);
 					
 					if (abrirArchivo->flags.creacion && rv==-1)
 					{
-
+						pthread_mutex_lock(&mutexTablaArchivos);
+						globalFd=proximoFd;
+						proximoFd++;
+						CANTTABLAARCHIVOS++;
+						printf("realloc con cantidad: %i\n", CANTTABLAARCHIVOS);
+						tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+						tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,path->tamanio);
+						tablaArchivos[CANTTABLAARCHIVOS-1].tamanioPath=path->tamanio;
+						strip(&(abrirArchivo->direccionArchivo));
+						strcpy(tablaArchivos[CANTTABLAARCHIVOS-1].path,abrirArchivo->direccionArchivo);
+						tablaArchivos[CANTTABLAARCHIVOS-1].vecesAbierto=1;
+						tablaArchivos[CANTTABLAARCHIVOS-1].fd=globalFd;
+						printf("%s\n", tablaArchivos[CANTTABLAARCHIVOS-1].path);
+						pthread_mutex_unlock(&mutexTablaArchivos);
 						enviarDinamico(CREARARCHIVOFS,SOCKETFS,path);
 					}
 					else if (rv==-1 && !(abrirArchivo->flags.creacion)){
@@ -1546,7 +1546,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				free(escribirArchivo);
 				free(mensaje->mensaje);
 				free(mensaje);
-						free(pcb);
+				liberarContenidoPcb(&pcb);
 				
 			break;
 			case LEERARCHIVO: // CPU OBTIENE CONTENIDO DEL ARCHIVO
@@ -1714,7 +1714,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
 						free(mensaje);
 						free(aux);
-						free(pcb);
+						liberarContenidoPcb(&pcb);
 				
 			break;
 			case PAGINAINVALIDA:
@@ -1898,7 +1898,8 @@ void comunicarse(dataParaComunicarse ** dataDeConexion){
 					// SOLICITUD DE MEMORIA
 					solicitudMemoria=calloc(1,sizeof(t_solicitudMemoria));
 					solicitudMemoria->tamanioCodigo=path->tamanio;
-					memcpy(solicitudMemoria->codigo,path->path,path->tamanio);
+					solicitudMemoria->codigo=calloc(1,solicitudMemoria->tamanioCodigo+1);
+					strcpy(solicitudMemoria->codigo,path->path);
 					solicitudMemoria->cantidadPaginasCodigo=cantPaginasCodigo;
 					solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 					solicitudMemoria->pid=pid;
@@ -2057,10 +2058,24 @@ int countElementos(char* cadena){
 	return cont+1;
 }
 
+void cortar(){
+	int i;
+	pthread_mutex_lock(&mutexPcbs);
+	for (i = 0; i < CANTIDADPCBS; i++)
+	{
+		liberarContenidoPcbTabla(i);
+	}
+	free(PCBS);
+	printf("libera3\n");
+	exit(0);
+	pthread_mutex_unlock(&mutexPcbs);
+}
+
 int main(){	
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
+signal(SIGINT,cortar);
 t_config *CFG;
 int i;
 CFG = config_create("kernelCFG.txt");
