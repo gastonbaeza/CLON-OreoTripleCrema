@@ -1307,7 +1307,7 @@ t_programaSalida * obtenerPrograma( char * unPath){
 	else{
 		t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
 		fseek (punteroAlArchivo, 0, SEEK_END);
-		estructuraPrograma->tamanio = ftell (punteroAlArchivo);
+		estructuraPrograma->tamanio = ftell (punteroAlArchivo)+1;
 		fseek (punteroAlArchivo, 0, SEEK_SET);
 		estructuraPrograma->elPrograma = calloc(1,estructuraPrograma->tamanio);
 		fread (estructuraPrograma->elPrograma, 1, estructuraPrograma->tamanio, punteroAlArchivo);

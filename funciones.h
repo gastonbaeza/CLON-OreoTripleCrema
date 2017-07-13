@@ -13,7 +13,7 @@ int esPaginaCorrecta(int frame, int pid, int pagina,t_estructuraADM * bloquesAdm
 
 unsigned int calcularPosicion(int pid, int num_pagina,int MARCOS);
 void inicializarOverflow(int MARCOS, t_list**overflow);
-void agregarSiguienteEnOverflow(int pos_inicial, int * nro_frame, t_list**overflow);
+void agregarSiguienteEnOverflow(int pos_inicial, int ** nro_frame, t_list**overflow);
 void borrarDeOverflow(int pos_inicial, int frame, t_list**overflow);
 
 void cargarPaginas(t_list * paginasParaUsar,int stackRequeridas, char * codigo, int tamaPagina);
