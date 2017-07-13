@@ -325,7 +325,6 @@ while(flagHilo) {
 	 							pthread_mutex_lock(&controlMemoria);
 	 							/*usleep(retardo*1000);*/
 								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
-	 							printf(" que hay en esta posicion %i\n", *(int*)list_get(overflow[0],0));
 	 							pthread_mutex_unlock(&controlMemoria);
 								if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
 	 							else printf("%s\n","algo malo paso en la reserva" );
