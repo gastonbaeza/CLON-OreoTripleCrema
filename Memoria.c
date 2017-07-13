@@ -20,6 +20,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <commons/config.h>
+#include <signal.h> 
 #define BACKLOG 5
 #define LIBRE 0
 #define OCUPADO 1
@@ -93,7 +94,30 @@ int socketKernel;
 void * memoria;
 void * cache;
 t_list**overflow;
+FILE *MemoriaLog;
+char * horaActual;
+char* nombreLog;
+int len;
 
+void stripLog(char** string){
+	int i ;
+	printf("%s\n", *string);
+	for(i=0;i<string_length(*string); i++){
+		if((*string)[i]==' ' || (*string)[i]=='/' )
+			(*string)[i]='-';
+	}
+}
+void cortar(){
+	fclose(MemoriaLog);
+	exit(0);
+}
+void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
+	
+	fseek(*archivoDeLog,0,SEEK_END);
+	len=ftell(*archivoDeLog);
+	fwrite(contenidoAEscribir,strlen(contenidoAEscribir),1,*archivoDeLog);
+	fwrite("\n",1,1,*archivoDeLog);
+	}
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
@@ -121,7 +145,16 @@ printf("Configuración:\nPUERTO = %s,\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s,\nMAR
 		,PUERTO,IP_KERNEL,PUERTO_KERNEL,MARCOS,MARCO_SIZE,ENTRADAS_CACHE,CACHE_X_PROC,REEMPLAZO_CACHE,RETARDO_MEMORIA);
 
 
-
+char * nombreLog=calloc(1,200);
+	strcpy(nombreLog,"logMemoria-");
+	horaActual=calloc(1,200);
+	horaYFechaActual(&horaActual);
+	printf("%s\n", horaActual);
+	stripLog(&horaActual);
+	printf("horaActual: %s\n", horaActual);
+	strcat(horaActual,".txt");
+	strcat(nombreLog,horaActual);
+	printf("nombreLog: %s\n", nombreLog);
 
 int nbytes;
 
@@ -148,6 +181,8 @@ if(bind(listenningSocket,serverInfo->ai_addr, serverInfo->ai_addrlen)==-1) {perr
 fflush(stdout);
 printf("%s \n", "Bind Listo.\n");
 
+MemoriaLog=fopen(nombreLog,"w+");
+signal(SIGINT,cortar);
 freeaddrinfo(serverInfo);
 fflush(stdout);
 config_destroy(CFG);
@@ -223,6 +258,7 @@ free(unData);
 
 void comunicarse(int  * socket){ // aca tenemos que agregar toda la wea que es "global"
 fflush(stdout); 
+escribirEnArchivoLog("en comunicarse", &MemoriaLog,nombreLog);
 int * buffer;
 int unData=*socket;
 
@@ -258,8 +294,10 @@ while(flagHilo) {
 				{
 						case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
 								 //esto lo vi en stack overflow no me peguen
+								escribirEnArchivoLog("en case solicitud memoria", &MemoriaLog,nombreLog);
 							solicitud=malloc(sizeof(t_solicitudMemoria));
 								recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
+								escribirEnArchivoLog("recibo solicitud memoria", &MemoriaLog,nombreLog);
 								fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);
 								printf("Codigo: %s\n", solicitud->codigo); 
 								printf("Cant Pags Codigo: %i\n", solicitud->cantidadPaginasCodigo);
@@ -275,6 +313,7 @@ while(flagHilo) {
 	 							{ pthread_mutex_unlock(&controlMemoria);
 	 							solicitud->respuesta=FAIL;
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
+	 							escribirEnArchivoLog("envio respuesta", &MemoriaLog,nombreLog);
 	 							}
 
 	 							else
@@ -282,6 +321,7 @@ while(flagHilo) {
 	 							solicitud->respuesta=OK;
 	 						
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
+	 							escribirEnArchivoLog("envio respuesta", &MemoriaLog,nombreLog);
 	 							pthread_mutex_lock(&controlMemoria);
 	 							/*usleep(retardo*1000);*/
 								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache);
@@ -303,8 +343,10 @@ while(flagHilo) {
 	 					break;
 	 		 
 	 					case SOLICITUDBYTES:
+	 										escribirEnArchivoLog("en case solicitud bytes", &MemoriaLog,nombreLog);
 	 										peticionBytes=calloc(1,sizeof(t_peticionBytes));
 	 										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
+	 										escribirEnArchivoLog("recibo solicitud bytes", &MemoriaLog,nombreLog);
 	 										printf("pid: %i\n", peticionBytes->pid);
 	 										printf("pagina: %i\n",peticionBytes->pagina );
 	 										printf("size: %i\n", peticionBytes->size);
@@ -315,10 +357,12 @@ while(flagHilo) {
 											{	
 												pthread_mutex_unlock(&controlMemoria);confirmacion=-1;
 												send(unData, &confirmacion, sizeof(int),0);
+												escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 											}
 											else{pthread_mutex_unlock(&controlMemoria);
 												confirmacion=1;
 												send(unData, &confirmacion, sizeof(int),0);
+												escribirEnArchivoLog("envio informancion", &MemoriaLog,nombreLog);
 											pthread_mutex_lock(&controlMemoria);
 
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
@@ -346,14 +390,17 @@ while(flagHilo) {
 												
 	 											printf("solicbytes\n");
 	 											send(unData,paquete,peticionBytes->size,0);
+	 											escribirEnArchivoLog("envio paquete", &MemoriaLog,nombreLog);
 	 											printf("paquete: %s\n", paquete);
 	 										}
 	 											free(paquete);
 	 											free(peticionBytes);
 	 					break;
 	 					case ASIGNARPAGINAS: //: [Identificador del Programa] [Páginas requeridas]
+	 										escribirEnArchivoLog("en case asignar paginas", &MemoriaLog,nombreLog);
 	 										pedidoAsignacion=calloc(1,sizeof(t_solicitudAsignar));
 	 										recibirDinamico(ASIGNARPAGINAS,unData,pedidoAsignacion);
+	 										escribirEnArchivoLog("recibo asignar paginas", &MemoriaLog,nombreLog);
 	 										printf("%s\n", "recibi la asignacion de paginas");
 	 										pthread_mutex_lock(&controlMemoria);
 	 										/*usleep(retardo*1000);*/
@@ -361,6 +408,7 @@ while(flagHilo) {
 	 										{ pthread_mutex_unlock(&controlMemoria);
 	 											confirmacion=-1;
 												send(unData, &confirmacion, sizeof(int),0);
+												escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 	 										}
 	 										else{pthread_mutex_unlock(&controlMemoria);
 	 											printf("%s\n","tengo paginas para darte " );
@@ -392,16 +440,19 @@ while(flagHilo) {
 	        									bloquesAdmin[*marco].pagina=ultimaPagina;
 	        									pthread_mutex_unlock(&controlMemoria);
 	 											send(unData, &confirmacion, sizeof(int),0);
+	 											escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 	 											}else{pthread_mutex_unlock(&controlMemoria);printf("se rompio algo\n");} 
 												} 
 											}free(pedidoAsignacion);free(marco);
 								 			
 	 					break;
 	 					case ALMACENARBYTES:	
+	 								escribirEnArchivoLog("en case almacenar bytes", &MemoriaLog,nombreLog);
 	 								bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
 									// bytesAAlmacenar->valor=calloc(1,20); dserial_void ya le hace malloc
 	 								printf("esperando bytes almacenar\n");
 	 								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
+	 								escribirEnArchivoLog("recibo almacenar bytes", &MemoriaLog,nombreLog);
 	 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
 	 								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
 	 								printf("el valor es %s\n",(char*)bytesAAlmacenar->valor );
@@ -411,16 +462,19 @@ while(flagHilo) {
 									{	pthread_mutex_unlock(&controlMemoria);
 										confirmacion=-1;
 										send(unData, &confirmacion, sizeof(int),0);
+										escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 									}
 									else
 									{/*usleep(retardo*1000);*/
 									almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
 									confirmacion=0;pthread_mutex_unlock(&controlMemoria);
 									send(unData, &confirmacion, sizeof(int),0);
+									escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 									}free(bytesAAlmacenar->valor);
 									free(bytesAAlmacenar);
 	 					break;
-	 					case LIBERARMEMORIA: 
+	 					case LIBERARMEMORIA: 	
+	 											escribirEnArchivoLog("en case liberar memoria", &MemoriaLog,nombreLog);
 	 											pidALiberar=calloc(1,sizeof(int));
 	 											buffer=calloc(1,sizeof(int));
 												memcpy(buffer,&a,sizeof(int));
@@ -595,6 +649,7 @@ while(1){
 				printf("MARCO SIZE: %i\n",tamPagina );
 				memcpy(unBuffer,&tamPagina, sizeof(int));
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
+				escribirEnArchivoLog("envio un buffer", &MemoriaLog,nombreLog);
 				socketKernel=socketNuevaConexion;	
 			}
 			if(*unBuffer==CPU)
@@ -602,6 +657,7 @@ while(1){
 				printf("MARCO SIZE: %i\n",tamPagina );
 				memcpy(unBuffer,&tamPagina, sizeof(int));
 				send(socketNuevaConexion, unBuffer,sizeof(int),0);
+				escribirEnArchivoLog("envio un buffer", &MemoriaLog,nombreLog);
 					
 			}
 			free(unBuffer);

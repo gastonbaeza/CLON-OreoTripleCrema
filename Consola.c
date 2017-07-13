@@ -19,6 +19,9 @@
 #include <math.h>
 #include <stdint.h>
 #include <commons/config.h>
+#include <stddef.h> 
+#include <signal.h> 
+#include <linux/limits.h>
 #define BACKLOG 5
 #define KERNEL 0
 	#define ARRAYPIDS 51
@@ -60,22 +63,39 @@ char *IP_KERNEL;
 char * PUERTO_KERNEL;
 char* IP;
 char* PUERTO;
-int receptorListo=0;
-/*FILE *consolaLog;*/
-int contador=0;
 
-/*void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
-	*archivoDeLog=fopen(direccionDelArchivo,"w");
-	fseek(&archivoDeLog,contador,SEEK_SET);
+int receptorListo=0;
+FILE *consolaLog;
+char * horaActual;
+char* nombreLog;
+int len;
+
+void strip(char** string){
+	int i ;
+	for(i=0;i<string_length(*string); i++){
+		if((*string)[i]==' ' || (*string)[i]=='/')
+			(*string)[i]='-';
+	}
+}
+
+void cortar(){
+	printf("adasdasd\n");
+	fclose(consolaLog);
+	exit(0);
+}
+
+void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
+	
+	fseek(*archivoDeLog,0,SEEK_END);
+	len=ftell(*archivoDeLog);
 	fwrite(contenidoAEscribir,strlen(contenidoAEscribir),1,*archivoDeLog);
-	contador=contador+strlen(contenidoAEscribir);
-	fclose(*archivoDeLog);
-	}*/
+	fwrite("\n",1,1,*archivoDeLog);
+	}
 
 void programa(t_path * path_ansisop){ 
 	struct addrinfo hints;
 	struct addrinfo *kernel;
-	int * unBuffer=malloc(sizeof(int));
+	void * unBuffer=malloc(sizeof(int));
 	int primer=0;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -85,9 +105,10 @@ void programa(t_path * path_ansisop){
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
-	handshakeCliente(serverSocket,CONSOLA,unBuffer);
+	handshakeCliente(serverSocket,CONSOLA,&unBuffer);
 	send(serverSocket,&primer,sizeof(int),0);
 	enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
+	escribirEnArchivoLog("envio path", &consolaLog,nombreLog);
 	send(serverSocket,&idKernel,sizeof(int),0);
 	free(path_ansisop->path);
 	free(path_ansisop);
@@ -104,7 +125,7 @@ void receptor(){
 	struct addrinfo hints;
 	struct addrinfo *kernel;
 	int primer=1;
-	int * unBuffer=malloc(sizeof(int));
+	void * unBuffer=malloc(sizeof(int));
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -113,7 +134,7 @@ void receptor(){
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
-	handshakeCliente(serverSocket,CONSOLA,unBuffer);
+	handshakeCliente(serverSocket,CONSOLA,&unBuffer);
 	send(serverSocket,&primer,sizeof(int),0);
 	while(0>recv(serverSocket,&idKernel, sizeof(int),0));
 	receptorListo=1;
@@ -126,10 +147,11 @@ while(1) {
 switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
+						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						unMensaje->mensaje=calloc(1,1);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
 						
-						printf("mensaje: %s\n",unMensaje->mensaje);
+						printf("%s.\n",unMensaje->mensaje);
 		break;
 
 		case RESULTADOINICIARPROGRAMA:
@@ -140,6 +162,8 @@ switch (seleccionador->tipoPaquete){
 						list_add(procesos,(void *)(&(resultado->pid)));
 						printf("El pid asignado es : %i\n", resultado->pid);
 						pthread_mutex_unlock(&semaforoProcesos);
+						escribirEnArchivoLog("en resultado reiniciar programa", &consolaLog,nombreLog);
+						
 					}
 		break;
 		default: ; break;
@@ -156,15 +180,23 @@ switch (seleccionador->tipoPaquete){
 int main(){
 
 	//////////////////////////////////////// LEER CONFIGURACION
-
+	
 	t_config *CFG;
 	procesos=list_create();
 	CFG = config_create("consolaCFG.txt");
 	IP_KERNEL= config_get_string_value(CFG ,"IP_KERNEL");
 	PUERTO_KERNEL= config_get_string_value(CFG ,"PUERTO_KERNEL");
 	printf("Configuración:\nIP_KERNEL = %s,\nPUERTO_KERNEL = %s.\n",IP_KERNEL,PUERTO_KERNEL);
-	
+	char * nombreLog=calloc(1,200);
+	strcpy(nombreLog,"logConsola-");
 
+	horaActual=calloc(1,40);
+	horaYFechaActual(&horaActual);
+	strip(&horaActual);
+	printf("horaActual: %s\n", horaActual);
+	strcat(horaActual,".txt");
+	strcat(nombreLog,horaActual);
+	printf("nombreLog: %s\n", nombreLog);
 	////////////////////////////////////////
 
 	pthread_t  hiloPrograma,hiloReceptor;
@@ -190,9 +222,12 @@ int main(){
 	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
 	if(-1==connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen)) perror("connect:");
 	freeaddrinfo(serverInfo);
-	int * buffer=malloc(sizeof(int));
-	handshakeCliente(serverSocket,CONSOLA,buffer);
+	void* buffer=malloc(sizeof(int));
+	handshakeCliente(serverSocket,CONSOLA,&buffer);
 	send(serverSocket,&primer,sizeof(int),0);
+	consolaLog=fopen(nombreLog,"w+");
+	perror("asd");
+	printf("consolaLog%p.\n",consolaLog);
 pthread_mutex_init(&semaforoProcesos,NULL);
 int cancelarThread=0;
 int unPid;
@@ -200,6 +235,7 @@ int * PID;
 PID=malloc(sizeof(int));
 t_path * path_ansisop;
 char * path;
+signal(SIGINT,cortar);
 
 	int * instruccionConsola=malloc(sizeof(int));
 	t_programaSalida * prog;
@@ -218,6 +254,7 @@ while(cancelarThread==0){
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
 	case INICIARPROGRAMA: //Recibe el path del ansisop y lo envia al kernel
+							escribirEnArchivoLog("en iniciar programa", &consolaLog,nombreLog);
 							path_ansisop=malloc(sizeof(t_path));
 							path_ansisop->path=calloc(1,150);
 							path=calloc(1,150);
@@ -227,10 +264,10 @@ while(cancelarThread==0){
 							prog= obtenerPrograma(path);
 							path_ansisop->path=prog->elPrograma;
 							path_ansisop->tamanio=prog->tamanio;
-							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
-							/*escribirEnArchivoLog("escribir1",&consolaLog,"consolaLog.txt");
-							escribirEnArchivoLog("escribir2",&consolaLog,"consolaLog.txt");
-							*/
+							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);/*
+							escribirEnArchivoLog("escribir1",&consolaLog,"consolaLog.txt");
+							escribirEnArchivoLog("escribir2",&consolaLog,"consolaLog.txt");*/
+							
 
 							free(path);
 							
@@ -238,39 +275,42 @@ while(cancelarThread==0){
 		break;
 	case FINALIZARPROGRAMA:
 							//Recibe el pid del proceso a matar y lo envia al kernel
-							
+							escribirEnArchivoLog("en finalizar programa", &consolaLog,nombreLog);
 							printf ("PID: \n");
 							scanf("%d", &unPid);
 							
 							
 							enviarDinamico(FINALIZARPROGRAMA,serverSocket,&unPid);
-								
+							escribirEnArchivoLog("envio finalizar programa", &consolaLog,nombreLog);	
 	
 		break;
 	case DESCONECTARCONSOLA:
 							//Recibo los PIDs que Kernel fue guardando y se los mando para que los mate
 							pthread_mutex_lock(&semaforoProcesos);
+							escribirEnArchivoLog("en desconectar consola", &consolaLog,nombreLog);
 							printf("%s\n"," ha inicializado el proceso de desconexion" );
 							printf("%i\n",list_size(procesos));
 							t_arrayPids * pids=malloc(sizeof(t_arrayPids));
-							printf("aca\n");
+							
 							pids->cantidad=list_size(procesos);
-							printf("ada\n");
+						
 							pids->pids=malloc(list_size(procesos)*sizeof(int));
-							printf("afa\n");
+							
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
-								printf("aga\n");
-								printf("%i\n", *(int*)(list_get(procesos,unPid)));
+								
 								pids->pids[unPid]=*(int *)list_get(procesos,unPid);
 
 							}
-							printf("llegue\n");
+							
 							enviarDinamico(ARRAYPIDS,serverSocket,(void *)pids); 
+							escribirEnArchivoLog("envio arrays pids", &consolaLog,nombreLog);
 							printf("sali\n");
 							free(pids->pids);
 							free(pids);
+
 							pthread_mutex_unlock(&semaforoProcesos);
+							cancelarThread=1;
 	
 		break;
 	case LIMPIARMENSAJES:
@@ -282,7 +322,7 @@ while(cancelarThread==0){
 	}
 }
 	printf("%s\n",mensajeFinalizacionHilo);
-	
+	fclose(consolaLog);
 	return 0;
 }
 	
