@@ -1,0 +1,32 @@
+en aceptar 
+en comunicarse
+en comunicarse
+en case solicitud pcb
+en planificacion
+en case pcb
+en comunicarse
+en comunicarse
+en case path
+recibo path
+envio solicitud memoria
+envio resultado iniciar programa
+envio pcb
+en case espero novedades
+envio fin de quantum
+en case pcb quantum
+recibo pcb quamtum
+en case pcb
+envio pcb
+en case espero novedades
+envio fin de quantum
+en case pcb quantum
+recibo pcb quamtum
+en case pcb
+envio pcb
+en case espero novedades
+envio fin de quantum
+en case pcb quantum
+recibo pcb quamtum
+en case pcb
+envio pcb
+en case pcb

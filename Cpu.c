@@ -134,7 +134,10 @@ void finalizarNivelStack(){
 void liberarContenidoPcb(){
 	int i;
 	free(pcb->indiceCodigo);
-	free(pcb->referenciaATabla);
+	if (pcb->cantidadArchivos)
+	{
+		free(pcb->referenciaATabla);
+	}
 	for (i = 0; i < pcb->cantidadStack; i++)
 	{	
 		if (pcb->indiceStack[i].cantidadArgumentos)
@@ -148,13 +151,12 @@ void liberarContenidoPcb(){
 	}
 	free(pcb->indiceEtiquetas.etiquetas);
 	free(pcb->indiceStack);
-	free(pcb);
 }
 
 void limpiar_string(char** string){
 	int i ;
 	for(i=0;i<string_length(*string); i++){
-		if((*string)[i]=='\n' || (*string)[i]=='\r' )
+		if((*string)[i]=='\n' || (*string)[i]=='\r' || (*string)[i]==' ' )
 			(*string)[i]='\0';
 	}
 }
@@ -220,7 +222,6 @@ void posicionarPC(int pos){
 			{
 				pthread_mutex_lock(&mutexPcb);
 				pcb->indiceStack[pcb->posicionStack].cantidadVariables++;
-				pcb->indiceStack=realloc(pcb->indiceStack,pcb->cantidadStack*sizeof(t_stack));
 				if (pcb->indiceStack[pcb->posicionStack].cantidadVariables==1)
 				{
 					pcb->indiceStack[pcb->posicionStack].variables=malloc(pcb->indiceStack[pcb->posicionStack].cantidadVariables*sizeof(t_variable));
@@ -350,8 +351,8 @@ void posicionarPC(int pos){
 			bytes->pid=PID;
 			bytes->pagina=pagina;
 			bytes->offset=offset;
-			bytes->size=SIZE;
 			sprintf (buffer, "%d",valor);
+			bytes->size=strlen(buffer)+1;
 			bytes->valor=buffer;
 			printf("este es el valor estringeado %s\n", (char*)bytes->valor);
 			printf("este es el valor pagina %i\n", bytes->pagina);
@@ -384,6 +385,7 @@ void posicionarPC(int pos){
 		 * @return	El valor de la variable compartida
 		 */
 		t_valor_variable cpu_obtenerValorCompartida(t_nombre_compartida variable){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_obtenerValorCompartida\n");
 			escribirEnArchivoLog("en obtener valor compartida", &CPULog,nombreLog);
 			int valor;
@@ -393,9 +395,13 @@ void posicionarPC(int pos){
 			solicitudValorVariable->variable=variable;
 			
 			enviarDinamico(SOLICITUDVALORVARIABLE,socketKernel,solicitudValorVariable);
+			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio solicitud valor variable", &CPULog,nombreLog);
 			recv(socketKernel,&valor,sizeof(int),0);
 			printf("valor compartida: %i\n", valor);
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			recibirDinamico(PCB,socketKernel,pcb);
 			return valor;
 		}
 
@@ -411,6 +417,7 @@ void posicionarPC(int pos){
 		 * @return	Valor que se asigno
 		 */
 		t_valor_variable cpu_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_asignarValorCompartida\n");
 			escribirEnArchivoLog("en asignar valor compartida", &CPULog,nombreLog);
 			printf("valor: %i.\n", valor);
@@ -421,6 +428,10 @@ void posicionarPC(int pos){
 			asignarVariableCompartida->valor=valor;
 			enviarDinamico(ASIGNARVARIABLECOMPARTIDA,socketKernel,asignarVariableCompartida);
 			escribirEnArchivoLog("envio asignar variable compartida", &CPULog,nombreLog);
+			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			recibirDinamico(PCB,socketKernel,pcb);
 			return valor;
 		}
 
@@ -523,6 +534,7 @@ void posicionarPC(int pos){
  					exit(0);
  				}
 				liberarContenidoPcb();
+				free(pcb);
 			}
 			else{
 				finalizarNivelStack();
@@ -634,6 +646,7 @@ void posicionarPC(int pos){
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
 			escribirEnArchivoLog("envio reservar espacio", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
@@ -675,6 +688,7 @@ void posicionarPC(int pos){
 			enviarDinamico(LIBERARESPACIOMEMORIA,socketKernel,liberarMemoria);
 			escribirEnArchivoLog("envio liberar espacio memoria", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
@@ -695,12 +709,9 @@ void posicionarPC(int pos){
 		t_descriptor_archivo cpu_abrir(t_direccion_archivo direccion, t_banderas flags){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_abrir\n");
-<<<<<<< HEAD
 			escribirEnArchivoLog("en abrir archivo", &CPULog,nombreLog);
-=======
 			printf("flags: C=%i,L=%i,E=%i.\n", flags.creacion,flags.lectura,flags.escritura);
 			printf("direccion: %s.\n", direccion);
->>>>>>> 6b1243daf0d3662e65f0a494b718bb81d00f770f
 					limpiar_string(&direccion);
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
@@ -711,6 +722,7 @@ void posicionarPC(int pos){
 					enviarDinamico(ABRIRARCHIVO,socketKernel,abrirArchivo);
 					escribirEnArchivoLog("envio abrir archivo", &CPULog,nombreLog);
 					enviarDinamico(PCB,socketKernel,pcb);
+					liberarContenidoPcb();
 					escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 					free(abrirArchivo->direccionArchivo);
 					free(abrirArchivo);
@@ -743,6 +755,7 @@ void posicionarPC(int pos){
 			enviarDinamico(BORRARARCHIVO,socketKernel,borrarArchivo);
 			escribirEnArchivoLog("envio borrar archivo", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
@@ -770,6 +783,7 @@ void posicionarPC(int pos){
 					enviarDinamico(CERRARARCHIVO,socketKernel,cerrarArchivo);
 					escribirEnArchivoLog("envio cerrar archivo", &CPULog,nombreLog);
 					enviarDinamico(PCB,socketKernel,pcb);
+					liberarContenidoPcb();
 					escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 					recibirDinamico(PCB,socketKernel,pcb);
@@ -796,6 +810,7 @@ void posicionarPC(int pos){
 			enviarDinamico(MOVERCURSOR,socketKernel,moverCursor);
 			escribirEnArchivoLog("envio mover cursor", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
@@ -830,6 +845,7 @@ void posicionarPC(int pos){
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
 			escribirEnArchivoLog("envio escribir archivo", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
@@ -865,6 +881,7 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("envio leer archivo", &CPULog,nombreLog);
 			printf("paso l primero\n");
 			enviarDinamico(PCB,socketKernel,pcb);
+			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			paqueteFS=malloc(sizeof(t_paqueteFS));
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
@@ -921,7 +938,8 @@ AnSISOP_kernel kernel_functions = {
 void iniciarEjecucion(char *  linea){
 
 		
-
+		getchar();
+		getchar();
 		pthread_mutex_lock(&mutexPcb);
 		pcb->programCounter++;
 		pthread_mutex_unlock(&mutexPcb);
@@ -1003,7 +1021,8 @@ while(1) {
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;			
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;		
+							printf("%i,%i,%i,%i\n", peticion->pid,peticion->pagina,peticion->offset,peticion->size);		
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
 							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -1062,7 +1081,8 @@ while(1) {
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;			
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;		
+							printf("%i,%i,%i,%i\n", peticion->pid,peticion->pagina,peticion->offset,peticion->size);	
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
 							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -1095,6 +1115,8 @@ while(1) {
  									exit(0);
  								}
  								liberarContenidoPcb();
+ 								free(pcb);
+ 								primerAcceso=1;
  		break;
  		case FINALIZARPORERROR: 
  								escribirEnArchivoLog("en case finalizar por error", &CPULog,nombreLog);
@@ -1106,6 +1128,8 @@ while(1) {
  									exit(0);
  								}
  								liberarContenidoPcb();
+ 								free(pcb);
+ 								primerAcceso=1;
  		break;
  		case FINQUANTUM: 		
  								escribirEnArchivoLog("en case fin de quantum", &CPULog,nombreLog);
@@ -1117,6 +1141,8 @@ while(1) {
  									exit(0);
  								}
  								liberarContenidoPcb();
+ 								free(pcb);
+ 								primerAcceso=1;
  		break;
  		case PARAREJECUCION:
  								escribirEnArchivoLog("en case parar ejecucion", &CPULog,nombreLog);
@@ -1127,7 +1153,9 @@ while(1) {
  								{
  									exit(0);
  								}
- 								liberarContenidoPcb();		
+ 								liberarContenidoPcb();
+ 								free(pcb);	
+ 								primerAcceso=1;	
  		break;
 }
 free(seleccionador);

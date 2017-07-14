@@ -1,0 +1,14 @@
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en definir variable
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en obtener posicion variable
+en llamada con retorno
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en obtener posicion variable

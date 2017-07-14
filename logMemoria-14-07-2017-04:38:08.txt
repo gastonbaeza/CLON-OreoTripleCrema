@@ -1,0 +1,57 @@
+envio un buffer
+en comunicarse
+envio un buffer
+en comunicarse
+en case solicitud memoria
+recibo solicitud memoria
+envio respuesta
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case almacenar bytes
+recibo almacenar bytes
+envio confirmacion
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case almacenar bytes
+recibo almacenar bytes
+envio confirmacion
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case almacenar bytes
+recibo almacenar bytes
+envio confirmacion
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case liberar memoria

@@ -17,6 +17,7 @@ typedef struct
 					int pid;
 					void * contenido;
 					int antiguedad;
+					int modificado;
 				}t_estructuraCache;
 typedef struct { 
 				
@@ -153,6 +154,7 @@ typedef struct {
 				int estado;
 				}t_estructuraADM;
 
+
 typedef struct { 
 				int cantidad;
 				int * pids;
@@ -191,6 +193,12 @@ typedef struct {
 
 				}__attribute__((packed))
 				 t_peticionBytes;
+
+typedef struct {
+				int pid;
+				int pagina;
+				}__attribute__((packed))
+				t_liberarPagina;
 
 typedef struct {
 				

@@ -1,0 +1,265 @@
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en definir variable
+en definir variable
+en definir variable
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en reservar
+envio reservar espacio
+envio pcb
+recibo reservado espacio
+recibo pcb
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en abrir archivo
+envio abrir archivo
+envio pcb
+recibo pcb
+recibo abrio archivo
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case continuar
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en escribir archivo
+envio escribir archivo
+envio pcb
+recibo pcb
+envio espero novedades
+en case finalizar por error
+envio finalizar por error
+envio espero novedades

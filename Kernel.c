@@ -69,9 +69,10 @@
 #define PAQUETEFS 67
 #define BORRARARCHIVOFS 68
 #define RESERVADOESPACIO 69
+#define LIBERARPAGINA 71
+#define PRINT 72
 #define PCBFINALIZADOPORCONSOLA 56
 
-	#define ARRAYPIDS 51
 	#define SOLICITUDMEMORIA 70
 	#define RESPUESTAOKMEMORIA 1
 	#define INICIARPROGRAMA 2
@@ -141,6 +142,7 @@ int CANTIDADSEM=0;
 int flagLiberarAceptar=0;
 int flagLiberarComunicar=0;
 int flagLiberarPlanificar=0;
+int flagQuantum;
 // SEMAFOROS
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
@@ -189,7 +191,6 @@ void stripLog(char** string){
 	}
 }
 void cortar(){
-	printf("adasdasd\n");
 	fclose(KernelLog);
 	exit(0);
 }
@@ -260,6 +261,15 @@ void getPcbAndRemovePid(int pid, t_pcb * pcb){
 			pthread_mutex_unlock(&mutexColaReady);
 }
 
+void cambiarEstado(int pid, int estado){
+	int i=0;
+	while(PCBS[i].pid!=pid)
+		i++;
+	pthread_mutex_lock(&mutexPcbs);
+	PCBS[i].estado=estado;
+	pthread_mutex_unlock(&mutexPcbs);
+}
+
 void rellenarColaReady(){
 	int i=0,cantVacios=0,j;
 		if (GRADO_MULTIPROG>CANTIDADREADYS)
@@ -277,6 +287,7 @@ void rellenarColaReady(){
 					CANTIDADREADYS++;
 					COLAREADY=realloc(COLAREADY,CANTIDADREADYS*sizeof(int));
 					COLAREADY[primerReadyLibre+i]=COLANEW[0];
+					cambiarEstado(COLANEW[0],READY);
 					for (j = 0; j < CANTIDADNEWS; j++)
 					{
 						if (!(j+1==CANTIDADNEWS))
@@ -291,13 +302,28 @@ void rellenarColaReady(){
 		}
 }
 
-void cambiarEstado(int pid, int estado){
-	int i=0;
-	while(PCBS[i].pid!=pid)
-		i++;
-	pthread_mutex_lock(&mutexPcbs);
-	PCBS[i].estado=estado;
-	pthread_mutex_unlock(&mutexPcbs);
+void informarLeaks(int pid){
+	int i,paginasSinLiberar,bytesAlocados,bytesLiberados,bytesSinLiberar,estructurasHeapSinLiberar,estructurasHeapAlocadas,estructurasHeapLiberadas;
+	for (i = 0; i < CANTTABLAARCHIVOS; i++)
+	{
+		if(tablaHeap[i].pid==pid){
+			if (tablaHeap[i].cantPaginas)
+			{
+				paginasSinLiberar=tablaHeap[i].cantPaginas;
+				bytesAlocados=PCBS[pid].bytesAlocados;
+				bytesLiberados=PCBS[pid].bytesLiberados;
+				bytesSinLiberar=bytesAlocados-bytesLiberados;
+				estructurasHeapAlocadas=PCBS[i].alocaciones;
+				estructurasHeapLiberadas=PCBS[i].liberaciones;
+				estructurasHeapSinLiberar=estructurasHeapAlocadas-estructurasHeapLiberadas;
+				char * mensaje;
+				mensaje=calloc(1,400);
+				sprintf(mensaje,"Memory leaks pid=%i:\n\tPaginas sin liberar: %i.\n\tBytes Alocados: %i,\tBytes Liberados: %i,\tBytes sin liberar: %i.\n\tHeap structs generadas: %i,\tHeap structs desechadas: %i,\tHeap structs sin desechar: %i.",pid,paginasSinLiberar,bytesAlocados,bytesLiberados,bytesSinLiberar,estructurasHeapAlocadas,estructurasHeapLiberadas,estructurasHeapSinLiberar);
+				escribirEnArchivoLog(mensaje,&KernelLog,nombreLog);
+				free(mensaje);
+			}
+		}
+	}
 }
 
 int finalizarPid(int pid,int exitCode){
@@ -329,14 +355,15 @@ int finalizarPid(int pid,int exitCode){
 		case READY:
 			// LO SACO DE LA COLA DE READYS
 					pthread_mutex_lock(&mutexColaReady);
-			for (i=0; i < CANTIDADREADYS; i++){
-				if (i+1==CANTIDADREADYS) {
-					COLAREADY[i]=-1;
+			for (index=0; index < CANTIDADREADYS; index++){
+				if (index+1==CANTIDADREADYS) {
+					COLAREADY[index]=-1;
 				}
 				else {
-					COLAREADY[i]=COLAREADY[i+1];
+					COLAREADY[index]=COLAREADY[index+1];
 				}
 			}
+			CANTIDADREADYS--;
 					pthread_mutex_unlock(&mutexColaReady);
 		break;
 		case EXEC:
@@ -712,11 +739,11 @@ void consola(){
 						{
 							printf("\t\tFD[%i]:\tPermisos: '", j+3);
 							if (PCBS[i].referenciaATabla[j].flags.creacion)
-								printf("c");
+								printf("C");
 							if (PCBS[i].referenciaATabla[j].flags.lectura)
-								printf("r");
+								printf("L");
 							if (PCBS[i].referenciaATabla[j].flags.escritura)
-								printf("w");
+								printf("E");
 							printf("'\tFD Global: %i\n",PCBS[i].referenciaATabla[j].globalFd);
 						}	
 					}
@@ -771,7 +798,17 @@ void consola(){
 			break;
 			case 3: // MOSTRAR TABLA GLOBAL DE ARCHIVOS
 				system("clear");
-				printf("En desarrollo.\n");
+				printf("Tabla Global de Archivos:\n");
+				if (CANTTABLAARCHIVOS==0)
+				{
+					printf("No hay archivos abiertos.\n");
+				}
+				for (i = 0; i < CANTTABLAARCHIVOS; i++)
+				{
+					printf("FD=%i:\n",tablaArchivos[i].fd);
+					printf("\tPath: %s\n",tablaArchivos[i].path);
+					printf("\tVeces abierto: %i.\n", tablaArchivos[i].vecesAbierto);
+				}
 				printf("Presione enter para volver al menú principal.\n");
 				getchar();
 				getchar();
@@ -856,9 +893,9 @@ void consola(){
 	}
 }
 
-void quantum(int * flagQuantum){
-	sleep(QUANTUM*QUANTUM_SLEEP);
-	*flagQuantum=1;
+void quantum(){
+	usleep(QUANTUM*(QUANTUM_SLEEP*1000));
+	flagQuantum=1;
 }
 
 void sacarHeapMetadata(indexProceso,pagina,posicion){
@@ -889,8 +926,9 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 	void * paginaAux,*paginaNueva;
 	t_heapMetaData * metadataAux;
 	t_pcb * pcb;
-	int cpuLibre = 1;
-	int flagQuantum=0,pagina,offset;
+	int cpuLibre = 1,exitCode;
+	int pagina,offset;
+	flagQuantum=0;
 	t_seleccionador * seleccionador;
 	pthread_t hiloQuantum;
 	int primerAcceso=1,error=0;
@@ -915,6 +953,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 	t_almacenarBytes * bytes;
 	t_solicitudAsignar * solicitudPaginaHeap;
 	t_reservar * reservar;
+	t_liberarPagina * liberarPagina;
 	while(PLANIFICACIONHABILITADA)
 	{
 		seleccionador=malloc(sizeof(t_seleccionador));
@@ -932,9 +971,6 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				if (estaBlocked(pid)) // SI ESTA BLOQUEADO MANDO PARAREJECUCION
 					{enviarDinamico(PARAREJECUCION,socket, NULL);
 					escribirEnArchivoLog("envio parar ejecucion", &KernelLog,nombreLog);}
-				else if (flagQuantum) // SI TERMINO QUANTUM MANDO FINQUANTUM
-					{enviarDinamico(FINQUANTUM, socket,NULL);
-					escribirEnArchivoLog("envio fin de quantum", &KernelLog,nombreLog);}
 				else if (error!=0){
 					enviarDinamico(FINALIZARPORERROR, socket,NULL);
 					escribirEnArchivoLog("envio finalizar por error", &KernelLog,nombreLog);
@@ -945,6 +981,10 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				else if (PCBS[pid].estado==EXIT && PCBS[pid].exitCode==0)
 					{seleccionador->tipoPaquete=PCB;
 					primerAcceso=1;}
+				else if (flagQuantum) // SI TERMINO QUANTUM MANDO FINQUANTUM
+					{enviarDinamico(FINQUANTUM, socket,NULL);
+						flagQuantum=0;
+					escribirEnArchivoLog("envio fin de quantum", &KernelLog,nombreLog);}
 				else // SI NO HAY NOVEDADES MANDO CONTINUAR
 					{enviarDinamico(CONTINUAR, socket,NULL);
 					escribirEnArchivoLog("envio continuar", &KernelLog,nombreLog);}		
@@ -973,7 +1013,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						enviarDinamico(PCB,socket,pcb);
 						escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
 						cpuLibre=0;
-						if (ALGORITMO == "RR")
+						if (!strcmp(ALGORITMO,"RR"))
 						{
 							flagQuantum=0;
 							pthread_create(&hiloQuantum,NULL,(void *)quantum,&flagQuantum);
@@ -985,11 +1025,24 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				escribirEnArchivoLog("en case solicitud valor variable", &KernelLog,nombreLog);
 				solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
 				recibirDinamico(SOLICITUDVALORVARIABLE,socket,solicitudVariable);
+				pcb=malloc(sizeof(t_pcb));
+				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
+				recibirDinamico(PCB,socket,pcb);
+				pcb->privilegiadasEjecutadas++;
 				escribirEnArchivoLog("recibo solicitud valor variable", &KernelLog,nombreLog);
 				strip(&(solicitudVariable->variable));
+				flag=1;
 				for (i = 0; i < CANTIDADVARS; i++)
 					if (!strcmp(SHARED_VARS[i]+1,solicitudVariable->variable))
+					{
 						send(socket,&(SHARED_VALUES[i]),sizeof(int),0);
+						flag=0;
+					}
+				if(flag)
+					error=-12; //SE INTENTA ACCEDER A UNA VARIABLE COMPARTIDA INEXISTENTE
+				updatePCB(pcb);
+				enviarDinamico(PCB,socket,pcb);
+				free(pcb);
 				free(solicitudVariable->variable);
 				free(solicitudVariable);
 			break;
@@ -997,6 +1050,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				escribirEnArchivoLog("en case asignar variable compartida", &KernelLog,nombreLog);
 				asignarVariable=malloc(sizeof(t_asignarVariableCompartida));
 				recibirDinamico(ASIGNARVARIABLECOMPARTIDA,socket,asignarVariable);
+				pcb=malloc(sizeof(t_pcb));
+				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
+				recibirDinamico(PCB,socket,pcb);
+				pcb->privilegiadasEjecutadas++;
+				flag=1;
 				escribirEnArchivoLog("recibo asignar variable compartida", &KernelLog,nombreLog);
 				for (i = 0; i < CANTIDADVARS; i++)
 				{
@@ -1005,8 +1063,14 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						pthread_mutex_lock(&mutexCompartidas);
 						SHARED_VALUES[i]=asignarVariable->valor;
 						pthread_mutex_unlock(&mutexCompartidas);
+						flag=0;
 					}
 				}
+				if(flag)
+					error=-12; //SE INTENTA ACCEDER A UNA VARIABLE COMPARTIDA INEXISTENTE
+				updatePCB(pcb);
+				enviarDinamico(PCB,socket,pcb);
+				free(pcb);
 				free(asignarVariable->variable);
 				free(asignarVariable);
 			break;
@@ -1017,6 +1081,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				recibirDinamico(SOLICITUDSEMWAIT,socket,solicitudSemaforo);
 				escribirEnArchivoLog("recibo solicitud sem wait", &KernelLog,nombreLog);
 				strip(&(solicitudSemaforo->identificadorSemaforo));
+				flag=1;
 				for (i = 0; i < CANTIDADSEM; i++)
 				{
 					if (!strcmp(SEM_IDS[i],solicitudSemaforo->identificadorSemaforo))
@@ -1067,8 +1132,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 							pthread_mutex_unlock(&mutexPcbs);
 
 						}
+					flag=0;
 					}
 				}
+				if(flag)
+					error=-13; //SE INTENTA UTILIZAR UN SEMÁFORO INEXISTENTE
 				free(solicitudSemaforo->identificadorSemaforo);
 				free(solicitudSemaforo);
 				printf("fin wait\n");
@@ -1079,6 +1147,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				recibirDinamico(SOLICITUDSEMSIGNAL,socket,solicitudSemaforo);
 				escribirEnArchivoLog("recibo solicitud sem signal", &KernelLog,nombreLog);
 				strip(&(solicitudSemaforo->identificadorSemaforo));
+				flag=1;
 				for (i = 0; i < CANTIDADSEM; i++)
 				{
 					if (!strcmp(SEM_IDS[i],solicitudSemaforo->identificadorSemaforo))
@@ -1131,8 +1200,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 							strcpy(SEM_INIT[i],aux);
 							pthread_mutex_unlock(&mutexSemaforos);
 						}
+					flag=0;
 					}
 				}
+				if(flag)
+					error=-13; //SE INTENTA UTILIZAR UN SEMÁFORO INEXISTENTE
 				free(solicitudSemaforo->identificadorSemaforo);
 				free(solicitudSemaforo);
 				printf("fin signal\n");
@@ -1343,6 +1415,29 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 					}
 				}
 
+				if (tablaHeap[i].paginas[j].espacioLibre==TAMPAGINA-sizeof(t_heapMetaData))
+				{
+					liberarPagina=malloc(sizeof(t_liberarPagina));
+					liberarPagina->pid=tablaHeap[i].pid;
+					liberarPagina->pagina=tablaHeap[i].paginas[j].pagina;
+					enviarDinamico(LIBERARPAGINA,SOCKETMEMORIA,liberarPagina);
+					while(0>recv(SOCKETMEMORIA,&rv,sizeof(int),0));
+					if (rv==-1)
+					{
+						error=-5;
+					}
+					for (k = j; k < tablaHeap[i].cantPaginas; k++)
+					{
+						if (!(k+1==tablaHeap[i].cantPaginas))
+						{
+							memcpy(&(tablaHeap[i].paginas[k]),&(tablaHeap[i].paginas[k+1]),sizeof(t_heapProceso));
+						}
+					}
+					tablaHeap[i].cantPaginas--;
+					tablaHeap[i].paginas=realloc(tablaHeap[i].paginas,tablaHeap[i].cantPaginas*sizeof(t_heapProceso));
+					free(liberarPagina);
+				}
+
 				pthread_mutex_unlock(&mutexAlocar);
 				updatePCB(pcb);
 				enviarDinamico(PCB,socket,pcb);
@@ -1388,8 +1483,6 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 					printf("abrirArchivo->flags.creacion: %i\n",abrirArchivo->flags.creacion );
 					printf("rv: %i\n", rv);
 					
-					if (abrirArchivo->flags.creacion && rv==-1)
-					{
 						pthread_mutex_lock(&mutexTablaArchivos);
 						globalFd=proximoFd;
 						proximoFd++;
@@ -1404,12 +1497,15 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						tablaArchivos[CANTTABLAARCHIVOS-1].fd=globalFd;
 						printf("%s\n", tablaArchivos[CANTTABLAARCHIVOS-1].path);
 						pthread_mutex_unlock(&mutexTablaArchivos);
+
+					if (abrirArchivo->flags.creacion && rv==-1)
+					{
 						enviarDinamico(CREARARCHIVOFS,SOCKETFS,path);
 						escribirEnArchivoLog("envio crear archivo fs", &KernelLog,nombreLog);
 					}
 					else if (rv==-1 && !(abrirArchivo->flags.creacion)){
 						flag=1;
-						error=-20;
+						error=-10; // NO EXISTE EL ARCHIVO Y NO SE TIENEN LOS PERMISOS PARA CREARLO
 					}
 				}
 				if(estaba){
@@ -1431,8 +1527,8 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 					pcb->referenciaATabla[pcb->cantidadArchivos-1].globalFd=globalFd;
 					pcb->referenciaATabla[pcb->cantidadArchivos-1].cursor=0;
 					pcb->referenciaATabla[pcb->cantidadArchivos-1].abierto=1;
-					updatePCB(pcb);
 				}
+				updatePCB(pcb);
 				enviarDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
 				fd=malloc(sizeof(t_fdParaLeer));
@@ -1459,40 +1555,47 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 				pcb->privilegiadasEjecutadas++;
 				globalFd=pcb->referenciaATabla[(borrarArchivo->fdABorrar)-3].globalFd;
-				for (i = 0; i < CANTTABLAARCHIVOS; i++)
+				if (pcb->referenciaATabla[(borrarArchivo->fdABorrar)-3].abierto==0)
 				{
-					if (globalFd==tablaArchivos[i].fd)
-					{
-						break;
-					}
+					error=-14;
 				}
-				if (tablaArchivos[i].vecesAbierto!=1)
+				else
 				{
-					error=-20;
-				}
-				else{
-					path=malloc(sizeof(t_path));
-					path->path=calloc(1,tablaArchivos[i].tamanioPath+1);
-					path->tamanio=tablaArchivos[i].tamanioPath;
-					strcpy(path->path,tablaArchivos[i].path);
-					strip(&(path->path));
-					path->tamanio=strlen(path->path);
-					enviarDinamico(BORRARARCHIVOFS,SOCKETFS,path);
-					escribirEnArchivoLog("envio borrar archivo fs", &KernelLog,nombreLog);
-					free(path);
-					pthread_mutex_lock(&mutexTablaArchivos);
-					for (; i < CANTTABLAARCHIVOS; i++)
+					for (i = 0; i < CANTTABLAARCHIVOS; i++)
 					{
-						if (!(i+1==CANTTABLAARCHIVOS))
+						if (globalFd==tablaArchivos[i].fd)
 						{
-							memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+							break;
 						}
 					}
-					CANTTABLAARCHIVOS--;
-					tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
-					pthread_mutex_unlock(&mutexTablaArchivos);
+					if (tablaArchivos[i].vecesAbierto!=1)
+					{
+						error=-11;  // SE INTENTA BORRAR UN ARCHIVO QUE OTRO PROCESO TIENE ABIERTO
+					}
+					else{
+						path=malloc(sizeof(t_path));
+						path->path=calloc(1,tablaArchivos[i].tamanioPath+1);
+						path->tamanio=tablaArchivos[i].tamanioPath;
+						strcpy(path->path,tablaArchivos[i].path);
+						strip(&(path->path));
+						path->tamanio=strlen(path->path);
+						enviarDinamico(BORRARARCHIVOFS,SOCKETFS,path);
+						escribirEnArchivoLog("envio borrar archivo fs", &KernelLog,nombreLog);
+						free(path);
+						pthread_mutex_lock(&mutexTablaArchivos);
+						for (; i < CANTTABLAARCHIVOS; i++)
+						{
+							if (!(i+1==CANTTABLAARCHIVOS))
+							{
+								memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+							}
+						}
+						CANTTABLAARCHIVOS--;
+						tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+						pthread_mutex_unlock(&mutexTablaArchivos);
+					}
+					pcb->referenciaATabla[(borrarArchivo->fdABorrar)-3].abierto=0;
 				}
-				pcb->referenciaATabla[(borrarArchivo->fdABorrar)-3].abierto=0;
 				updatePCB(pcb);
 				enviarDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
@@ -1512,26 +1615,32 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 				pcb->privilegiadasEjecutadas++;
 				globalFd=pcb->referenciaATabla[(cerrarArchivo->descriptorArchivo)-3].globalFd;
-				for (i = 0; i < CANTTABLAARCHIVOS; i++)
+				if (pcb->referenciaATabla[(cerrarArchivo->descriptorArchivo)-3].abierto==0)
 				{
-					if (globalFd==tablaArchivos[i].fd)
-					{
-						break;
-					}
+					error=-14;
 				}
-				pthread_mutex_lock(&mutexTablaArchivos);
-				tablaArchivos[i].vecesAbierto--;
-				for (; i < CANTTABLAARCHIVOS; i++)
+				else{
+					for (i = 0; i < CANTTABLAARCHIVOS; i++)
 					{
-						if (!(i+1==CANTTABLAARCHIVOS))
+						if (globalFd==tablaArchivos[i].fd)
 						{
-							memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+							break;
 						}
 					}
-				CANTTABLAARCHIVOS--;
-				proximoFd--;
-				tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
-				pthread_mutex_unlock(&mutexTablaArchivos);
+					pthread_mutex_lock(&mutexTablaArchivos);
+					tablaArchivos[i].vecesAbierto--;
+					for (; i < CANTTABLAARCHIVOS; i++)
+						{
+							if (!(i+1==CANTTABLAARCHIVOS))
+							{
+								memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+							}
+						}
+					CANTTABLAARCHIVOS--;
+					proximoFd--;
+					tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+					pthread_mutex_unlock(&mutexTablaArchivos);
+				}
 				updatePCB(pcb);
 				enviarDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
@@ -1545,12 +1654,16 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				recibirDinamico(MOVERCURSOR,socket,moverCursor);
 				escribirEnArchivoLog("recibo mover cursor", &KernelLog,nombreLog);
 				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
-				
-						pcb=malloc(sizeof(t_pcb));
+				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 				pcb->privilegiadasEjecutadas++;
-				pcb->referenciaATabla[(moverCursor->descriptorArchivo)-3].cursor=moverCursor->posicion;
+				if (pcb->referenciaATabla[(moverCursor->descriptorArchivo)-3].abierto==0)
+				{
+					error=-14;
+				}
+				else
+					pcb->referenciaATabla[(moverCursor->descriptorArchivo)-3].cursor=moverCursor->posicion;
 				updatePCB(pcb);
 				enviarDinamico(PCB,socket,pcb);
 				free(moverCursor);
@@ -1565,58 +1678,66 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
 				printf("info: %s\n", (char*)escribirArchivo->informacion);
 				
+				mensaje=malloc(sizeof(t_mensaje));
+				mensaje->mensaje=calloc(1,escribirArchivo->tamanio+1);
 				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
-				if (escribirArchivo->fdArchivo==1)
-				{
-					mensaje=malloc(sizeof(t_mensaje));
-					mensaje->mensaje=calloc(1,escribirArchivo->tamanio+1);
-					mensaje->tamanio=escribirArchivo->tamanio;
-					strcpy(mensaje->mensaje,(char*)escribirArchivo->informacion);
-					enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-					escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
-				}
-				else{
-					pcb->privilegiadasEjecutadas++;
-					if (pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].flags.escritura)
+					if (escribirArchivo->fdArchivo==1)
 					{
-						escribirArchivoFS=malloc(sizeof(t_escribirArchivoFS));
-						escribirArchivoFS->size=escribirArchivo->tamanio;
-						escribirArchivoFS->buffer=calloc(1,escribirArchivoFS->size+1);
-						memcpy(escribirArchivoFS->buffer,escribirArchivo->informacion,escribirArchivoFS->size);
-						escribirArchivoFS->offset=pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].cursor;
-						globalFd=pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].globalFd;
-						for (i = 0; i < CANTTABLAARCHIVOS; i++)
-						{	if (globalFd==tablaArchivos[i].fd)
-							{
-								break;
-							}
-						}
-						strip(&(tablaArchivos[i].path));
-						escribirArchivoFS->tamanioPath=tablaArchivos[i].tamanioPath;
-						escribirArchivoFS->path=calloc(1,escribirArchivoFS->tamanioPath+1);
-						strcpy(escribirArchivoFS->path,tablaArchivos[i].path);
-						strip(&(escribirArchivoFS->path));
-						escribirArchivoFS->tamanioPath=strlen(escribirArchivoFS->path);
-						printf("path: %s\n", escribirArchivoFS->path);
-						printf("buffer: %s\n", (char*)escribirArchivoFS->buffer);
-						printf("size: %i\n",escribirArchivoFS->size);
-						enviarDinamico(GUARDARDATOSFS,SOCKETFS,escribirArchivoFS);
-						escribirEnArchivoLog("envio guardar datos fs", &KernelLog,nombreLog);
-						while(0>recv(SOCKETFS,&rv,sizeof(int),0));
-						if (!rv)
-						{
-							error=-2;
-						}
-						free(escribirArchivoFS->path);
-						free(escribirArchivoFS->buffer);
-						free(escribirArchivoFS);
+						mensaje->tamanio=escribirArchivo->tamanio;
+						strcpy(mensaje->mensaje,(char*)escribirArchivo->informacion);
+						enviarDinamico(PRINT,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
+						send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pcb->pid),sizeof(int),0);
+						escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
 					}
 					else{
-						error=-4;
+						if (pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].abierto==0)
+						{
+							error-14;
+						}
+						pcb->privilegiadasEjecutadas++;
+						printf("flag-escritura: %i.\n", pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].flags.escritura);
+						if (pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].flags.escritura)
+						{
+							escribirArchivoFS=malloc(sizeof(t_escribirArchivoFS));
+							escribirArchivoFS->size=escribirArchivo->tamanio;
+							escribirArchivoFS->buffer=calloc(1,escribirArchivoFS->size+1);
+							memcpy(escribirArchivoFS->buffer,escribirArchivo->informacion,escribirArchivoFS->size);
+							escribirArchivoFS->offset=pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].cursor;
+							globalFd=pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].globalFd;
+							for (i = 0; i < CANTTABLAARCHIVOS; i++)
+							{	if (globalFd==tablaArchivos[i].fd)
+								{
+									strip(&(tablaArchivos[i].path));
+									break;
+								}
+							}
+							escribirArchivoFS->tamanioPath=tablaArchivos[i].tamanioPath;
+							escribirArchivoFS->path=calloc(1,escribirArchivoFS->tamanioPath+1);
+							printf("tablaArchivos[i].path: %s.\n", tablaArchivos[i].path);
+							printf("escribirArchivoFS->path: %s.\n", escribirArchivoFS->path);
+							strcpy(escribirArchivoFS->path,tablaArchivos[i].path);
+							strip(&(escribirArchivoFS->path));
+							escribirArchivoFS->tamanioPath=strlen(escribirArchivoFS->path);
+							printf("path: %s\n", escribirArchivoFS->path);
+							printf("buffer: %s\n", (char*)escribirArchivoFS->buffer);
+							printf("size: %i\n",escribirArchivoFS->size);
+							enviarDinamico(GUARDARDATOSFS,SOCKETFS,escribirArchivoFS);
+							escribirEnArchivoLog("envio guardar datos fs", &KernelLog,nombreLog);
+							while(0>recv(SOCKETFS,&rv,sizeof(int),0));
+							if (!rv)
+							{
+								error=-2;
+							}
+							free(escribirArchivoFS->path);
+							free(escribirArchivoFS->buffer);
+							free(escribirArchivoFS);
+						}
+						else{
+							error=-4;
+						}
 					}
-				}
 				updatePCB(pcb);
 				enviarDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("envio pcb ", &KernelLog,nombreLog);
@@ -1643,53 +1764,58 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				paqueteFS=calloc(1,sizeof(t_paqueteFS));
 				paqueteFS->tamanio=0;
 				pcb->privilegiadasEjecutadas++;
-				if (pcb->referenciaATabla[(leerArchivo->descriptor)-3].flags.lectura)
+				if (pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].abierto==0)
 				{
-					printf("puede leer\n");
-					leerArchivoFS=malloc(sizeof(t_leerArchivoFS));
-					leerArchivoFS->size=leerArchivo->tamanio;
-					leerArchivoFS->offset=pcb->referenciaATabla[(leerArchivo->descriptor)-3].cursor;
-					globalFd=pcb->referenciaATabla[(leerArchivo->descriptor)-3].globalFd;
-					for (i = 0; i < CANTTABLAARCHIVOS; i++)
-					{
-						if (globalFd==tablaArchivos[i].fd)
-						{
-							break;
-						}
-					}
-					leerArchivoFS->tamanioPath=strlen(tablaArchivos[i].path);
-					leerArchivoFS->path=calloc(1,leerArchivoFS->tamanioPath+1);
-					printf("path en tabla: %s.\n", tablaArchivos[i].path);
-					strcpy(leerArchivoFS->path,tablaArchivos[i].path);
-					printf("path en paquete: %s.\n", leerArchivoFS->path);
-					strip(&(leerArchivoFS->path));
-					leerArchivoFS->tamanioPath=strlen(leerArchivoFS->path);
-					enviarDinamico(OBTENERDATOSFS,SOCKETFS,leerArchivoFS);
-					escribirEnArchivoLog("envio obtener datos fs", &KernelLog,nombreLog);
-					printf("aca\n");
-					while(0>recv(SOCKETFS,&rv,sizeof(int),0));
-					printf("kk\n");
-					if (!rv)
-					{
-						error=-3;
-						printf("error\n");
-					}
-					else{
-						buffer=malloc(sizeof(int));
-						*buffer=1;
-						printf("qweq\n");
-						send(SOCKETFS,buffer,sizeof(int),0);
-						printf("qwe\n");
-						while(0>recv(SOCKETFS, seleccionador, sizeof(t_seleccionador), 0));
-						recibirDinamico(PAQUETEFS,SOCKETFS,paqueteFS);
-						escribirEnArchivoLog("recibo paquete fs", &KernelLog,nombreLog);
-						printf("kk2\n");
-					}
-					free(leerArchivoFS->path);
-					free(leerArchivoFS);
+					error-14;
 				}
 				else{
-					error=-4;
+					if (pcb->referenciaATabla[(leerArchivo->descriptor)-3].flags.lectura)
+					{
+						printf("puede leer\n");
+						leerArchivoFS=malloc(sizeof(t_leerArchivoFS));
+						leerArchivoFS->size=leerArchivo->tamanio;
+						leerArchivoFS->offset=pcb->referenciaATabla[(leerArchivo->descriptor)-3].cursor;
+						globalFd=pcb->referenciaATabla[(leerArchivo->descriptor)-3].globalFd;
+						for (i = 0; i < CANTTABLAARCHIVOS; i++)
+						{
+							if (globalFd==tablaArchivos[i].fd)
+							{
+								break;
+							}
+						}
+						leerArchivoFS->tamanioPath=strlen(tablaArchivos[i].path);
+						leerArchivoFS->path=calloc(1,leerArchivoFS->tamanioPath+1);
+						printf("path en tabla: %s.\n", tablaArchivos[i].path);
+						strcpy(leerArchivoFS->path,tablaArchivos[i].path);
+						printf("path en paquete: %s.\n", leerArchivoFS->path);
+						strip(&(leerArchivoFS->path));
+						leerArchivoFS->tamanioPath=strlen(leerArchivoFS->path);
+						enviarDinamico(OBTENERDATOSFS,SOCKETFS,leerArchivoFS);
+						escribirEnArchivoLog("envio obtener datos fs", &KernelLog,nombreLog);
+						printf("aca\n");
+						while(0>recv(SOCKETFS,&rv,sizeof(int),0));
+						printf("kk\n");
+						if (!rv)
+						{
+							error=-2;
+						}
+						else{
+							buffer=malloc(sizeof(int));
+							*buffer=1;
+							printf("qweq\n");
+							send(SOCKETFS,buffer,sizeof(int),0);
+							printf("qwe\n");
+							while(0>recv(SOCKETFS, seleccionador, sizeof(t_seleccionador), 0));
+							recibirDinamico(PAQUETEFS,SOCKETFS,paqueteFS);
+							escribirEnArchivoLog("recibo paquete fs", &KernelLog,nombreLog);
+							printf("kk2\n");
+						}
+						free(leerArchivoFS->path);
+						free(leerArchivoFS);
+					}
+					else{
+						error=-3;
+					}
 				}
 				updatePCB(pcb);
 				// send(socket,paqueteFS->tamanio,sizeof(int),0);
@@ -1752,6 +1878,8 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						mensaje->tamanio=strlen(aux);
 						mensaje->mensaje=aux;
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
+						send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pcb->pid),sizeof(int),0);
+						informarLeaks(pcb->pid);
 						escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
 						// free(mensaje->mensaje);
 						enviarDinamico(LIBERARMEMORIA,SOCKETMEMORIA,NULL);
@@ -1760,6 +1888,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						free(mensaje);
 						free(aux);
 						free(pcb);
+						primerAcceso=1;
 				
 			break;
 			case PCBFINALIZADOPORCONSOLA:
@@ -1769,7 +1898,12 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						recibirDinamico(PCBFINALIZADOPORCONSOLA,socket,pcb);
 						escribirEnArchivoLog("recibo pcb finalizado por consola", &KernelLog,nombreLog);
 						pcb->rafagasEjecutadas++;
+						exitCode=PCBS[pcb->pid].exitCode;
 						updatePCB(pcb);
+						pthread_mutex_lock(&mutexPcbs);
+						PCBS[pcb->pid].exitCode=exitCode;
+						pthread_mutex_unlock(&mutexPcbs);
+						informarLeaks(pcb->pid);
 						while(0>recv(socket,&rv,sizeof(int),0));
 						if (rv)
 						{
@@ -1803,6 +1937,8 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						mensaje->tamanio=strlen(aux);
 						mensaje->mensaje=aux;
 						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
+						send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pcb->pid),sizeof(int),0);
+						informarLeaks(pcb->pid);
 						escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
 						free(mensaje);
 						free(aux);
@@ -1811,29 +1947,12 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 			break;
 			case PAGINAINVALIDA:
 						escribirEnArchivoLog("en case pagina invalida", &KernelLog,nombreLog);
-						error=-5;
-						aux=calloc(1,100);
-						sprintf(aux,"Pagina invalida");
-						mensaje=malloc(sizeof(t_mensaje));
-						mensaje->tamanio=strlen(aux);
-						mensaje->mensaje=aux;
-						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-						escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
-						free(mensaje);
-						free(aux);
+						error=-15;
+						
 			break;
 			case STACKOVERFLOW:
 						escribirEnArchivoLog("en stack overflow", &KernelLog,nombreLog);
-						error=-5;
-						aux=calloc(1,100);
-						sprintf(aux,"Stack overflow");
-						mensaje=malloc(sizeof(t_mensaje));
-						mensaje->tamanio=strlen(aux);
-						mensaje->mensaje=aux;
-						enviarDinamico(MENSAJE,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-						escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
-						free(mensaje);
-						free(aux);
+						error=-16;
 			break;
 			case PCBQUANTUM:
 				escribirEnArchivoLog("en case pcb quantum", &KernelLog,nombreLog);
@@ -1844,7 +1963,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				pthread_mutex_lock(&mutexColaReady);
 				CANTIDADREADYS++;
 				COLAREADY=realloc(COLAREADY,CANTIDADREADYS*sizeof(int));
-				COLAREADY[CANTIDADREADYS-1]=_pid;
+				COLAREADY[CANTIDADREADYS-1]=pcb->pid;
 				pthread_mutex_unlock(&mutexColaReady);
 				pcb->rafagasEjecutadas++;
 				updatePCB(pcb);
@@ -1855,7 +1974,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				{
 					PLANIFICACIONHABILITADA=0;
 				}
-						free(pcb);
+				free(pcb);
 				
 			break;
 			case PCBBLOQUEADO:
@@ -2058,14 +2177,17 @@ void comunicarse(dataParaComunicarse ** dataDeConexion){
 					finalizarPid(PidAFinalizar,-7);
 				break;
 				case ARRAYPIDS:
+				printf("entre\n");
 					escribirEnArchivoLog("en case arrays pids", &KernelLog,nombreLog); 
 					arrayPids=malloc(sizeof(t_arrayPids));
 					recibirDinamico(ARRAYPIDS,socket,arrayPids);
 					escribirEnArchivoLog("recibo arrays pids", &KernelLog,nombreLog);
 					for (i = 0; i < arrayPids->cantidad; i++)
 					{
+						printf("camancamancamancaman\n");
 						finalizarPid(arrayPids->pids[i],-6);
 					}
+					free(arrayPids);
 				break;
 				case SOLICITUDPCB:
 					escribirEnArchivoLog("en case solicitud pcb", &KernelLog,nombreLog); 
@@ -2165,19 +2287,6 @@ int countElementos(char* cadena){
 			i++;
 		}
 	return cont+1;
-}
-
-void cortar(){
-	int i;
-	pthread_mutex_lock(&mutexPcbs);
-	for (i = 0; i < CANTIDADPCBS; i++)
-	{
-		liberarContenidoPcbTabla(i);
-	}
-	free(PCBS);
-	printf("libera3\n");
-	exit(0);
-	pthread_mutex_unlock(&mutexPcbs);
 }
 
 int main(){	

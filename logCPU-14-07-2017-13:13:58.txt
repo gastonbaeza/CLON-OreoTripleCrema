@@ -1,0 +1,31 @@
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en definir variable
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en obtener posicion variable
+en llamada con retorno
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes

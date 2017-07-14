@@ -1,0 +1,115 @@
+==5843== Memcheck, a memory error detector
+==5843== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==5843== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==5843== Command: ./Kernel
+==5843== Parent PID: 2451
+==5843== 
+==5843== Thread 7:
+==5843== Syscall param socketcall.send(msg) points to uninitialised byte(s)
+==5843==    at 0x40592A8: send (socket.S:98)
+==5843==    by 0x804A335: serial_string (funciones.c:460)
+==5843==    by 0x804ABC0: serial_pcb (funciones.c:559)
+==5843==    by 0x804CF40: enviarDinamico (funciones.c:1091)
+==5843==    by 0x8051FCD: planificar (Kernel.c:1014)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843==  Address 0x70cacba is 2 bytes inside a block of size 12 alloc'd
+==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x805016B: updatePCB (Kernel.c:517)
+==5843==    by 0x8056972: planificar (Kernel.c:1970)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843==  Uninitialised value was created by a heap allocation
+==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x805016B: updatePCB (Kernel.c:517)
+==5843==    by 0x8056972: planificar (Kernel.c:1970)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== 
+==5843== HEAP SUMMARY:
+==5843==     in use at exit: 3,460 bytes in 96 blocks
+==5843==   total heap usage: 17,031,222 allocs, 17,031,126 frees, 343,309,660 bytes allocated
+==5843== 
+==5843== Thread 1:
+==5843== 8 bytes in 1 blocks are definitely lost in loss record 10 of 43
+==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x8051C01: planificar (Kernel.c:960)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== 39 bytes in 3 blocks are definitely lost in loss record 26 of 43
+==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x804A1DA: dserial_string (funciones.c:428)
+==5843==    by 0x804B5D4: dserial_pcb (funciones.c:647)
+==5843==    by 0x804D742: recibirDinamico (funciones.c:1255)
+==5843==    by 0x80568B9: planificar (Kernel.c:1961)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== 136 bytes in 1 blocks are possibly lost in loss record 32 of 43
+==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5843==    by 0x8057B80: main (Kernel.c:2343)
+==5843== 
+==5843== 136 bytes in 1 blocks are possibly lost in loss record 33 of 43
+==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5843==    by 0x8058081: main (Kernel.c:2428)
+==5843== 
+==5843== 136 bytes in 1 blocks are definitely lost in loss record 34 of 43
+==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5843==    by 0x80580BB: main (Kernel.c:2433)
+==5843== 
+==5843== 136 bytes in 1 blocks are definitely lost in loss record 35 of 43
+==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5843==    by 0x80574ED: comunicarse (Kernel.c:2199)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== 167 (128 direct, 39 indirect) bytes in 3 blocks are definitely lost in loss record 37 of 43
+==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x804B646: dserial_pcb (funciones.c:652)
+==5843==    by 0x804D742: recibirDinamico (funciones.c:1255)
+==5843==    by 0x80568B9: planificar (Kernel.c:1961)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== 360 bytes in 3 blocks are definitely lost in loss record 42 of 43
+==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x804B4FC: dserial_pcb (funciones.c:638)
+==5843==    by 0x804D742: recibirDinamico (funciones.c:1255)
+==5843==    by 0x80568B9: planificar (Kernel.c:1961)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== 544 bytes in 4 blocks are possibly lost in loss record 43 of 43
+==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5843==    by 0x805203A: planificar (Kernel.c:1020)
+==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
+==5843==    by 0x416350D: clone (clone.S:129)
+==5843== 
+==5843== LEAK SUMMARY:
+==5843==    definitely lost: 807 bytes in 12 blocks
+==5843==    indirectly lost: 39 bytes in 3 blocks
+==5843==      possibly lost: 816 bytes in 6 blocks
+==5843==    still reachable: 1,798 bytes in 75 blocks
+==5843==         suppressed: 0 bytes in 0 blocks
+==5843== Reachable blocks (those to which a pointer was found) are not shown.
+==5843== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==5843== 
+==5843== For counts of detected and suppressed errors, rerun with: -v
+==5843== ERROR SUMMARY: 12 errors from 10 contexts (suppressed: 0 from 0)

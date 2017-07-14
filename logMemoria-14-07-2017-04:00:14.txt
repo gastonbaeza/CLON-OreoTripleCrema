@@ -1,0 +1,5 @@
+envio un buffer
+en comunicarse
+en case solicitud memoria
+recibo solicitud memoria
+envio respuesta

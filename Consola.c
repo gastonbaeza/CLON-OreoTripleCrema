@@ -50,6 +50,15 @@
 #define OK 1
 #define FAIL 0
 #define BLOQUE 20
+#define PRINT 72
+
+
+typedef struct { 
+				
+				int pid;
+				int prints;
+				char * horaInicio;
+				}t_printsConsola;
 
 t_list * procesos;
 int idKernel;
@@ -63,6 +72,8 @@ char *IP_KERNEL;
 char * PUERTO_KERNEL;
 char* IP;
 char* PUERTO;
+t_printsConsola * prints;
+
 
 int receptorListo=0;
 FILE *consolaLog;
@@ -79,7 +90,6 @@ void strip(char** string){
 }
 
 void cortar(){
-	printf("adasdasd\n");
 	fclose(consolaLog);
 	exit(0);
 }
@@ -91,6 +101,33 @@ void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char *
 	fwrite(contenidoAEscribir,strlen(contenidoAEscribir),1,*archivoDeLog);
 	fwrite("\n",1,1,*archivoDeLog);
 	}
+
+void calcularTiempo(char* inicio,char* fin,char* tiempoEjecucion){
+	int horaInicio,horaFin,hora,minuto,segundo,minutoInicio,minutoFin,segundoInicio,segundoFin,intInicio,intFin,intResultado;
+	char* inicioAux,*finAux;
+	inicioAux=calloc(1,20);
+	finAux=calloc(1,20);
+	strcpy(inicioAux,inicio);
+	strcpy(finAux,fin);
+	inicioAux+=11;
+	finAux+=11;
+	horaInicio=atoi(strtok(inicioAux,":"));
+	minutoInicio=atoi(strtok(NULL,":"));
+	segundoInicio=atoi(strtok(NULL,":"));
+	intInicio=segundoInicio+minutoInicio*60+horaInicio*60*60;
+	horaFin=atoi(strtok(finAux,":"));
+	minutoFin=atoi(strtok(NULL,":"));
+	segundoFin=atoi(strtok(NULL,":"));
+	intFin=segundoFin+minutoFin*60+horaFin*60*60;
+	intResultado=intFin-intInicio;
+	hora=intResultado/3600;
+	minuto=intResultado/60-hora*60;
+	segundo=intResultado%60;
+	sprintf(tiempoEjecucion,"%i:%i:%i",hora,minuto,segundo);
+	free(inicioAux);
+	free(finAux);
+}
+
 
 void programa(t_path * path_ansisop){ 
 	struct addrinfo hints;
@@ -105,18 +142,15 @@ void programa(t_path * path_ansisop){
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
+	freeaddrinfo(kernel);
 	handshakeCliente(serverSocket,CONSOLA,&unBuffer);
+	free(unBuffer);
 	send(serverSocket,&primer,sizeof(int),0);
 	enviarDinamico(PATH,serverSocket,(void*)path_ansisop);
 	escribirEnArchivoLog("envio path", &consolaLog,nombreLog);
 	send(serverSocket,&idKernel,sizeof(int),0);
 	free(path_ansisop->path);
 	free(path_ansisop);
-							
-	
-	freeaddrinfo(kernel);
-	
-	
 	
 }
 
@@ -124,17 +158,20 @@ void programa(t_path * path_ansisop){
 void receptor(){
 	struct addrinfo hints;
 	struct addrinfo *kernel;
-	int primer=1;
+	int primer=1,pid,i,j;
+	char * horaFin;
 	void * unBuffer=malloc(sizeof(int));
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	int  serverSocket;
+	char* tiempoEjecucion;
 	int rv; 
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
 	handshakeCliente(serverSocket,CONSOLA,&unBuffer);
+	free(unBuffer);
 	send(serverSocket,&primer,sizeof(int),0);
 	while(0>recv(serverSocket,&idKernel, sizeof(int),0));
 	receptorListo=1;
@@ -148,10 +185,58 @@ switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
 						unMensaje=malloc(sizeof(t_mensaje));
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
-						unMensaje->mensaje=calloc(1,1);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
-						
+						while(0>recv(serverSocket,&pid,sizeof(int),0));
+						printf("Kernel: %s.\n",unMensaje->mensaje);
+						horaFin=calloc(1,20);
+						horaYFechaActual(&horaFin);
+						for (i = 0; i < list_size(procesos); i++)
+						{
+							if (prints[i].pid==pid)
+							{
+								tiempoEjecucion=calloc(1,9);
+								calcularTiempo(prints[i].horaInicio,horaFin,tiempoEjecucion);
+								printf("Inicio: %s\n", prints[i].horaInicio);
+								printf("Fin: %s\n", horaFin);
+								printf("Ejecucion: %s\n", tiempoEjecucion);
+								break;
+							}
+						}
+						printf("Inicio: %s.\n", prints[i].horaInicio);
+						printf("Fin: %s.\n", horaFin);
+						printf("Cantidad de impresiones: %i.\n", prints[i].prints);
+						printf("Tiempo de ejecucion: %sHs.\n", tiempoEjecucion);
+						for (j=i; j < list_size(procesos); j++)
+						{
+							if (!(j+1==list_size(procesos)))
+							{
+								memcpy(&(prints[j]),&(prints[j+1]),sizeof(t_printsConsola));
+							}
+						}
+						list_remove(procesos, i);
+						free(prints[i].horaInicio);
+						prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+						free(tiempoEjecucion);
+						free(horaFin);
+						free(unMensaje->mensaje);
+						free(unMensaje);
+		break;
+		case PRINT:	
+						unMensaje=malloc(sizeof(t_mensaje));
+						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
+						recibirDinamico(MENSAJE, serverSocket, unMensaje);
+						while(0>recv(serverSocket,&pid,sizeof(int),0));
+						for (i = 0; i < list_size(procesos); i++)
+						{
+							if (prints[i].pid==pid)
+							{
+								prints[i].prints++;
+								break;
+							}
+						}
 						printf("%s.\n",unMensaje->mensaje);
+						free(unMensaje->mensaje);
+						free(unMensaje);
 		break;
 
 		case RESULTADOINICIARPROGRAMA:
@@ -160,6 +245,12 @@ switch (seleccionador->tipoPaquete){
 					if (resultado->resultado){
 						pthread_mutex_lock(&semaforoProcesos);
 						list_add(procesos,(void *)(&(resultado->pid)));
+						prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+						prints[list_size(procesos)-1].pid=resultado->pid;
+						prints[list_size(procesos)-1].prints=0;
+						prints[list_size(procesos)-1].horaInicio=calloc(1,20);
+						horaYFechaActual(&(prints[list_size(procesos)-1].horaInicio));
+						printf("horaInicio: %s\n", prints[list_size(procesos)-1].horaInicio);
 						printf("El pid asignado es : %i\n", resultado->pid);
 						pthread_mutex_unlock(&semaforoProcesos);
 						escribirEnArchivoLog("en resultado reiniciar programa", &consolaLog,nombreLog);
@@ -169,7 +260,9 @@ switch (seleccionador->tipoPaquete){
 		default: ; break;
 
 
-}}
+}
+free(resultado);
+}
 
 }
 
@@ -224,67 +317,105 @@ int main(){
 	freeaddrinfo(serverInfo);
 	void* buffer=malloc(sizeof(int));
 	handshakeCliente(serverSocket,CONSOLA,&buffer);
+	free(buffer);
 	send(serverSocket,&primer,sizeof(int),0);
 	consolaLog=fopen(nombreLog,"w+");
 	perror("asd");
 	printf("consolaLog%p.\n",consolaLog);
 pthread_mutex_init(&semaforoProcesos,NULL);
 int cancelarThread=0;
-int unPid;
+int unPid,i,j,pid;
 int * PID;
 PID=malloc(sizeof(int));
 t_path * path_ansisop;
-char * path;
+char * path,*horaFin,*tiempoEjecucion;
 signal(SIGINT,cortar);
 
 	int * instruccionConsola=malloc(sizeof(int));
 	t_programaSalida * prog;
 
 while(cancelarThread==0){
-	
+	clear();
 	printf("Seleccione una de las siguientes opciones ingresando el número correspondiente.\n");
-	printf("%i %s\n",INICIARPROGRAMA,"-Iniciar programa.");
-	printf("%i %s\n",DESCONECTARCONSOLA,"-Desconectar consola.");
-	printf("%i %s\n",LIMPIARMENSAJES,"-Limpiar los mensajes.");
-	printf("%i %s\n",FINALIZARPROGRAMA,"-Finalizar programa.");
+	printf("%s\n","1-Iniciar programa.");
+	printf("%s\n","2-Desconectar consola.");
+	printf("%s\n","3-Limpiar los mensajes.");
+	printf("%s\n","4-Finalizar programa.");
+	printf("%s\n","5-Descripcion de exit codes.");
 	
 	
 
 	
 	scanf("%d",instruccionConsola);
 	switch(*instruccionConsola){
-	case INICIARPROGRAMA: //Recibe el path del ansisop y lo envia al kernel
+	case 1: //Recibe el path del ansisop y lo envia al kernel
 							escribirEnArchivoLog("en iniciar programa", &consolaLog,nombreLog);
 							path_ansisop=malloc(sizeof(t_path));
-							path_ansisop->path=calloc(1,150);
+							
 							path=calloc(1,150);
 							printf ("path: \n");
 							scanf("%s",path);
 							 //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
 							prog= obtenerPrograma(path);
-							path_ansisop->path=prog->elPrograma;
+							path_ansisop->path=calloc(1,prog->tamanio);
+							strcpy(path_ansisop->path,prog->elPrograma);
 							path_ansisop->tamanio=prog->tamanio;
-							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);/*
+							free(prog->elPrograma);
+							free(prog);
+							free(path);
+							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
+							
+
+							/*
 							escribirEnArchivoLog("escribir1",&consolaLog,"consolaLog.txt");
 							escribirEnArchivoLog("escribir2",&consolaLog,"consolaLog.txt");*/
 							
 
-							free(path);
 							
 							
 		break;
-	case FINALIZARPROGRAMA:
+	case 4:
 							//Recibe el pid del proceso a matar y lo envia al kernel
 							escribirEnArchivoLog("en finalizar programa", &consolaLog,nombreLog);
 							printf ("PID: \n");
-							scanf("%d", &unPid);
+							scanf("%d", &pid);
 							
 							
-							enviarDinamico(FINALIZARPROGRAMA,serverSocket,&unPid);
+							enviarDinamico(FINALIZARPROGRAMA,serverSocket,&pid);
+
+							horaFin=calloc(1,20);
+							horaYFechaActual(&horaFin);
+							for (i = 0; i < list_size(procesos); i++)
+							{
+								if (prints[i].pid==pid)
+								{
+									printf("qwe\n");
+									tiempoEjecucion=calloc(1,9);
+									calcularTiempo(prints[i].horaInicio,horaFin,tiempoEjecucion);
+									break;
+								}
+							}
+							printf("Inicio: %s.\n", prints[i].horaInicio);
+							printf("Fin: %s.\n", horaFin);
+							printf("Cantidad de impresiones: %i.\n", prints[i].prints);
+							printf("Tiempo de ejecucion: %sHs.\n", tiempoEjecucion);
+							for (j=i; j < list_size(procesos); j++)
+							{
+								if (!(j+1==list_size(procesos)))
+								{
+									memcpy(&(prints[j]),&(prints[j+1]),sizeof(t_printsConsola));
+								}
+							}
+							list_remove(procesos, i);
+							free(prints[i].horaInicio);
+							prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+							free(tiempoEjecucion);
+							free(horaFin);
+
 							escribirEnArchivoLog("envio finalizar programa", &consolaLog,nombreLog);	
 	
 		break;
-	case DESCONECTARCONSOLA:
+	case 2:
 							//Recibo los PIDs que Kernel fue guardando y se los mando para que los mate
 							pthread_mutex_lock(&semaforoProcesos);
 							escribirEnArchivoLog("en desconectar consola", &consolaLog,nombreLog);
@@ -310,11 +441,33 @@ while(cancelarThread==0){
 							free(pids);
 
 							pthread_mutex_unlock(&semaforoProcesos);
-							cancelarThread=1;
 	
 		break;
-	case LIMPIARMENSAJES:
+	case 3:
 							clear();
+		break;
+	case 5:
+							clear();
+							printf("Exit Codes:\n");
+							printf("\t0: El programa finalizó correctamente.\n");
+							printf("\t-1: No se pudieron reservar recursos para ejecutar el programa.\n");
+							printf("\t-2: El programa intentó acceder a un archivo que no existe.\n");
+							printf("\t-3: El programa intentó leer un archivo sin permisos.\n");
+							printf("\t-4: El programa intentó escribir un archivo sin permisos.\n");
+							printf("\t-5: Excepción de memoria.\n");
+							printf("\t-6: Finalizado a través de desconexión de consola.\n");
+							printf("\t-7: Finalizado a través del comando finalizar programa de la consola.\n");
+							printf("\t-8: Se intentó reservar mas memoria que el tamaño de una página.\n");
+							printf("\t-9: No se pueden asignar mas páginas al proceso.\n");
+							printf("\t-10: No existe el archivo y no se tienen los permisos para crearlo.\n");
+							printf("\t-11: Se intenta borrar un archivo que otro proceso tiene abierto.\n");
+							printf("\t-12: Se intenta acceder a una variable compartida inexistente.\n");
+							printf("\t-13: Se intenta acceder a un semaforo inexistente.\n");
+							printf("\t-14: Se intenta acceder a un archivo sin abrir.\n");
+							printf("\t-15: Se intenta acceder a una pagina no permitida.\n");
+							printf("\t-16: Stack overflow.\n");
+							printf("Presione una tecla para volver al menú\n");
+							getchar();getchar();
 		break;
 
 	default:	printf("%s\n","habia una veez un barco chicquito");//error no se declara
