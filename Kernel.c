@@ -496,6 +496,7 @@ void updatePCB(t_pcb * pcb){
 		PCBS[pcb->pid].referenciaATabla[i].flags=pcb->referenciaATabla[i].flags;
 		PCBS[pcb->pid].referenciaATabla[i].cursor=pcb->referenciaATabla[i].cursor;
 		PCBS[pcb->pid].referenciaATabla[i].globalFd=pcb->referenciaATabla[i].globalFd;
+		printf("abierto a guardar: %i\n",pcb->referenciaATabla[i].abierto );
 		PCBS[pcb->pid].referenciaATabla[i].abierto=pcb->referenciaATabla[i].abierto;
 	}
 	PCBS[pcb->pid].paginasCodigo=pcb->paginasCodigo;
@@ -514,7 +515,7 @@ void updatePCB(t_pcb * pcb){
 	if (pcb->indiceEtiquetas.etiquetas_size)
 	{
 		PCBS[pcb->pid].indiceEtiquetas.etiquetas=malloc(pcb->indiceEtiquetas.etiquetas_size);
-		strcpy(PCBS[pcb->pid].indiceEtiquetas.etiquetas,pcb->indiceEtiquetas.etiquetas);
+		memcpy(PCBS[pcb->pid].indiceEtiquetas.etiquetas,pcb->indiceEtiquetas.etiquetas,pcb->indiceEtiquetas.etiquetas_size);
 	}
 	PCBS[pcb->pid].cantidadStack=pcb->cantidadStack;
 	if (pcb->cantidadStack)
@@ -745,6 +746,7 @@ void consola(){
 							if (PCBS[i].referenciaATabla[j].flags.escritura)
 								printf("E");
 							printf("'\tFD Global: %i\n",PCBS[i].referenciaATabla[j].globalFd);
+							printf("'\tAbierto: %i\n",PCBS[i].referenciaATabla[j].abierto);
 						}	
 					}
 					printf("\tPaginas de codigo: %i\n", PCBS[i].paginasCodigo);
@@ -1196,8 +1198,10 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 							pthread_mutex_lock(&mutexSemaforos);
 							intAux=atoi(SEM_INIT[i]);
 							intAux++;
+							aux=calloc(1,10);
 							sprintf(aux, "%i", intAux);
 							strcpy(SEM_INIT[i],aux);
+							free(aux);
 							pthread_mutex_unlock(&mutexSemaforos);
 						}
 					flag=0;
@@ -1410,8 +1414,10 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 										offset-=tablaHeap[i].paginas[j].contenido[k].size;
 									}
 								}
+							break;
 							}
 						}
+					break;
 					}
 				}
 
@@ -1682,6 +1688,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				mensaje->mensaje=calloc(1,escribirArchivo->tamanio+1);
 				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCB,socket,pcb);
+				printf("abierto: %i\n", pcb->referenciaATabla[0].abierto);
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 					if (escribirArchivo->fdArchivo==1)
 					{
@@ -1956,7 +1963,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 			break;
 			case PCBQUANTUM:
 				escribirEnArchivoLog("en case pcb quantum", &KernelLog,nombreLog);
-						pcb=malloc(sizeof(t_pcb));
+				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCBQUANTUM,socket,pcb);
 				escribirEnArchivoLog("recibo pcb quamtum", &KernelLog,nombreLog);
 				cambiarEstado(pcb->pid,READY);

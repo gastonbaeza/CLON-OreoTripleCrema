@@ -229,7 +229,7 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 		}
 	} 
 	printf("la entrada donde queiero reemplazar cuando estra lleno es%i:\n", entrada );
-	memmove((memoriaCache[entrada]).contenido,buffer,tamanio);
+	memmove((memoriaCache[entrada]).contenido+offset,buffer,tamanio);
 	
 	// printf("memoriaCache[entrada].contenido: %s.\n",(char*)(memoriaCache[entrada]).contenido );
 	
@@ -240,10 +240,9 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 }
 char * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
-{	char * buffer=calloc(1,tamanio);
+{	void * buffer=calloc(1,tamanio);
 	int entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE);
 	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio-1);
-	strcat(buffer,"\0");
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 	return buffer;
 }
@@ -262,15 +261,10 @@ void * solicitarBytes(int unPid, int pagina, t_marco * marcos, int MARCOS,int of
 	return buffer;
 
 }
-void almacenarBytes(int unPid, int pagina,char * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin , t_list**overflow,t_estructuraCache * memoriaCache,int ENTRADAS_CACHE, int MARCO_SIZE, int CACHE_X_PROC, int retardo)
+void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int MARCOS ,int offset, int tamanio,t_estructuraADM * bloquesAdmin , t_list**overflow,t_estructuraCache * memoriaCache,int ENTRADAS_CACHE, int MARCO_SIZE, int CACHE_X_PROC, int retardo)
 {	
-	int indice=calcularPosicion(unPid,pagina,MARCOS); printf("el indice en almacenar bytes es: %i\n",indice );
-	int entrada=buscarEnOverflow(indice, unPid,pagina,bloquesAdmin,MARCOS,overflow); printf("la entrada en almacenarbytes de buscar overflow : %i\n",entrada );
-	if(entrada!=-1)
-	{	
 	
-	escribirEnCache(unPid,pagina,contenido,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE,1,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);}
-	else{ printf("%s\n","stackOverflow /segmentation fault" );}
+	escribirEnCache(unPid,pagina,contenido,memoriaCache,ENTRADAS_CACHE,offset,tamanio,1,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
  								
 }
 
@@ -542,6 +536,8 @@ void serial_pcb(t_pcb * pcb, int unSocket)
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
 		send(unSocket,&(pcb->referenciaATabla[i].cursor),sizeof(int),0);
 		while(0>=recv(unSocket,buffer, sizeof(int),0));
+		send(unSocket,&(pcb->referenciaATabla[i].abierto),sizeof(int),0);
+		while(0>=recv(unSocket,buffer, sizeof(int),0));
 	}
 	send(unSocket,&(pcb->paginasCodigo),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -625,6 +621,8 @@ void dserial_pcb(t_pcb** pcb, int unSocket)
 		while(0>recv(unSocket,&((*pcb)->referenciaATabla[i].globalFd),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);
 		while(0>recv(unSocket,&((*pcb)->referenciaATabla[i].cursor),sizeof(int),0));
+		send(unSocket,buffer, sizeof(int),0);
+		while(0>recv(unSocket,&((*pcb)->referenciaATabla[i].abierto),sizeof(int),0));
 		send(unSocket,buffer, sizeof(int),0);			
 	}
 	while(0>recv(unSocket,&((*pcb)->paginasCodigo),sizeof(int),0));

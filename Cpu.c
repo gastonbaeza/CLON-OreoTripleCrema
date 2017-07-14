@@ -296,8 +296,7 @@ void posicionarPC(int pos){
 			printf("en cpu_dereferenciar\n");
 			escribirEnArchivoLog("en dereferenciar", &CPULog,nombreLog);
 			printf("Direccion: %i.\n", direccion_variable);
-			int offset,pagina,valor,foo;
-			char rv[20],*trash;
+			int offset,pagina,valor,foo,resultado;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
 			t_peticionBytes * peticion=malloc(sizeof(t_peticionBytes));
@@ -316,10 +315,9 @@ void posicionarPC(int pos){
 			}
 			if(foo==1){
 				free(peticion);
-				while(0>recv(socketMemoria,rv,sizeof(int),0));
-				valor=atoi(rv);
-				printf("valor dereferenciado: %i.\n", valor);
-				return valor;
+				while(0>recv(socketMemoria,&resultado,sizeof(int),0));
+				printf("valor dereferenciado: %i.\n", resultado);
+				return resultado;
 			}
 			else{
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
@@ -343,22 +341,20 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("en asignar", &CPULog,nombreLog);
 			printf("direccion a asignar: %i.\n",direccion_variable );
 			printf("valor a asignar: %i.\n", valor);
-			char * buffer=calloc(1,20);
 			int offset,pagina,rv;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
+			bytes->valor=calloc(1,sizeof(int));
 			bytes->pid=PID;
 			bytes->pagina=pagina;
 			bytes->offset=offset;
-			sprintf (buffer, "%d",valor);
-			bytes->size=strlen(buffer)+1;
-			bytes->valor=buffer;
-			printf("este es el valor estringeado %s\n", (char*)bytes->valor);
+			memcpy(bytes->valor,&valor,sizeof(int));
+			bytes->size=SIZE;
 			printf("este es el valor pagina %i\n", bytes->pagina);
 			printf("este es el valor offset %i\n", bytes->offset);
 			printf("este es el valor size %i\n", bytes->size);
-			printf("este es el buffer : %s\n",buffer );
+			printf("este es el buffer : %i\n",*(int*)(bytes->valor) );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			escribirEnArchivoLog("envio almacenar bytes", &CPULog,nombreLog);
 			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -370,9 +366,8 @@ void posicionarPC(int pos){
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
 				escribirEnArchivoLog("envio stack overflow", &CPULog,nombreLog);
 			}
-			printf("%s\n",(char*) bytes->valor);
+			free(bytes->valor);
 			free(bytes);
-			free(buffer);
 		}
 
 		/*
@@ -554,16 +549,14 @@ void posicionarPC(int pos){
 			printf("en cpu_retornar\n");
 			escribirEnArchivoLog("en retornar", &CPULog,nombreLog);
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
-			char buffer[20];
+			bytes->valor=calloc(1,sizeof(int));
 			int rv;
-			sprintf(buffer,"%d",retorno);
-			bytes->valor=buffer;
+			memcpy(bytes->valor,&retorno,sizeof(int));
 			bytes->pid=PID;
 			bytes->pagina=pcb->paginasCodigo+pcb->indiceStack[pcb->posicionStack].varRetorno.pagina;
 			bytes->offset=pcb->indiceStack[pcb->posicionStack].varRetorno.offset;
 			bytes->size=pcb->indiceStack[pcb->posicionStack].varRetorno.size;
-			printf("este es el valor estringeado %s\n", (char*)bytes->valor);
-			printf("este es el buffer : %s\n",buffer );
+			printf("este es el buffer : %i\n",*(int*)(bytes->valor) );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			escribirEnArchivoLog("envio almacenar bytes", &CPULog,nombreLog);
 			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -574,6 +567,7 @@ void posicionarPC(int pos){
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
 				escribirEnArchivoLog("envio stack overflow", &CPULog,nombreLog);
 			}
+			free(bytes->valor);
 			free(bytes);
 			finalizarNivelStack();
 		}
@@ -938,7 +932,7 @@ AnSISOP_kernel kernel_functions = {
 void iniciarEjecucion(char *  linea){
 
 		
-		getchar();
+		// getchar();
 		getchar();
 		pthread_mutex_lock(&mutexPcb);
 		pcb->programCounter++;
@@ -1015,6 +1009,8 @@ while(1) {
 								printf("\t\tInstruccion: %i,\tOffset: %i.\n", pcb->indiceCodigo[j].start, pcb->indiceCodigo[j].offset);
 							}
 							printf("\tCantidad de stack: %i\n", pcb->cantidadStack);
+							printf("etiquetas_size: %i\n", pcb->indiceEtiquetas.etiquetas_size);
+							printf("\tEtiquetas: %.*s\n", pcb->indiceEtiquetas.etiquetas_size,pcb->indiceEtiquetas.etiquetas);
 							printf("\tExit Code: %i\n", pcb->exitCode);
 
 							peticion=malloc(sizeof(t_peticionBytes));
@@ -1035,6 +1031,7 @@ while(1) {
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
 								}
+								linea=strcat(linea,"\0");
 			 					iniciarEjecucion(linea);
 							}
 							else{
@@ -1095,6 +1092,7 @@ while(1) {
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
 								}
+								linea=strcat(linea,"\0");
 			 					iniciarEjecucion(linea);
 							}
 							else{

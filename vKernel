@@ -1,115 +1,559 @@
-==5843== Memcheck, a memory error detector
-==5843== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
-==5843== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
-==5843== Command: ./Kernel
-==5843== Parent PID: 2451
-==5843== 
-==5843== Thread 7:
-==5843== Syscall param socketcall.send(msg) points to uninitialised byte(s)
-==5843==    at 0x40592A8: send (socket.S:98)
-==5843==    by 0x804A335: serial_string (funciones.c:460)
-==5843==    by 0x804ABC0: serial_pcb (funciones.c:559)
-==5843==    by 0x804CF40: enviarDinamico (funciones.c:1091)
-==5843==    by 0x8051FCD: planificar (Kernel.c:1014)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843==  Address 0x70cacba is 2 bytes inside a block of size 12 alloc'd
-==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x805016B: updatePCB (Kernel.c:517)
-==5843==    by 0x8056972: planificar (Kernel.c:1970)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843==  Uninitialised value was created by a heap allocation
-==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x805016B: updatePCB (Kernel.c:517)
-==5843==    by 0x8056972: planificar (Kernel.c:1970)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== 
-==5843== HEAP SUMMARY:
-==5843==     in use at exit: 3,460 bytes in 96 blocks
-==5843==   total heap usage: 17,031,222 allocs, 17,031,126 frees, 343,309,660 bytes allocated
-==5843== 
-==5843== Thread 1:
-==5843== 8 bytes in 1 blocks are definitely lost in loss record 10 of 43
-==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x8051C01: planificar (Kernel.c:960)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== 39 bytes in 3 blocks are definitely lost in loss record 26 of 43
-==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x804A1DA: dserial_string (funciones.c:428)
-==5843==    by 0x804B5D4: dserial_pcb (funciones.c:647)
-==5843==    by 0x804D742: recibirDinamico (funciones.c:1255)
-==5843==    by 0x80568B9: planificar (Kernel.c:1961)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== 136 bytes in 1 blocks are possibly lost in loss record 32 of 43
-==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==5843==    by 0x8057B80: main (Kernel.c:2343)
-==5843== 
-==5843== 136 bytes in 1 blocks are possibly lost in loss record 33 of 43
-==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==5843==    by 0x8058081: main (Kernel.c:2428)
-==5843== 
-==5843== 136 bytes in 1 blocks are definitely lost in loss record 34 of 43
-==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==5843==    by 0x80580BB: main (Kernel.c:2433)
-==5843== 
-==5843== 136 bytes in 1 blocks are definitely lost in loss record 35 of 43
-==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==5843==    by 0x80574ED: comunicarse (Kernel.c:2199)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== 167 (128 direct, 39 indirect) bytes in 3 blocks are definitely lost in loss record 37 of 43
-==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x804B646: dserial_pcb (funciones.c:652)
-==5843==    by 0x804D742: recibirDinamico (funciones.c:1255)
-==5843==    by 0x80568B9: planificar (Kernel.c:1961)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== 360 bytes in 3 blocks are definitely lost in loss record 42 of 43
-==5843==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x804B4FC: dserial_pcb (funciones.c:638)
-==5843==    by 0x804D742: recibirDinamico (funciones.c:1255)
-==5843==    by 0x80568B9: planificar (Kernel.c:1961)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== 544 bytes in 4 blocks are possibly lost in loss record 43 of 43
-==5843==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5843==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==5843==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==5843==    by 0x40527A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==5843==    by 0x805203A: planificar (Kernel.c:1020)
-==5843==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5843==    by 0x416350D: clone (clone.S:129)
-==5843== 
-==5843== LEAK SUMMARY:
-==5843==    definitely lost: 807 bytes in 12 blocks
-==5843==    indirectly lost: 39 bytes in 3 blocks
-==5843==      possibly lost: 816 bytes in 6 blocks
-==5843==    still reachable: 1,798 bytes in 75 blocks
-==5843==         suppressed: 0 bytes in 0 blocks
-==5843== Reachable blocks (those to which a pointer was found) are not shown.
-==5843== To see them, rerun with: --leak-check=full --show-leak-kinds=all
-==5843== 
-==5843== For counts of detected and suppressed errors, rerun with: -v
-==5843== ERROR SUMMARY: 12 errors from 10 contexts (suppressed: 0 from 0)
+==5786== Memcheck, a memory error detector
+==5786== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==5786== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==5786== Command: ./Kernel
+==5786== Parent PID: 2456
+==5786== 
+==5786== Thread 7:
+==5786== Invalid write of size 1
+==5786==    at 0x402D506: strcpy (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054AAD: planificar (Kernel.c:1501)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x7a9965c is 0 bytes after a block of size 12 alloc'd
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054A50: planificar (Kernel.c:1498)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 1
+==5786==    at 0x402D413: __GI_strlen (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x40DCF8D: puts (ioputs.c:36)
+==5786==    by 0x8054B09: planificar (Kernel.c:1504)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x7a9965c is 0 bytes after a block of size 12 alloc'd
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054A50: planificar (Kernel.c:1498)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x8054D19: planificar (Kernel.c:1537)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 0 bytes after a block of size 0 free'd
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x8053BC8: planificar (Kernel.c:1345)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 1
+==5786==    at 0x402D3F3: strlen (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x40565F7: string_length (in /usr/lib/libcommons.so)
+==5786==    by 0x804F0DA: strip (Kernel.c:180)
+==5786==    by 0x80559B1: planificar (Kernel.c:1719)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x7a9965c is 0 bytes after a block of size 12 alloc'd
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054A50: planificar (Kernel.c:1498)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 1
+==5786==    at 0x40BEFEF: vfprintf (vfprintf.c:1661)
+==5786==    by 0x40C42AE: printf (printf.c:33)
+==5786==    by 0x8055A22: planificar (Kernel.c:1725)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x7a9965c is 0 bytes after a block of size 12 alloc'd
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054A50: planificar (Kernel.c:1498)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 1
+==5786==    at 0x402D4F1: strcpy (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8055A5D: planificar (Kernel.c:1727)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x7a9965c is 0 bytes after a block of size 12 alloc'd
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054A50: planificar (Kernel.c:1498)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x8055B7C: planificar (Kernel.c:1748)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 8 bytes inside a block of size 12 free'd
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x4055914: dictionary_destroy_element (in /usr/lib/libcommons.so)
+==5786==    by 0x4055681: internal_dictionary_clean_and_destroy_elements (in /usr/lib/libcommons.so)
+==5786==    by 0x4055453: dictionary_clean_and_destroy_elements (in /usr/lib/libcommons.so)
+==5786==    by 0x40554EE: dictionary_destroy_and_destroy_elements (in /usr/lib/libcommons.so)
+==5786==    by 0x40571A4: config_destroy (in /usr/lib/libcommons.so)
+==5786==    by 0x8057898: chequeoQuantum (Kernel.c:2284)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x805226F: planificar (Kernel.c:1045)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 8 bytes inside a block of size 11 free'd
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x4056E60: add_cofiguration.2790 (in /usr/lib/libcommons.so)
+==5786==    by 0x40565CB: string_iterate_lines (in /usr/lib/libcommons.so)
+==5786==    by 0x4056FC6: config_create (in /usr/lib/libcommons.so)
+==5786==    by 0x8057872: chequeoQuantum (Kernel.c:2282)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x805243D: planificar (Kernel.c:1073)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 8 bytes inside a block of size 11 free'd
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x4056E60: add_cofiguration.2790 (in /usr/lib/libcommons.so)
+==5786==    by 0x40565CB: string_iterate_lines (in /usr/lib/libcommons.so)
+==5786==    by 0x4056FC6: config_create (in /usr/lib/libcommons.so)
+==5786==    by 0x8057872: chequeoQuantum (Kernel.c:2282)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x8055433: planificar (Kernel.c:1650)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 4 bytes after a block of size 4 free'd
+==5786==    at 0x402C324: realloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x40568BA: _string_split (in /usr/lib/libcommons.so)
+==5786==    by 0x4056437: string_n_split (in /usr/lib/libcommons.so)
+==5786==    by 0x4056E2E: add_cofiguration.2790 (in /usr/lib/libcommons.so)
+==5786==    by 0x40565CB: string_iterate_lines (in /usr/lib/libcommons.so)
+==5786==    by 0x4056FC6: config_create (in /usr/lib/libcommons.so)
+==5786==    by 0x8057872: chequeoQuantum (Kernel.c:2282)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 1
+==5786==    at 0x805425A: planificar (Kernel.c:1405)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0xa8135bc is 4 bytes before a block of size 8 alloc'd
+==5786==    at 0x402C324: realloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8051BFE: sacarHeapMetadata (Kernel.c:913)
+==5786==    by 0x80541CC: planificar (Kernel.c:1402)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x80546BA: planificar (Kernel.c:1448)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 4 bytes after a block of size 4 free'd
+==5786==    at 0x402C324: realloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x40568BA: _string_split (in /usr/lib/libcommons.so)
+==5786==    by 0x4056437: string_n_split (in /usr/lib/libcommons.so)
+==5786==    by 0x4056E2E: add_cofiguration.2790 (in /usr/lib/libcommons.so)
+==5786==    by 0x40565CB: string_iterate_lines (in /usr/lib/libcommons.so)
+==5786==    by 0x4056FC6: config_create (in /usr/lib/libcommons.so)
+==5786==    by 0x8057872: chequeoQuantum (Kernel.c:2282)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid free() / delete / delete[] / realloc()
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804FDE0: liberarContenidoPcbTabla (Kernel.c:472)
+==5786==    by 0x804FE1B: updatePCB (Kernel.c:478)
+==5786==    by 0x805621E: planificar (Kernel.c:1855)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x42297c8 is 8 bytes inside a block of size 16 free'd
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x40565CB: string_iterate_lines (in /usr/lib/libcommons.so)
+==5786==    by 0x4056FDB: config_create (in /usr/lib/libcommons.so)
+==5786==    by 0x8057872: chequeoQuantum (Kernel.c:2282)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 4
+==5786==    at 0x8055D46: planificar (Kernel.c:1774)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x610b6d8 is 0 bytes inside a block of size 16 free'd
+==5786==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x4055506: dictionary_destroy_and_destroy_elements (in /usr/lib/libcommons.so)
+==5786==    by 0x40571A4: config_destroy (in /usr/lib/libcommons.so)
+==5786==    by 0x8057898: chequeoQuantum (Kernel.c:2284)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== Invalid read of size 4
+==5786==    at 0x8055D56: planificar (Kernel.c:1774)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  Address 0x9a9a946e is not stack'd, malloc'd or (recently) free'd
+==5786== 
+==5786== 
+==5786== Process terminating with default action of signal 11 (SIGSEGV)
+==5786==  Access not within mapped region at address 0x9A9A946E
+==5786==    at 0x8055D56: planificar (Kernel.c:1774)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786==  If you believe this happened as a result of a stack
+==5786==  overflow in your program's main thread (unlikely but
+==5786==  possible), you can try to increase the size of the
+==5786==  main thread stack using the --main-stacksize= flag.
+==5786==  The main thread stack size used in this run was 8388608.
+==5786== 
+==5786== HEAP SUMMARY:
+==5786==     in use at exit: 5,677 bytes in 154 blocks
+==5786==   total heap usage: 20,192,094 allocs, 20,191,950 frees, 408,381,018 bytes allocated
+==5786== 
+==5786== Thread 1:
+==5786== 1 bytes in 1 blocks are definitely lost in loss record 2 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052360: planificar (Kernel.c:1057)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 1 bytes in 1 blocks are definitely lost in loss record 3 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x805529C: planificar (Kernel.c:1620)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 1 bytes in 1 blocks are definitely lost in loss record 4 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8053CF0: planificar (Kernel.c:1361)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 1 bytes in 1 blocks are definitely lost in loss record 5 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D777: recibirDinamico (funciones.c:1253)
+==5786==    by 0x8056196: planificar (Kernel.c:1846)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 2 bytes in 2 blocks are definitely lost in loss record 6 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052E04: planificar (Kernel.c:1225)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 2 bytes in 2 blocks are definitely lost in loss record 7 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x80547D7: planificar (Kernel.c:1464)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 2 bytes in 2 blocks are definitely lost in loss record 8 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804A157: dserial_string (funciones.c:422)
+==5786==    by 0x804B609: dserial_pcb (funciones.c:645)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052182: planificar (Kernel.c:1032)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 8 bytes in 1 blocks are definitely lost in loss record 18 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8056C10: comunicarse (Kernel.c:2041)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 8 bytes in 1 blocks are definitely lost in loss record 19 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8051C8E: planificar (Kernel.c:961)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 8 bytes in 1 blocks are definitely lost in loss record 20 of 95
+==5786==    at 0x402C324: realloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8051BFE: sacarHeapMetadata (Kernel.c:913)
+==5786==    by 0x80541CC: planificar (Kernel.c:1402)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 8 bytes in 1 blocks are definitely lost in loss record 21 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8055C39: planificar (Kernel.c:1761)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 8 bytes in 1 blocks are definitely lost in loss record 22 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8055D1B: planificar (Kernel.c:1771)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 8 bytes in 2 blocks are definitely lost in loss record 23 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804C87C: dserial_abrirArchivo (funciones.c:929)
+==5786==    by 0x804D8B9: recibirDinamico (funciones.c:1295)
+==5786==    by 0x805475E: planificar (Kernel.c:1459)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 12 bytes in 1 blocks are definitely lost in loss record 28 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054A50: planificar (Kernel.c:1498)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 15 bytes in 1 blocks are definitely lost in loss record 33 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B28E: dserial_pcb (funciones.c:615)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052360: planificar (Kernel.c:1057)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 15 bytes in 1 blocks are definitely lost in loss record 34 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B28E: dserial_pcb (funciones.c:615)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x805529C: planificar (Kernel.c:1620)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 15 bytes in 1 blocks are definitely lost in loss record 35 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B28E: dserial_pcb (funciones.c:615)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8053CF0: planificar (Kernel.c:1361)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 15 bytes in 1 blocks are definitely lost in loss record 36 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B28E: dserial_pcb (funciones.c:615)
+==5786==    by 0x804D777: recibirDinamico (funciones.c:1253)
+==5786==    by 0x8056196: planificar (Kernel.c:1846)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 30 bytes in 2 blocks are definitely lost in loss record 50 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8054C22: planificar (Kernel.c:1528)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 30 bytes in 2 blocks are definitely lost in loss record 51 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B28E: dserial_pcb (funciones.c:615)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052182: planificar (Kernel.c:1032)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 71 (32 direct, 39 indirect) bytes in 1 blocks are definitely lost in loss record 62 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052360: planificar (Kernel.c:1057)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 71 (32 direct, 39 indirect) bytes in 1 blocks are definitely lost in loss record 63 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x805529C: planificar (Kernel.c:1620)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 71 (32 direct, 39 indirect) bytes in 1 blocks are definitely lost in loss record 64 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8053CF0: planificar (Kernel.c:1361)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 71 (32 direct, 39 indirect) bytes in 1 blocks are definitely lost in loss record 65 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D777: recibirDinamico (funciones.c:1253)
+==5786==    by 0x8056196: planificar (Kernel.c:1846)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 112 bytes in 1 blocks are definitely lost in loss record 72 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052360: planificar (Kernel.c:1057)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 112 bytes in 1 blocks are definitely lost in loss record 73 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x805529C: planificar (Kernel.c:1620)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 112 bytes in 1 blocks are definitely lost in loss record 74 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8053CF0: planificar (Kernel.c:1361)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 112 bytes in 1 blocks are definitely lost in loss record 75 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D777: recibirDinamico (funciones.c:1253)
+==5786==    by 0x8056196: planificar (Kernel.c:1846)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 129 (64 direct, 65 indirect) bytes in 2 blocks are definitely lost in loss record 76 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052E04: planificar (Kernel.c:1225)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 129 (64 direct, 65 indirect) bytes in 2 blocks are definitely lost in loss record 77 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x80547D7: planificar (Kernel.c:1464)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 136 bytes in 1 blocks are possibly lost in loss record 78 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5786==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5786==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5786==    by 0x8057C26: main (Kernel.c:2349)
+==5786== 
+==5786== 136 bytes in 1 blocks are possibly lost in loss record 79 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5786==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5786==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5786==    by 0x8058127: main (Kernel.c:2434)
+==5786== 
+==5786== 136 bytes in 1 blocks are definitely lost in loss record 80 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5786==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5786==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5786==    by 0x8058161: main (Kernel.c:2439)
+==5786== 
+==5786== 136 bytes in 1 blocks are definitely lost in loss record 81 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5786==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5786==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5786==    by 0x8057802: aceptar (Kernel.c:2267)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 136 bytes in 1 blocks are definitely lost in loss record 82 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5786==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5786==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5786==    by 0x8057593: comunicarse (Kernel.c:2205)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 142 (64 direct, 78 indirect) bytes in 2 blocks are definitely lost in loss record 84 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B67B: dserial_pcb (funciones.c:650)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052182: planificar (Kernel.c:1032)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 216 bytes in 2 blocks are definitely lost in loss record 89 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052E04: planificar (Kernel.c:1225)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 216 bytes in 2 blocks are definitely lost in loss record 90 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x80547D7: planificar (Kernel.c:1464)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 224 bytes in 2 blocks are definitely lost in loss record 91 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x804B531: dserial_pcb (funciones.c:636)
+==5786==    by 0x804D760: recibirDinamico (funciones.c:1250)
+==5786==    by 0x8052182: planificar (Kernel.c:1032)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 262 (84 direct, 178 indirect) bytes in 1 blocks are definitely lost in loss record 92 of 95
+==5786==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x8055CC4: planificar (Kernel.c:1768)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== 272 bytes in 2 blocks are possibly lost in loss record 93 of 95
+==5786==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==5786==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==5786==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==5786==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==5786==    by 0x8057802: aceptar (Kernel.c:2267)
+==5786==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==5786==    by 0x416350D: clone (clone.S:129)
+==5786== 
+==5786== LEAK SUMMARY:
+==5786==    definitely lost: 2,106 bytes in 50 blocks
+==5786==    indirectly lost: 542 bytes in 15 blocks
+==5786==      possibly lost: 544 bytes in 4 blocks
+==5786==    still reachable: 2,485 bytes in 85 blocks
+==5786==         suppressed: 0 bytes in 0 blocks
+==5786== Reachable blocks (those to which a pointer was found) are not shown.
+==5786== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==5786== 
+==5786== For counts of detected and suppressed errors, rerun with: -v
+==5786== ERROR SUMMARY: 73 errors from 56 contexts (suppressed: 0 from 0)

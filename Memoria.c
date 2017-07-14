@@ -393,7 +393,8 @@ while(flagHilo) {
 	 											send(unData,paquete,peticionBytes->size,0);
 	 											
 	 											escribirEnArchivoLog("envio paquete", &MemoriaLog,nombreLog);
-	 											printf("paquete: %s\n", paquete);
+	 											printf("paquete: %i\n",*(int*) paquete);
+	 											printf("paquete: %s\n",(char*) paquete);
 	 										}
 	 											free(paquete);
 	 											free(peticionBytes);
@@ -457,7 +458,7 @@ while(flagHilo) {
 	 								escribirEnArchivoLog("recibo almacenar bytes", &MemoriaLog,nombreLog);
 	 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
 	 								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
-	 								printf("el valor es %s\n",(char*)bytesAAlmacenar->valor );
+	 								printf("el valor es %i\n",*(int*)bytesAAlmacenar->valor );
 	 								pthread_mutex_lock(&controlMemoria);
 	 								usleep(retardo*1000);
 									if(existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS)==-1)
