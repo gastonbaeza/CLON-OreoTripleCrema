@@ -96,6 +96,41 @@
 #define RESERVADOESPACIO 69
 #define LIBERARPAGINA 71
 #define PRINT 72
+
+
+void DumpHex(const void* data, size_t size) {
+	char * aDumpear=calloc(1,size+1); int primeraVez=1;
+	char * ascii=calloc(1,17 * sizeof(char));
+	size_t i, j;
+	ascii[16] = '\0';
+	for (i = 0; i < size; ++i) {
+		printf("%02X ", ((unsigned char*)data)[i]);
+		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
+			ascii[i % 16] = ((unsigned char*)data)[i];
+		} else {
+			ascii[i % 16] = '.';
+		}
+		if ((i+1) % 8 == 0 || i+1 == size) {
+			printf(" ");
+			if ((i+1) % 16 == 0) {
+				printf("|  %s \n", ascii);
+			} else if (i+1 == size) {
+				ascii[(i+1) % 16] = '\0';
+				if ((i+1) % 16 <= 8) {
+					printf(" ");
+				}
+				for (j = (i+1) % 16; j < 16; ++j) {
+					printf("   ");
+				}
+
+				printf("|  %s \n", ascii);
+				if(primeraVez){strcpy(aDumpear,ascii);primeraVez=0;}
+				else{strcat(aDumpear,ascii);}
+				
+			}
+		}
+	} 
+}
 void horaYFechaActual (char ** horaActual) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
     struct tm *fechaYHora = localtime(&tiempo);
@@ -144,10 +179,34 @@ void generarDumpCache( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int 
 		printf("el numero de pagina  es:%i\n",memoriaCache[unFrame].frame);
 		printf("el pid del proceso es:%i\n",memoriaCache[unFrame].pid);
 		printf("su antiguedad es :%i\n", memoriaCache[unFrame].antiguedad);
-		printf("el contenido en cache es: %.*s\n",MARCO_SIZE,(char*)memoriaCache[unFrame].contenido);
+		printf("%s\n","el contenido en cache es: " );
+		DumpHex(memoriaCache[unFrame].contenido,MARCO_SIZE);
+	}
+
+}
+void generarDumpCacheExtra( t_estructuraCache* memoriaCache, int ENTRADAS_CACHE, int MARCO_SIZE)
+{
+	int unFrame;
+	for(unFrame=0;unFrame<ENTRADAS_CACHE;unFrame++)
+	{
+
+		printf("el numero de pagina  es:%i\n",memoriaCache[unFrame].frame);
+		printf("el pid del proceso es:%i\n",memoriaCache[unFrame].pid);
+		printf("su antiguedad es :%i\n", memoriaCache[unFrame].antiguedad);
+		printf("el contenido en cache es: %*s\n",MARCO_SIZE,(char*)memoriaCache[unFrame].contenido);
+		
 	}
 }
 void generarDumpMemoria(t_marco * marcos, int MARCOS,int MARCO_SIZE)
+{
+	int unMarco=0;
+	for(unMarco=0;unMarco<MARCOS;unMarco++)
+	{	printf("el numero de frame es: %i\n", unMarco);
+		printf("%s\n","el contenido del frame es :");
+		DumpHex(marcos[unMarco].numeroPagina,MARCO_SIZE);
+	}
+}
+void generarDumpMemoriaExtra(t_marco * marcos, int MARCOS,int MARCO_SIZE)
 {
 	int unMarco=0;
 	for(unMarco;unMarco<MARCOS;unMarco++)
@@ -181,16 +240,29 @@ int buscarEntradaMasAntigua(int pid, int pagina,t_estructuraCache * memoriaCache
 	{
 		if(memoriaCache[unaEntrada].pid==pid)cantidadPorProceso++;
 	}
-	if(cantidadPorProceso<CACHE_X_PROC)
+	printf("cache de este pid en total hay %i\n", cantidadPorProceso);
+	if(CACHE_X_PROC==0)
 	{
-		for (unaEntrada=0; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
-		{	
-			if(memoriaCache[unaEntrada].antiguedad>entradaMasAntigua){
-				entradaMasAntigua=memoriaCache[unaEntrada].antiguedad;
-				entradaADevolver=unaEntrada;
-			}
+		return -2;
+	}
+			
+	if(cantidadPorProceso<CACHE_X_PROC)
+	{	
+		
+		if(-1!=(entradaADevolver=hayEspacioEnCache(memoriaCache,ENTRADAS_CACHE)))
+			{return entradaADevolver; }
+		
+		else{
+			for (unaEntrada=0; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
+				{	
+				if(memoriaCache[unaEntrada].antiguedad>entradaMasAntigua)
+					{
+					entradaMasAntigua=memoriaCache[unaEntrada].antiguedad;
+					entradaADevolver=unaEntrada;
+					}
 
-		}
+				}
+			}
 	}
 	else
 	{
@@ -213,25 +285,31 @@ return entradaADevolver;
 }					                                                                                                                                           
 void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio,int modificado,int MARCOS,t_list ** overflow,t_estructuraADM * bloquesAdmin,t_marco * marcos,int MARCO_SIZE,int CACHE_X_PROC,int retardo)
 {	
-	int entrada;
+	int entrada,indice;
 	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)));
-			
-	
-	
 	else
-	{	
-		if(-1!=(entrada=hayEspacioEnCache(memoriaCache, ENTRADAS_CACHE)));
+	{					
 		
-		else //este es el LRU
-		{	
+			//le delegamos todo a entradaMas antigua
 			entrada=buscarEntradaMasAntigua(unPid,pagina,memoriaCache,ENTRADAS_CACHE,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
 			
-		}
+		
 	} 
+	if (entrada==-2)
+	{
+		indice=calcularPosicion(unPid,pagina,MARCOS);
+		entrada=buscarEnOverflow(indice,unPid,pagina,bloquesAdmin,MARCOS,overflow);
+		usleep(retardo*1000);
+		memmove(marcos[entrada].numeroPagina+offset,buffer,tamanio);
+	}
 	printf("la entrada donde queiero reemplazar cuando estra lleno es%i:\n", entrada );
+	if(entrada!=-1){
+	printf("offset: %i\n", offset);
+	printf("buffer: %i\n", *(int*)buffer);
+	printf("tamaño: %i\n", tamanio);
 	memmove((memoriaCache[entrada]).contenido+offset,buffer,tamanio);
 	
-	// printf("memoriaCache[entrada].contenido: %s.\n",(char*)(memoriaCache[entrada]).contenido );
+	
 	
 	(memoriaCache[entrada]).antiguedad=0;
 	(memoriaCache[entrada]).pid=unPid;
@@ -239,7 +317,8 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 	(memoriaCache[entrada]).modificado=modificado;
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 }
-char * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
+}
+void * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
 {	void * buffer=calloc(1,tamanio);
 	int entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE);
 	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio-1);
@@ -268,7 +347,7 @@ void almacenarBytes(int unPid, int pagina,void * contenido,t_marco * marcos, int
  								
 }
 
-void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)//expandir despues esa funcion para que informe cosas mas lindas
+void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS,int MARCO_SIZE)//expandir despues esa funcion para que informe cosas mas lindas
 {
 
 	int encontrados=0;
@@ -282,16 +361,16 @@ void calcularTamanioProceso(int pid, t_estructuraADM * bloquesAdmin, int MARCOS)
 
 	}
 	if(encontrados==0) printf("%s\n","El pid no se encuentra en memoria" );
-	else{printf("Se encontraron %i %s\n",encontrados,"paginas asociadas a ese proceso" );}
+	else{printf("el tamaño del proceso es de  %i %s\n",encontrados*MARCO_SIZE,"bytes" );}
 }
-void generarDumpProceso(t_estructuraADM * bloquesAdmin, int MARCOS, int pid,t_marco * marcos)
+void generarDumpProceso(t_estructuraADM * bloquesAdmin, int MARCOS, int pid,t_marco * marcos,int MARCO_SIZE)
 {	int encontrados=0;
 	int unMarco=0;
 	for(unMarco;unMarco<MARCOS;unMarco++)
 	{
 		if(bloquesAdmin[unMarco].pid==pid)
 		{encontrados++;
-			printf("%p\n",marcos[unMarco].numeroPagina);
+			DumpHex(marcos[unMarco].numeroPagina,MARCO_SIZE);
 		}
 
 	}
@@ -1461,6 +1540,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 	    				{
 	    				tamanioAPegar=tamanioCodigo-acumulador;
 	    				}
+	    				printf("acumulador: %i\n",acumulador ); printf("tamanioAPegar %i\n",tamanioAPegar );
 	    			memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador*sizeof(char),tamanioAPegar);
 					
 					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar,0,MARCOS,overflow,bloquesAdmin,*marcos,MARCO_SIZE,CACHE_X_PROC,retardo);

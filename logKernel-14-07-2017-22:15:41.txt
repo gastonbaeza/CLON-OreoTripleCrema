@@ -1,0 +1,37 @@
+en aceptar 
+en comunicarse
+en comunicarse
+en case solicitud pcb
+en planificacion
+en case pcb
+en comunicarse
+en case path
+recibo path
+envio solicitud memoria
+envio resultado iniciar programa
+envio pcb
+en case espero novedades
+envio continuar
+en case reservar espacio
+recibo reservar espacio
+recibo pcb
+envio asignar paginas
+envio resevar espacio
+envio pcb
+en case espero novedades
+envio continuar
+en case abrir archivo
+recibo abrir archivo
+recibo pcb
+envio validar archivo
+envio pcb
+envio abrir archivo
+en case espero novedades
+envio continuar
+en case solicitud sem wait
+recibo solicitud sem wait
+en case espero novedades
+envio continuar
+en case leer archivo
+recibo leer archivo
+bo pcb

@@ -1,0 +1,18 @@
+envio un buffer
+en comunicarse
+en case solicitud memoria
+recibo solicitud memoria
+envio respuesta
+en case solicitud memoria
+recibo solicitud memoria
+envio respuesta
+envio un buffer
+en comunicarse
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete
+en case solicitud bytes
+recibo solicitud bytes
+envio informancion
+envio paquete

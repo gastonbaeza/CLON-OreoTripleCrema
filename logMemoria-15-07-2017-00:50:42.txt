@@ -1,0 +1,2 @@
+envio un buffer
+en comunicarse

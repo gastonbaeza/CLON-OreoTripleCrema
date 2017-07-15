@@ -827,13 +827,12 @@ void posicionarPC(int pos){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("en cpu_escribir\n");
 			escribirEnArchivoLog("en escribir archivo", &CPULog,nombreLog);
+			printf("fd: %i\n", descriptor_archivo);
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
-			escribirArchivo->informacion=malloc(tamanio+1);
-			printf("informacion: %s.\n", (char *) informacion);
+			escribirArchivo->informacion=malloc(tamanio);
 			memcpy(escribirArchivo->informacion,informacion,tamanio);
-			strcat(escribirArchivo->informacion,"\0");
 			printf("escribirArchivo->informacion: %s.\n",(char*) escribirArchivo->informacion);
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
@@ -869,6 +868,7 @@ void posicionarPC(int pos){
 			t_leerArchivo * leerArchivo;
 			t_paqueteFS * paqueteFS;
 			leerArchivo=malloc(sizeof(t_leerArchivo));
+			printf("FD: %i\n", descriptor_archivo);
 			leerArchivo->descriptor=descriptor_archivo;
 			leerArchivo->tamanio=tamanio;
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
@@ -893,6 +893,12 @@ void posicionarPC(int pos){
 			bytes->size=tamanio;
 			memcpy(bytes->valor,paqueteFS->paquete,tamanio);
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
+			int rv;
+			while(0>recv(socketMemoria,&rv,sizeof(int),0));
+			if (rv==-1)
+			{
+				enviarDinamico(STACKOVERFLOW,socketKernel,1);
+			}
 			escribirEnArchivoLog("envio almacenar bytes", &CPULog,nombreLog);
 			free(paqueteFS->paquete);
 			free(paqueteFS);
@@ -933,7 +939,7 @@ void iniciarEjecucion(char *  linea){
 
 		
 		// getchar();
-		getchar();
+		// getchar();
 		pthread_mutex_lock(&mutexPcb);
 		pcb->programCounter++;
 		pthread_mutex_unlock(&mutexPcb);
@@ -1093,6 +1099,8 @@ while(1) {
 									perror("asd:");
 								}
 								linea=strcat(linea,"\0");
+								printf("linea: %s.\n", linea);
+								printf("linea: %i.\n",*(int*) linea);
 			 					iniciarEjecucion(linea);
 							}
 							else{

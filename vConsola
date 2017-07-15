@@ -1,33 +1,6 @@
-==5798== Memcheck, a memory error detector
-==5798== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
-==5798== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
-==5798== Command: ./Consola
-==5798== Parent PID: 2412
-==5798== 
-==5798== Thread 2:
-==5798== Invalid free() / delete / delete[] / realloc()
-==5798==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5798==    by 0x804F0E3: calcularTiempo (Consola.c:127)
-==5798==    by 0x804F588: receptor (Consola.c:198)
-==5798==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5798==    by 0x415D50D: clone (clone.S:129)
-==5798==  Address 0x4223193 is 11 bytes inside a block of size 20 alloc'd
-==5798==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5798==    by 0x804EEF1: calcularTiempo (Consola.c:108)
-==5798==    by 0x804F588: receptor (Consola.c:198)
-==5798==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5798==    by 0x415D50D: clone (clone.S:129)
-==5798== 
-==5798== Invalid free() / delete / delete[] / realloc()
-==5798==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5798==    by 0x804F0EE: calcularTiempo (Consola.c:128)
-==5798==    by 0x804F588: receptor (Consola.c:198)
-==5798==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5798==    by 0x415D50D: clone (clone.S:129)
-==5798==  Address 0x42231db is 11 bytes inside a block of size 20 alloc'd
-==5798==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==5798==    by 0x804EF08: calcularTiempo (Consola.c:109)
-==5798==    by 0x804F588: receptor (Consola.c:198)
-==5798==    by 0x4051F6F: start_thread (pthread_create.c:312)
-==5798==    by 0x415D50D: clone (clone.S:129)
-==5798== 
+==13556== Memcheck, a memory error detector
+==13556== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==13556== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==13556== Command: ./Consola
+==13556== Parent PID: 9069
+==13556== 

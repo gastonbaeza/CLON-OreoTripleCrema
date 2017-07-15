@@ -739,11 +739,11 @@ void consola(){
 						for (j = 0; j < PCBS[i].cantidadArchivos; j++)
 						{
 							printf("\t\tFD[%i]:\tPermisos: '", j+3);
-							if (PCBS[i].referenciaATabla[j].flags.creacion)
+							if (PCBS[i].referenciaATabla[j].flags.creacion==1)
 								printf("C");
-							if (PCBS[i].referenciaATabla[j].flags.lectura)
+							if (PCBS[i].referenciaATabla[j].flags.lectura==1)
 								printf("L");
-							if (PCBS[i].referenciaATabla[j].flags.escritura)
+							if (PCBS[i].referenciaATabla[j].flags.escritura==1)
 								printf("E");
 							printf("'\tFD Global: %i\n",PCBS[i].referenciaATabla[j].globalFd);
 							printf("'\tAbierto: %i\n",PCBS[i].referenciaATabla[j].abierto);
@@ -930,7 +930,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 	t_pcb * pcb;
 	int cpuLibre = 1,exitCode;
 	int pagina,offset;
-	flagQuantum=0;
+	flagQuantum=89;
 	t_seleccionador * seleccionador;
 	pthread_t hiloQuantum;
 	int primerAcceso=1,error=0;
@@ -959,16 +959,29 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 	while(PLANIFICACIONHABILITADA)
 	{
 		seleccionador=malloc(sizeof(t_seleccionador));
-		seleccionador->tipoPaquete=PCB;
-		
+		printf("primerAcceso: %i\n",primerAcceso );
 		if (primerAcceso){
-					primerAcceso=0;}
+			seleccionador->tipoPaquete=PCB;
+			primerAcceso=0;}
 		else
-			while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0)){printf("paa\n");}
+			while(0>=(rv=recv(socket, seleccionador, sizeof(t_seleccionador), 0))){
+				if (rv==0)
+				{
+					PLANIFICACIONHABILITADA=0;
+					seleccionador->tipoPaquete=999;
+					break;
+				}
+			}
 		printf("Paquete: %i\n", seleccionador->tipoPaquete);
 		switch(seleccionador->tipoPaquete)
-		{
+		{	
+			case 999:
+			break;
 			case ESPERONOVEDADES:
+				if (!strcmp(ALGORITMO,"RR"))
+				{	
+					flagQuantum--;
+				}
 				escribirEnArchivoLog("en case espero novedades", &KernelLog,nombreLog);
 				if (estaBlocked(pid)) // SI ESTA BLOQUEADO MANDO PARAREJECUCION
 					{enviarDinamico(PARAREJECUCION,socket, NULL);
@@ -983,12 +996,13 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				else if (PCBS[pid].estado==EXIT && PCBS[pid].exitCode==0)
 					{seleccionador->tipoPaquete=PCB;
 					primerAcceso=1;}
-				else if (flagQuantum) // SI TERMINO QUANTUM MANDO FINQUANTUM
+				else if (flagQuantum==0) // SI TERMINO QUANTUM MANDO FINQUANTUM
 					{enviarDinamico(FINQUANTUM, socket,NULL);
-						flagQuantum=0;
 					escribirEnArchivoLog("envio fin de quantum", &KernelLog,nombreLog);}
 				else // SI NO HAY NOVEDADES MANDO CONTINUAR
-					{enviarDinamico(CONTINUAR, socket,NULL);
+					{
+					usleep(QUANTUM_SLEEP*1000);
+					enviarDinamico(CONTINUAR, socket,NULL);
 					escribirEnArchivoLog("envio continuar", &KernelLog,nombreLog);}		
 				break;
 			case PCB:	
@@ -1012,13 +1026,13 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						COLAEXEC[CANTIDADEXECS-1]=pid;
 						pthread_mutex_unlock(&mutexColaExec);
 						// LE MANDO EL PCB AL CPU
+						usleep(QUANTUM_SLEEP*1000);
 						enviarDinamico(PCB,socket,pcb);
 						escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
 						cpuLibre=0;
 						if (!strcmp(ALGORITMO,"RR"))
-						{
-							flagQuantum=0;
-							pthread_create(&hiloQuantum,NULL,(void *)quantum,&flagQuantum);
+						{	
+							flagQuantum=QUANTUM;
 						}
 						free(pcb);
 			break;
@@ -1635,16 +1649,19 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 					}
 					pthread_mutex_lock(&mutexTablaArchivos);
 					tablaArchivos[i].vecesAbierto--;
-					for (; i < CANTTABLAARCHIVOS; i++)
-						{
-							if (!(i+1==CANTTABLAARCHIVOS))
+					if (tablaArchivos[i].vecesAbierto==0)
+					{
+						for (; i < CANTTABLAARCHIVOS; i++)
 							{
-								memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+								if (!(i+1==CANTTABLAARCHIVOS))
+								{
+									memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+								}
 							}
-						}
-					CANTTABLAARCHIVOS--;
-					proximoFd--;
-					tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+						CANTTABLAARCHIVOS--;
+						proximoFd--;
+						tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+					}
 					pthread_mutex_unlock(&mutexTablaArchivos);
 				}
 				updatePCB(pcb);
@@ -1681,13 +1698,12 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				escribirArchivo=malloc(sizeof(t_escribirArchivo));
 				recibirDinamico(ESCRIBIRARCHIVO,socket,escribirArchivo);
 				escribirEnArchivoLog("recibo escribir archivo", &KernelLog,nombreLog);
-				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
-				printf("info: %s\n", (char*)escribirArchivo->informacion);
-				
+				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));				
 				mensaje=malloc(sizeof(t_mensaje));
 				mensaje->mensaje=calloc(1,escribirArchivo->tamanio+1);
 				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCB,socket,pcb);
+				printf("FD: %i\n", escribirArchivo->fdArchivo);
 				printf("abierto: %i\n", pcb->referenciaATabla[0].abierto);
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 					if (escribirArchivo->fdArchivo==1)
@@ -1764,14 +1780,14 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				printf("aca\n");
 				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
 				printf("aca\n");
-
-						pcb=malloc(sizeof(t_pcb));
+				pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCB,socket,pcb);
 				escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 				paqueteFS=calloc(1,sizeof(t_paqueteFS));
 				paqueteFS->tamanio=0;
 				pcb->privilegiadasEjecutadas++;
-				if (pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].abierto==0)
+				printf("fd: %i\n",leerArchivo->descriptor );
+				if (pcb->referenciaATabla[(leerArchivo->descriptor)-3].abierto==0)
 				{
 					error-14;
 				}
@@ -1790,6 +1806,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 								break;
 							}
 						}
+						printf("tablaArchivos[i].path: %s.\n", tablaArchivos[i].path);
 						leerArchivoFS->tamanioPath=strlen(tablaArchivos[i].path);
 						leerArchivoFS->path=calloc(1,leerArchivoFS->tamanioPath+1);
 						printf("path en tabla: %s.\n", tablaArchivos[i].path);

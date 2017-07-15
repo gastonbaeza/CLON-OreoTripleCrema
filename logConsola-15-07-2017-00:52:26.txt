@@ -1,0 +1,2 @@
+en iniciar programa
+envio path

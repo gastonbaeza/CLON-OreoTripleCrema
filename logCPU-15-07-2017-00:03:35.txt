@@ -1,0 +1,380 @@
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en definir variable
+en definir variable
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en reservar
+envio reservar espacio
+envio pcb
+recibo reservado espacio
+recibo pcb
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en abrir archivo
+envio abrir archivo
+envio pcb
+recibo pcb
+recibo abrio archivo
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en wait
+envio sem wait
+envio espero novedades
+en case parar ejecucion
+envio pcb bloquead
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en definir variable
+en definir variable
+en definir variable
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en reservar
+envio reservar espacio
+envio pcb
+recibo reservado espacio
+recibo pcb
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en abrir archivo
+envio abrir archivo
+envio pcb
+recibo pcb
+recibo abrio archivo
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en obtener posicion variable
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en asignar
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en dereferenciar
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en escribir archivo
+envio escribir archivo
+envio pcb
+recibo pcb
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en signal
+envio solicitud sem signal
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en obtener posicion variable
+en dereferenciar
+envio solicitud bytes
+en leer archivo
+envio leer archivo
+envio pcb
+recibo paquete fs
+recibo pcb
+envio almacenar bytes
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en wait
+envio sem wait
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb
+envio solicitud bytes
+en llamada sin retorno
+envio espero novedades
+en case fin de quantum
+envio fin quamtum
+envio espero novedades
+en case pcb
+recibo pcb

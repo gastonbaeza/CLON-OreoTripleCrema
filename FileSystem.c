@@ -136,10 +136,11 @@ FILE* getSiguiente(char**BLOQUES,int index){
 	bloqueConBin=strcat(bloqueConBin,".bin");
 	char*rutaParcial=calloc(1,200);
 	strcpy(rutaParcial,PUNTO_MONTAJE);
-	rutaParcial=strcat(rutaParcial,"Bloques/");
+	rutaParcial=strcat(rutaParcial,"/Bloques/");
 	char*rutaFinal=calloc(1,200);
 	strcpy(rutaFinal,rutaParcial);
 	rutaFinal=strcat(rutaFinal,bloqueConBin);
+	printf("rutaFinal: %s\n", rutaFinal);
 	FILE*f=fopen(rutaFinal,"rb");
 	free(bloqueConBin);
 	free(rutaParcial);
@@ -249,19 +250,18 @@ if(metadataFS->cantBloques%8==0)
 else {bloques=metadataFS->cantBloques+1;}
 
 char* bmap;
+FILE * bitmap;
 direccion=strcat(direccion,"/Metadata/Bitmap.bin"); 
 
-
- FILE * bitmap = fopen(direccion,"wb"); 
-if (bitmap!=NULL)
-{
-	fseek(bitmap, 0L, SEEK_END);
-	size = ftell(bitmap);
-	if(size<1)
-	{truncate(direccion,bloques/8);}
+if( access( direccion, F_OK ) != -1 ) {
+	
+} else {
+	bitmap = fopen(direccion,"wb"); 
+	truncate(direccion,bloques/8);
 	fclose(bitmap);
 }
-else{printf("%s\n","que carajos esta pasando" );}
+
+
 	bitmap1=open(direccion,O_RDWR);printf("el bitmap es %i\n", bitmap1);
 	
 	bmap = mmap(0, bloques, PROT_WRITE | PROT_READ, MAP_SHARED, bitmap1, 0); 
@@ -449,7 +449,8 @@ while(1){
 				printf("leerArchivoFS->size: %i.\n", leerArchivoFS->size);
 				resultado->paquete=malloc(leerArchivoFS->size);
 				auxResultado=resultado->paquete;
-				if (offset+leerArchivoFS->size<tamBloques)
+
+				if ((offset+leerArchivoFS->size)<tamBloques)
 				{
 					fread(auxResultado,leerArchivoFS->size,1,f);
 					resultado->tamanio=leerArchivoFS->size;
@@ -464,9 +465,9 @@ while(1){
 					index++;
 					f=getSiguiente(BLOQUES,index);
 
-					if (leerArchivoFS->size-resultado->tamanio<tamBloques)
+					if ((leerArchivoFS->size-resultado->tamanio)<tamBloques)
 					{
-						fread(auxResultado,leerArchivoFS->size-resultado->tamanio,1,f);
+						fread(auxResultado,(leerArchivoFS->size-resultado->tamanio),1,f);
 						resultado->tamanio+=(leerArchivoFS->size-resultado->tamanio);
 					}
 					else{

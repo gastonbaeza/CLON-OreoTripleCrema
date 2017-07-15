@@ -262,7 +262,7 @@ fflush(stdout);
 escribirEnArchivoLog("en comunicarse", &MemoriaLog,nombreLog);
 int * buffer;
 int unData=*socket;
-
+void * auxiliar;
 int a=1;
 t_seleccionador * seleccionador;
 int entrada;
@@ -369,8 +369,11 @@ while(flagHilo) {
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
 	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en cache
 	 											printf("entre a cache\n");
-	 											
-	 											paquete=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
+	 											paquete=calloc(1,peticionBytes->size);
+	 											auxiliar=calloc(1,peticionBytes->size);
+	 											auxiliar=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
+	 											memcpy(paquete,auxiliar,peticionBytes->size);
+	 											free(auxiliar);
 	 											printf("%s\n","cargue el paquete con la solicitud" );
 	 										}
 	 										else
@@ -380,6 +383,7 @@ while(flagHilo) {
 	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
 	 											pthread_mutex_lock(&controlMemoria);
 	 											usleep(retardo*1000);
+	 											paquete=calloc(1,peticionBytes->size);
 	 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
 	 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE,0,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
 	 											pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
@@ -469,7 +473,7 @@ while(flagHilo) {
 									}
 									else
 									{usleep(retardo*1000);
-									almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);
+									almacenarBytes(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bytesAAlmacenar->valor, marcos,MARCOS, bytesAAlmacenar->offset,bytesAAlmacenar->size,bloquesAdmin,overflow,memoriaCache,ENTRADAS_CACHE,MARCO_SIZE,CACHE_X_PROC,retardo);
 									confirmacion=0;pthread_mutex_unlock(&controlMemoria);
 									send(unData, &confirmacion, sizeof(int),0);
 									escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
@@ -532,9 +536,16 @@ while(flagHilo) {
 void consolaMemoria()
 {	printf("%s\n", "bienvenido a la consola de memoria");
 	int pid;
-	int unMarco;
-	
+	int unFrame;
+	int unaAdmin;
+	char * dumpEntero;
+	FILE* dumpLog;
+	char * bufferLog;
+	int unProceso=0;
+	int encontrados=0;
+	int unMarco=0;
 	int cancelarThread=0;
+	char * aEscribir; char* datoAdmin;
 	while(cancelarThread==0)
 	{ system("clear");
 	int * instruccionConsola=malloc(sizeof(int));
@@ -567,35 +578,148 @@ void consolaMemoria()
 					fflush(stdout);printf("%s\n", "Para realizar un dump de cache ingrese 0"); 
 					fflush(stdout);printf("%s\n", "Para realizar un dump de memoria ingrese 1"); 
 					fflush(stdout);printf("%s\n", "Para realizar un dump de administrativas ingrese 2"); 
-					fflush(stdout);printf("%s\n", "Para realizar un dump de un proceso ingrese 3"); 
+					
 					fflush(stdout);printf("%s\n","para realizar un dump de overflow ingrese 4" );
 
 
 					scanf("%d",instruccionConsola);//preguntar si en disco quiere decir en filesystem o en disco posta
 					switch(*instruccionConsola)
 					{
-						case CACHE:
-									system("clear");
-									generarDumpCache(memoriaCache,ENTRADAS_CACHE,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
-						break;
+						case CACHE:	
+										system("clear");
+										bufferLog=calloc(1,(MARCO_SIZE*ENTRADAS_CACHE)+1); bufferLog[MARCO_SIZE*ENTRADAS_CACHE]='\0';
+										dumpLog=fopen("cacheDump.bin","wb");
+									for(unFrame=0;unFrame<ENTRADAS_CACHE;unFrame++)
+									{
+										printf("el numero de pagina  es:%i\n",memoriaCache[unFrame].frame);
+										printf("el pid del proceso es:%i\n",memoriaCache[unFrame].pid);
+										printf("su antiguedad es :%i\n", memoriaCache[unFrame].antiguedad);
+										printf("%s\n","el contenido en cache es: " );
+										DumpHex(memoriaCache[unFrame].contenido,MARCO_SIZE);
+									}
+									/*dumpEntero=(char*)DumpHex(memoriaCache[0],MARCO_SIZE*ENTRADAS_CACHE);
+									strcpy(bufferLog,dumpEntero);
+									fwrite(bufferLog,MARCO_SIZE*ENTRADAS_CACHE,1,dumpLog);*/
+									fclose(dumpLog);
+									printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+									
 						case MEMORIA:
 										system("clear");
-										/*usleep(retardo*1000);*/
-										generarDumpMemoria(asignador,MARCOS,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+										usleep(retardo*1000);
+										datoAdmin=calloc(1,9);
+										bufferLog=calloc(1,MARCO_SIZE+1); bufferLog[MARCO_SIZE]='\0';
+										dumpLog=fopen("memoriaDump.bin","wb");
+
+										for(unMarco=0;unMarco<MARCOS;unMarco++)
+										{	
+											printf("el numero de frame es: %i\n", unMarco);
+											printf("%s\n","el contenido del frame es :");
+											DumpHex(marcos[unMarco].numeroPagina,MARCO_SIZE);
+											/*strcpy(bufferLog, "Marco  numero:"); 
+											sprintf(datoAdmin,"%d",unMarco);
+
+											strcat(bufferLog,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(bufferLog,strlen(bufferLog),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											strcpy(bufferLog, "el contenido de marco es: ");
+											
+											
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(bufferLog,strlen(bufferLog),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											strcpy(bufferLog, dumpEntero); 
+											
+											
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(bufferLog,MARCO_SIZE,1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+*/
+										}
+										
+									
+										fclose(dumpLog);
+										printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+										free(dumpEntero);free(datoAdmin);
 						break;
 						case TABLA:
 										system("clear");
-										/*usleep(retardo*1000);*/
-										generarDumpAdministrativas(bloquesAdmin, MARCOS);	printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+										usleep(retardo*1000);
+										datoAdmin=calloc(1,9);
+										aEscribir=calloc(1,1000);
+										dumpLog=fopen("tabla.bin","wb");
+										for (unaAdmin= 0; unaAdmin < MARCOS; unaAdmin++)
+										{fflush(stdout);printf("%s\n","tabla de paginas");
+	
+											fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pid);
+											fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].pagina);
+											fflush(stdout);printf("%i\n",bloquesAdmin[unaAdmin].estado);
+											
+											
+											strcpy(aEscribir, "administrativa nummero:");
+											sprintf(datoAdmin,"%d",unaAdmin);
+											strcat(aEscribir,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											strcpy(aEscribir, "pid asociado a la admministrativa:");
+											sprintf(datoAdmin,"%d",bloquesAdmin[unaAdmin].pid);
+											strcat(aEscribir,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											strcpy(aEscribir, "pagina asociada a la admministrativa:");
+											sprintf(datoAdmin,"%d",bloquesAdmin[unaAdmin].pagina);
+											strcat(aEscribir,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											strcpy(aEscribir, "estado asociado a la admministrativa:");
+											sprintf(datoAdmin,"%d",bloquesAdmin[unaAdmin].estado);
+											strcat(aEscribir,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+
+										}
+										printf("%s\n","lista de procesos activos:" ); 
+										for (unProceso = 0; unProceso < MARCOS; unProceso++)
+										{	
+											if(bloquesAdmin[unProceso].pid != -1)
+											{
+											fflush(stdout);printf("proceso: %i\n",bloquesAdmin[unProceso].pid);
+
+											strcat(aEscribir, "********************Listado de procesos Activos********************");
+											
+											strcat(aEscribir,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											strcat(aEscribir, "Proceso:");
+											sprintf(datoAdmin,"%d",bloquesAdmin[unProceso].pid);
+											strcat(aEscribir,datoAdmin);
+											fseek(dumpLog,0,SEEK_END);
+											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
+
+											}
+		
+		
+										}
+											printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
+											
+											fclose(dumpLog);
+											free(datoAdmin);
+											free(aEscribir);
 						break;
-						case PID:		system("clear");
-										printf("%s\n","ingrese un pid para realizar dump" );
-										getchar();
-										scanf("%d",&pid);
-										printf("%i",pid);
-										/*usleep(retardo*1000);*/
-										generarDumpProceso(bloquesAdmin,MARCOS,pid,marcos); printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
-						break;
+						
 						case 4 : system("clear");
 									generarDumpOverflow(overflow,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 									break;
@@ -635,7 +759,7 @@ void consolaMemoria()
 				break;
 				case PIDSIZE:system("clear"); printf("%s\n","ingrese un pid" );
 				getchar(); scanf("%d",&pid);
-				 calcularTamanioProceso(pid,bloquesAdmin,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola"); getchar();getchar();
+				 calcularTamanioProceso(pid,bloquesAdmin,MARCOS,MARCO_SIZE);printf("%s\n", "presione una tecla para volver al menu de la consola"); getchar();getchar();
 				break;
 				default: pagaraprata();
 				break;
@@ -646,8 +770,9 @@ void consolaMemoria()
 	default:	
 	break;
 	}
+	
 	free(instruccionConsola);
-	}
+	}free(dumpLog);
 }
 
 
