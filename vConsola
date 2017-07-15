@@ -1,78 +1,78 @@
-==18974== Memcheck, a memory error detector
-==18974== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
-==18974== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
-==18974== Command: ./Consola
-==18974== Parent PID: 3045
-==18974== 
-==18974== Thread 2:
-==18974== Invalid free() / delete / delete[] / realloc()
-==18974==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x804F561: calcularTiempo (Consola.c:127)
-==18974==    by 0x804F9FF: receptor (Consola.c:198)
-==18974==    by 0x405BF6F: start_thread (pthread_create.c:312)
-==18974==    by 0x415D50D: clone (clone.S:129)
-==18974==  Address 0x4222fab is 11 bytes inside a block of size 20 alloc'd
-==18974==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x804F36F: calcularTiempo (Consola.c:108)
-==18974==    by 0x804F9FF: receptor (Consola.c:198)
-==18974==    by 0x405BF6F: start_thread (pthread_create.c:312)
-==18974==    by 0x415D50D: clone (clone.S:129)
-==18974== 
-==18974== Invalid free() / delete / delete[] / realloc()
-==18974==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x804F56C: calcularTiempo (Consola.c:128)
-==18974==    by 0x804F9FF: receptor (Consola.c:198)
-==18974==    by 0x405BF6F: start_thread (pthread_create.c:312)
-==18974==    by 0x415D50D: clone (clone.S:129)
-==18974==  Address 0x4222ff3 is 11 bytes inside a block of size 20 alloc'd
-==18974==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x804F386: calcularTiempo (Consola.c:109)
-==18974==    by 0x804F9FF: receptor (Consola.c:198)
-==18974==    by 0x405BF6F: start_thread (pthread_create.c:312)
-==18974==    by 0x415D50D: clone (clone.S:129)
-==18974== 
-==18974== 
-==18974== HEAP SUMMARY:
-==18974==     in use at exit: 655 bytes in 14 blocks
-==18974==   total heap usage: 84 allocs, 72 frees, 4,025 bytes allocated
-==18974== 
-==18974== Thread 1:
-==18974== 20 bytes in 1 blocks are possibly lost in loss record 8 of 14
-==18974==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x804F386: calcularTiempo (Consola.c:109)
-==18974==    by 0x804F9FF: receptor (Consola.c:198)
-==18974==    by 0x405BF6F: start_thread (pthread_create.c:312)
-==18974==    by 0x415D50D: clone (clone.S:129)
-==18974== 
-==18974== 20 bytes in 1 blocks are definitely lost in loss record 9 of 14
-==18974==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x804F36F: calcularTiempo (Consola.c:108)
-==18974==    by 0x804F9FF: receptor (Consola.c:198)
-==18974==    by 0x405BF6F: start_thread (pthread_create.c:312)
-==18974==    by 0x415D50D: clone (clone.S:129)
-==18974== 
-==18974== 136 bytes in 1 blocks are possibly lost in loss record 12 of 14
-==18974==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==18974==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==18974==    by 0x405C7A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==18974==    by 0x805000D: main (Consola.c:299)
-==18974== 
-==18974== 136 bytes in 1 blocks are possibly lost in loss record 13 of 14
-==18974==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
-==18974==    by 0x401117E: allocate_dtv (dl-tls.c:296)
-==18974==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
-==18974==    by 0x405C7A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
-==18974==    by 0x805038B: main (Consola.c:363)
-==18974== 
-==18974== LEAK SUMMARY:
-==18974==    definitely lost: 20 bytes in 1 blocks
-==18974==    indirectly lost: 0 bytes in 0 blocks
-==18974==      possibly lost: 292 bytes in 3 blocks
-==18974==    still reachable: 343 bytes in 10 blocks
-==18974==         suppressed: 0 bytes in 0 blocks
-==18974== Reachable blocks (those to which a pointer was found) are not shown.
-==18974== To see them, rerun with: --leak-check=full --show-leak-kinds=all
-==18974== 
-==18974== For counts of detected and suppressed errors, rerun with: -v
-==18974== ERROR SUMMARY: 6 errors from 6 contexts (suppressed: 0 from 0)
+==19458== Memcheck, a memory error detector
+==19458== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==19458== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==19458== Command: ./Consola
+==19458== Parent PID: 3045
+==19458== 
+==19458== Thread 2:
+==19458== Invalid free() / delete / delete[] / realloc()
+==19458==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x804F561: calcularTiempo (Consola.c:127)
+==19458==    by 0x804F9FF: receptor (Consola.c:198)
+==19458==    by 0x405BF6F: start_thread (pthread_create.c:312)
+==19458==    by 0x415D50D: clone (clone.S:129)
+==19458==  Address 0x422bb03 is 11 bytes inside a block of size 20 alloc'd
+==19458==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x804F36F: calcularTiempo (Consola.c:108)
+==19458==    by 0x804F9FF: receptor (Consola.c:198)
+==19458==    by 0x405BF6F: start_thread (pthread_create.c:312)
+==19458==    by 0x415D50D: clone (clone.S:129)
+==19458== 
+==19458== Invalid free() / delete / delete[] / realloc()
+==19458==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x804F56C: calcularTiempo (Consola.c:128)
+==19458==    by 0x804F9FF: receptor (Consola.c:198)
+==19458==    by 0x405BF6F: start_thread (pthread_create.c:312)
+==19458==    by 0x415D50D: clone (clone.S:129)
+==19458==  Address 0x422bb4b is 11 bytes inside a block of size 20 alloc'd
+==19458==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x804F386: calcularTiempo (Consola.c:109)
+==19458==    by 0x804F9FF: receptor (Consola.c:198)
+==19458==    by 0x405BF6F: start_thread (pthread_create.c:312)
+==19458==    by 0x415D50D: clone (clone.S:129)
+==19458== 
+==19458== 
+==19458== HEAP SUMMARY:
+==19458==     in use at exit: 655 bytes in 14 blocks
+==19458==   total heap usage: 719 allocs, 707 frees, 7,576 bytes allocated
+==19458== 
+==19458== Thread 1:
+==19458== 20 bytes in 1 blocks are possibly lost in loss record 8 of 14
+==19458==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x804F386: calcularTiempo (Consola.c:109)
+==19458==    by 0x804F9FF: receptor (Consola.c:198)
+==19458==    by 0x405BF6F: start_thread (pthread_create.c:312)
+==19458==    by 0x415D50D: clone (clone.S:129)
+==19458== 
+==19458== 20 bytes in 1 blocks are definitely lost in loss record 9 of 14
+==19458==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x804F36F: calcularTiempo (Consola.c:108)
+==19458==    by 0x804F9FF: receptor (Consola.c:198)
+==19458==    by 0x405BF6F: start_thread (pthread_create.c:312)
+==19458==    by 0x415D50D: clone (clone.S:129)
+==19458== 
+==19458== 136 bytes in 1 blocks are possibly lost in loss record 12 of 14
+==19458==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==19458==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==19458==    by 0x405C7A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==19458==    by 0x805000D: main (Consola.c:299)
+==19458== 
+==19458== 136 bytes in 1 blocks are possibly lost in loss record 13 of 14
+==19458==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==19458==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==19458==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==19458==    by 0x405C7A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==19458==    by 0x805038B: main (Consola.c:363)
+==19458== 
+==19458== LEAK SUMMARY:
+==19458==    definitely lost: 20 bytes in 1 blocks
+==19458==    indirectly lost: 0 bytes in 0 blocks
+==19458==      possibly lost: 292 bytes in 3 blocks
+==19458==    still reachable: 343 bytes in 10 blocks
+==19458==         suppressed: 0 bytes in 0 blocks
+==19458== Reachable blocks (those to which a pointer was found) are not shown.
+==19458== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==19458== 
+==19458== For counts of detected and suppressed errors, rerun with: -v
+==19458== ERROR SUMMARY: 6 errors from 6 contexts (suppressed: 0 from 0)
