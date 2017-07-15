@@ -149,12 +149,9 @@ char * nombreLog=calloc(1,200);
 	strcpy(nombreLog,"logMemoria-");
 	horaActual=calloc(1,200);
 	horaYFechaActual(&horaActual);
-	printf("%s\n", horaActual);
 	stripLog(&horaActual);
-	printf("horaActual: %s\n", horaActual);
 	strcat(horaActual,".txt");
 	strcat(nombreLog,horaActual);
-	printf("nombreLog: %s\n", nombreLog);
 
 int nbytes;
 
@@ -291,7 +288,6 @@ while(flagHilo) {
 				flagHilo=0;
 			}else{
 
-				printf("el pqeute es %i\n",seleccionador->tipoPaquete);
 				switch (seleccionador->tipoPaquete)
 				{
 						case SOLICITUDMEMORIA: // [Identificador del Programa] // paginas necesarias para guardar el programa y el stack
@@ -368,23 +364,20 @@ while(flagHilo) {
 
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
 	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en cache
-	 											printf("entre a cache\n");
 	 											paquete=calloc(1,peticionBytes->size);
 	 											auxiliar=calloc(1,peticionBytes->size);
 	 											auxiliar=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
 	 											memcpy(paquete,auxiliar,peticionBytes->size);
 	 											free(auxiliar);
-	 											printf("%s\n","cargue el paquete con la solicitud" );
 	 										}
 	 										else
 	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en memoria
-	 											printf("estoy buscando la cosa en memoria porque no estaba en cache%s\n"," " );
 	 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); printf("el indice en memoria: %i\n",indice );
 	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
 	 											pthread_mutex_lock(&controlMemoria);
 	 											usleep(retardo*1000);
 	 											paquete=calloc(1,peticionBytes->size);
-	 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);printf("%s\n","antes de escribir en la cache" );
+	 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
 	 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE,0,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
 	 											pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
 	 										}	
@@ -393,7 +386,6 @@ while(flagHilo) {
 												
 	 											free(buffer);
 												
-	 											printf("solicbytes\n");
 	 											send(unData,paquete,peticionBytes->size,0);
 	 											
 	 											escribirEnArchivoLog("envio paquete", &MemoriaLog,nombreLog);
@@ -418,17 +410,13 @@ while(flagHilo) {
 												escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 	 										}
 	 										else{pthread_mutex_unlock(&controlMemoria);
-	 											printf("%s\n","tengo paginas para darte " );
 	 											confirmacion=0;
-	 											fflush(stdout);printf("%s\n","antes del malloc" );
+	 											fflush(stdout);
 	 											marco=calloc(1,sizeof(int));
-	 											printf("%s\n","despues del calloc" );
 	 											for(pedidos=0;pedidos<pedidoAsignacion->paginasAAsignar;pedidos++)
 	 											{pthread_mutex_lock(&controlMemoria);
-	 												printf("%s\n","entre al for" );
 	 												usleep(retardo*1000);
 												ultimaPagina=buscarUltimaPaginaAsignada(pedidoAsignacion->pid,bloquesAdmin,MARCOS);
-												printf("la ultima pagina es %i\n",ultimaPagina );
 												pthread_mutex_unlock(&controlMemoria);
 	        									ultimaPagina++;
 												indice=calcularPosicion(pedidoAsignacion->pid,ultimaPagina,MARCOS);
@@ -457,7 +445,6 @@ while(flagHilo) {
 	 								escribirEnArchivoLog("en case almacenar bytes", &MemoriaLog,nombreLog);
 	 								bytesAAlmacenar=calloc(1,sizeof(t_almacenarBytes));
 									// bytesAAlmacenar->valor=calloc(1,20); dserial_void ya le hace malloc
-	 								printf("esperando bytes almacenar\n");
 	 								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
 	 								escribirEnArchivoLog("recibo almacenar bytes", &MemoriaLog,nombreLog);
 	 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
@@ -515,7 +502,6 @@ while(flagHilo) {
 										bloquesAdmin[entrada].estado=0;
 										bloquesAdmin[entrada].pid=-1;
 										bloquesAdmin[entrada].pagina=-1;
-										printf("%s\n","solo queda borrar de of" );
 										borrarDeOverflow(indice,entrada,overflow);
 									}
 									free(liberarPagina);

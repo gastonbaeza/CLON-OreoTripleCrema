@@ -509,7 +509,6 @@ int dserial_string(char ** unString,int unSocket)
 	if (tamanio>0)
 	{
 	while(0>recv(unSocket,*unString,tamanio,0));
-	printf("string recibido: %s.\n", *unString);
 	send(unSocket,buffer1, sizeof(int),0);
 	}
 	free(buffer1);
@@ -529,7 +528,6 @@ void serial_string(char * unString,int tamanio,int unSocket)
 	// }
 	if (tamanio>0)
 	{
-	printf("string a enviar: %s.\n", unString);
 	send(unSocket,unString,tamanio,0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	}
@@ -542,7 +540,6 @@ int dserial_void(void ** unString,int unSocket)
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
-	printf("tamaño: %i\n", tamanio);
 	*unString=malloc(tamanio+1);
 	send(unSocket,buffer1, sizeof(int),0);
 	// for (unChar= 0; unChar <tamanio; unChar++)
@@ -564,7 +561,6 @@ void serial_void(void * unString,int tamanio,int unSocket)
 	int * buffer=malloc(sizeof(int));
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
-	printf("tamanio: %i\n", tamanio);
 	send(unSocket,&tamanio,sizeof(int),0);
 	while(0>recv(unSocket,buffer, sizeof(int),0));
 	// for (unChar= 0; unChar < tamanio; unChar++)
@@ -1130,7 +1126,6 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 	int a=1;
 	memcpy(buffer,&a,sizeof(int));
 	send(unSocket,seleccionador,sizeof(t_seleccionador),0);
-	printf("tipoPaquete en enviarDinamico: %i \n", seleccionador->tipoPaquete);
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
@@ -1299,7 +1294,6 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 	memcpy(buffer,&b,sizeof(int));
 	send(unSocket,buffer, sizeof(int),0);
 	t_path * path;
-	printf("tipoPaquete en recibirDinamico: %i \n", tipoPaquete);
 	
 	switch(tipoPaquete){
 		case SOLICITUDMEMORIA:
@@ -1526,8 +1520,8 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
      int paginasRequeridas=paginasCodigo+paginasStack;
      for(unFrame;unFrame<paginasRequeridas;unFrame++)
      {   
-     	indice=calcularPosicion(unPid,unFrame,MARCOS); printf("que carajos este indice %i\n",indice );
-         mLibre=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); printf("a ver ese marco %i\n", *marco );
+     	indice=calcularPosicion(unPid,unFrame,MARCOS); 
+         mLibre=buscarMarcoLibre(*marcos,MARCOS,bloquesAdmin); 
          memcpy(marco,&mLibre,sizeof(int));
          if(*marco!=-1)
          {
@@ -1540,7 +1534,6 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 	    				{
 	    				tamanioAPegar=tamanioCodigo-acumulador;
 	    				}
-	    				printf("acumulador: %i\n",acumulador ); printf("tamanioAPegar %i\n",tamanioAPegar );
 	    			memcpy((*marcos)[*marco].numeroPagina,(*codigo)+acumulador*sizeof(char),tamanioAPegar);
 					
 					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar,0,MARCOS,overflow,bloquesAdmin,*marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
@@ -1589,14 +1582,13 @@ void inicializarOverflow(int MARCOS, t_list**overflow) {
 /* En caso de colisión, busca el siguiente frame en el vector de overflow.
  * Retorna el número de frame donde se encuentra la página. */
 int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAdmin,int MARCOS, t_list**overflow) {
-    printf("%s\n","estoy en buscarEnOverlow" );
     int i = 0;
     int frameDelIndice;printf("el indice que entra es :%i\n", indice);
     int  miFrame; printf("%s\n","declare miFrame" );printf("size %i\n", list_size(overflow[indice]));
-    for (i = 0; i < list_size(overflow[indice]); i++) { printf("%s\n","mira mama un for" );
+    for (i = 0; i < list_size(overflow[indice]); i++) { 
     	frameDelIndice=*(int*)list_get(overflow[indice], i);printf("frameDelIndice es: %i\n",frameDelIndice );
-        if ((esPaginaCorrecta(frameDelIndice, pid, pagina,bloquesAdmin,MARCOS))!=-1) { printf("%s\n","pase el casteo chamanico ultraduper" );
-            memcpy(&miFrame,(list_get(overflow[indice], i)),sizeof(int)); printf("el señor frame es : %i\n",miFrame );
+        if ((esPaginaCorrecta(frameDelIndice, pid, pagina,bloquesAdmin,MARCOS))!=-1) {
+            memcpy(&miFrame,(list_get(overflow[indice], i)),sizeof(int)); 
             return miFrame;
         }
     }return -1;
@@ -1631,12 +1623,11 @@ void borrarDeOverflow(int posicion, int frame, t_list**overflow) {
 
 /* A implementar por el alumno. Devuelve 1 a fin de cumplir con la condición requerida en la llamada a la función */
 int esPaginaCorrecta(int frame, int pid, int pagina,t_estructuraADM * bloquesAdmin, int MARCOS) {
-printf("%s\n","no puede haber seg fault" );printf("dime que frame eres :%i\n", frame);
-if(((bloquesAdmin[frame].pid)==pid) && ((bloquesAdmin[frame]).pagina==pagina)) {printf("%s\n","claramente esto no puede tener segfaultx2" );return 1;}
+if(((bloquesAdmin[frame].pid)==pid) && ((bloquesAdmin[frame]).pagina==pagina)) {return 1;}
 	else {return -1;}
 }
 void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco * marcos, int MARCOS, t_list ** overflow,int MARCO_SIZE)
-{	printf("%s\n"," ************************AQUI SE VIENE LO BUENO JOVEN**************************************" );
+{	
 	int unMarco=0;
 	int entrada=0;
 	int indice=0;
@@ -1841,7 +1832,7 @@ char * enlistadorDeBloques(char**lista,int * bloquesAsignados, int cantidadAsign
 
 }
 void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
-{	printf("qwe\n");
+{	
 	FILE * bitmap;
 	int tamanio=strlen(listaDeBloques);
 	int unCaracter=0;
@@ -1850,7 +1841,6 @@ void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
 	char * direccionBloques=calloc(1,200);
 	strcpy(direccionBloques,direccionMontaje);
 	strcat(direccionBloques,"/Bloques/");
-	printf("%s\n", direccionBloques);
 	for(unCaracter = 0; unCaracter < tamanio; unCaracter++)
 	{
 		if(listaDeBloques[unCaracter]!='['&&listaDeBloques[unCaracter]!=']'&&listaDeBloques[unCaracter]!=',')
@@ -1858,7 +1848,6 @@ void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
 			string[1]='\0';
 			strcat(string,puntoBin);
 			strcat(direccionBloques,string);
-			printf("direccionBloques\n");
 			bitmap = fopen(direccionBloques,"wb"); 
 		if (bitmap!=NULL)
 			{
