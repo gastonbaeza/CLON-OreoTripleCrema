@@ -70,6 +70,7 @@
 #define MEMORIASIZE 0
 int retardo=0;
 pthread_mutex_t controlMemoria;
+pthread_mutex_t fix;
 
 t_estructuraADM * bloquesAdmin;
 int tamPagina;
@@ -193,6 +194,7 @@ dataParaComunicarse *unData;
 unData=malloc(sizeof(dataParaComunicarse));
 unData->socket = listenningSocket;
 pthread_mutex_init(&controlMemoria,NULL);
+pthread_mutex_init(&fix,NULL);
 
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
 
@@ -285,6 +287,7 @@ int mLibre=0;
 int flagHilo=1,rv;
 while(flagHilo) {
 		seleccionador=calloc(1,8);
+		pthread_mutex_lock(&fix);
 			while(0>(rv=recv(unData,seleccionador,sizeof(t_seleccionador),0)));
 			if (rv==0)
 			{
@@ -325,7 +328,7 @@ while(flagHilo) {
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
 	 							escribirEnArchivoLog("envio respuesta", &MemoriaLog,nombreLog);
 	 							pthread_mutex_lock(&controlMemoria);
-	 							usleep(retardo*1000);
+	 							
 								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache,CACHE_X_PROC,retardo);
 	 							pthread_mutex_unlock(&controlMemoria);
 								if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
@@ -521,9 +524,10 @@ while(flagHilo) {
 									free(liberarPagina);
 
 	 					break;
-	 				}
-			}
+	 				}pthread_mutex_unlock(&fix);
+			}	
  				free(seleccionador);
+
 }//while
 //free(*marco);
 
@@ -587,7 +591,7 @@ void consolaMemoria()
 					{
 						case CACHE:	
 										system("clear");
-										bufferLog=calloc(1,(MARCO_SIZE*ENTRADAS_CACHE)+1); bufferLog[MARCO_SIZE*ENTRADAS_CACHE]='\0';
+										
 										dumpLog=fopen("cacheDump.bin","wb");
 									for(unFrame=0;unFrame<ENTRADAS_CACHE;unFrame++)
 									{
@@ -596,18 +600,19 @@ void consolaMemoria()
 										printf("su antiguedad es :%i\n", memoriaCache[unFrame].antiguedad);
 										printf("%s\n","el contenido en cache es: " );
 										DumpHex(memoriaCache[unFrame].contenido,MARCO_SIZE);
+										fwrite(memoriaCache[unFrame].contenido,MARCO_SIZE,1,dumpLog);
+										fwrite("\n",1,1,dumpLog);
 									}
-									/*dumpEntero=(char*)DumpHex(memoriaCache[0],MARCO_SIZE*ENTRADAS_CACHE);
-									strcpy(bufferLog,dumpEntero);
-									fwrite(bufferLog,MARCO_SIZE*ENTRADAS_CACHE,1,dumpLog);*/
+									
+									
 									fclose(dumpLog);
 									printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 									
 						case MEMORIA:
 										system("clear");
 										usleep(retardo*1000);
-										datoAdmin=calloc(1,9);
-										bufferLog=calloc(1,MARCO_SIZE+1); bufferLog[MARCO_SIZE]='\0';
+										
+										
 										dumpLog=fopen("memoriaDump.bin","wb");
 
 										for(unMarco=0;unMarco<MARCOS;unMarco++)
@@ -615,6 +620,8 @@ void consolaMemoria()
 											printf("el numero de frame es: %i\n", unMarco);
 											printf("%s\n","el contenido del frame es :");
 											DumpHex(marcos[unMarco].numeroPagina,MARCO_SIZE);
+											fwrite(marcos[unFrame].numeroPagina,MARCO_SIZE,1,dumpLog);
+											fwrite("\n",1,1,dumpLog);
 											/*strcpy(bufferLog, "Marco  numero:"); 
 											sprintf(datoAdmin,"%d",unMarco);
 
@@ -642,7 +649,7 @@ void consolaMemoria()
 									
 										fclose(dumpLog);
 										printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
-										free(dumpEntero);free(datoAdmin);
+										
 						break;
 						case TABLA:
 										system("clear");
