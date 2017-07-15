@@ -70,7 +70,6 @@
 #define MEMORIASIZE 0
 int retardo=0;
 pthread_mutex_t controlMemoria;
-pthread_mutex_t fix;
 
 t_estructuraADM * bloquesAdmin;
 int tamPagina;
@@ -194,7 +193,6 @@ dataParaComunicarse *unData;
 unData=malloc(sizeof(dataParaComunicarse));
 unData->socket = listenningSocket;
 pthread_mutex_init(&controlMemoria,NULL);
-pthread_mutex_init(&fix,NULL);
 
  ////////////////////////////////////// INICIALIZAMOS EL BLOQUE DE MEMORIA/////////////////////////////////////
 
@@ -287,7 +285,6 @@ int mLibre=0;
 int flagHilo=1,rv;
 while(flagHilo) {
 		seleccionador=calloc(1,8);
-		pthread_mutex_lock(&fix);
 			while(0>(rv=recv(unData,seleccionador,sizeof(t_seleccionador),0)));
 			if (rv==0)
 			{
@@ -328,7 +325,7 @@ while(flagHilo) {
 	 							send(unData,&(solicitud->respuesta),sizeof(int),0);
 	 							escribirEnArchivoLog("envio respuesta", &MemoriaLog,nombreLog);
 	 							pthread_mutex_lock(&controlMemoria);
-	 							
+	 							usleep(retardo*1000);
 								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache,CACHE_X_PROC,retardo);
 	 							pthread_mutex_unlock(&controlMemoria);
 								if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
@@ -524,10 +521,9 @@ while(flagHilo) {
 									free(liberarPagina);
 
 	 					break;
-	 				}pthread_mutex_unlock(&fix);
-			}	
+	 				}
+			}
  				free(seleccionador);
-
 }//while
 //free(*marco);
 
@@ -620,6 +616,7 @@ void consolaMemoria()
 											printf("el numero de frame es: %i\n", unMarco);
 											printf("%s\n","el contenido del frame es :");
 											DumpHex(marcos[unMarco].numeroPagina,MARCO_SIZE);
+
 											fwrite(marcos[unFrame].numeroPagina,MARCO_SIZE,1,dumpLog);
 											fwrite("\n",1,1,dumpLog);
 											/*strcpy(bufferLog, "Marco  numero:"); 

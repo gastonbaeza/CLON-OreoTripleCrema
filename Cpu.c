@@ -65,6 +65,7 @@
 int continuarEjecucion=1;
 int PID;
 int i;
+int primerAcceso;
 t_pcb * pcb;
 char * IP_KERNEL;
 char * PUERTO_KERNEL;
@@ -530,6 +531,7 @@ void posicionarPC(int pos){
  				}
 				liberarContenidoPcb();
 				free(pcb);
+				primerAcceso=1;
 			}
 			else{
 				finalizarNivelStack();
@@ -978,7 +980,7 @@ void conectarKernel(void){
 	int recibir;
 	t_seleccionador * seleccionador;
 	char * linea;
-	int primerAcceso=1;
+	primerAcceso=1;
 	int j,k;
 	int rv;
 
