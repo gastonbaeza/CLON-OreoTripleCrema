@@ -1,0 +1,163 @@
+==15915== Memcheck, a memory error detector
+==15915== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==15915== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==15915== Command: ./Cpu
+==15915== Parent PID: 3138
+==15915== 
+==15915== Thread 2:
+==15915== Invalid read of size 4
+==15915==    at 0x8050DFC: cpu_reservar (Cpu.c:646)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915==  Address 0x4228a98 is 8 bytes inside a block of size 32 free'd
+==15915==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x804F634: liberarContenidoPcb (Cpu.c:153)
+==15915==    by 0x8050DBA: cpu_reservar (Cpu.c:643)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== Syscall param socketcall.send(msg) points to unaddressable byte(s)
+==15915==    at 0x40692A8: send (socket.S:98)
+==15915==    by 0x804A66D: serial_void (funciones.c:577)
+==15915==    by 0x804C4C1: serial_bytes (funciones.c:905)
+==15915==    by 0x804D176: enviarDinamico (funciones.c:1172)
+==15915==    by 0x805036F: cpu_asignar (Cpu.c:358)
+==15915==    by 0x404CBCB: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915==  Address 0x422972c is 0 bytes after a block of size 4 alloc'd
+==15915==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x80502BF: cpu_asignar (Cpu.c:348)
+==15915==    by 0x404CBCB: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== Invalid read of size 4
+==15915==    at 0x8050DFC: cpu_reservar (Cpu.c:646)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x805269E: conectarKernel (Cpu.c:1079)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915==  Address 0x422e570 is 8 bytes inside a block of size 32 free'd
+==15915==    at 0x402B3D8: free (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x804F634: liberarContenidoPcb (Cpu.c:153)
+==15915==    by 0x8050DBA: cpu_reservar (Cpu.c:643)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x805269E: conectarKernel (Cpu.c:1079)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 
+==15915== HEAP SUMMARY:
+==15915==     in use at exit: 2,405 bytes in 312 blocks
+==15915==   total heap usage: 2,981 allocs, 2,669 frees, 29,082 bytes allocated
+==15915== 
+==15915== Thread 1:
+==15915== 4 bytes in 1 blocks are definitely lost in loss record 3 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x8050D3D: cpu_reservar (Cpu.c:637)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x805269E: conectarKernel (Cpu.c:1079)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 4 bytes in 1 blocks are definitely lost in loss record 4 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x8050DE3: cpu_reservar (Cpu.c:645)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x805269E: conectarKernel (Cpu.c:1079)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 8 bytes in 1 blocks are definitely lost in loss record 8 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x8050D05: cpu_reservar (Cpu.c:633)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x805269E: conectarKernel (Cpu.c:1079)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 8 bytes in 2 blocks are definitely lost in loss record 9 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x40F22E7: strdup (strdup.c:42)
+==15915==    by 0x4055F25: string_duplicate (in /usr/lib/libcommons.so)
+==15915==    by 0x405687F: _string_split (in /usr/lib/libcommons.so)
+==15915==    by 0x4056398: string_split (in /usr/lib/libcommons.so)
+==15915==    by 0x404CB7A: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x805269E: conectarKernel (Cpu.c:1079)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 136 bytes in 1 blocks are possibly lost in loss record 26 of 32
+==15915==    at 0x402C109: calloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x401117E: allocate_dtv (dl-tls.c:296)
+==15915==    by 0x40118EB: _dl_allocate_tls (dl-tls.c:460)
+==15915==    by 0x40627A2: pthread_create@@GLIBC_2.1 (allocatestack.c:589)
+==15915==    by 0x8052F83: main (Cpu.c:1303)
+==15915== 
+==15915== 220 bytes in 55 blocks are definitely lost in loss record 29 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x8050D3D: cpu_reservar (Cpu.c:637)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 220 bytes in 55 blocks are definitely lost in loss record 30 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x8050DE3: cpu_reservar (Cpu.c:645)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 430 bytes in 108 blocks are definitely lost in loss record 31 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x40F22E7: strdup (strdup.c:42)
+==15915==    by 0x4055F25: string_duplicate (in /usr/lib/libcommons.so)
+==15915==    by 0x405687F: _string_split (in /usr/lib/libcommons.so)
+==15915==    by 0x4056398: string_split (in /usr/lib/libcommons.so)
+==15915==    by 0x404CB7A: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== 440 bytes in 55 blocks are definitely lost in loss record 32 of 32
+==15915==    at 0x402A17C: malloc (in /usr/lib/valgrind/vgpreload_memcheck-x86-linux.so)
+==15915==    by 0x8050D05: cpu_reservar (Cpu.c:633)
+==15915==    by 0x404CBA2: analizadorLinea (in /usr/lib/libparser-ansisop.so)
+==15915==    by 0x8051C57: iniciarEjecucion (Cpu.c:948)
+==15915==    by 0x80528EB: conectarKernel (Cpu.c:1142)
+==15915==    by 0x4061F6F: start_thread (pthread_create.c:312)
+==15915==    by 0x416350D: clone (clone.S:129)
+==15915== 
+==15915== LEAK SUMMARY:
+==15915==    definitely lost: 1,334 bytes in 278 blocks
+==15915==    indirectly lost: 0 bytes in 0 blocks
+==15915==      possibly lost: 136 bytes in 1 blocks
+==15915==    still reachable: 935 bytes in 33 blocks
+==15915==         suppressed: 0 bytes in 0 blocks
+==15915== Reachable blocks (those to which a pointer was found) are not shown.
+==15915== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==15915== 
+==15915== For counts of detected and suppressed errors, rerun with: -v
+==15915== ERROR SUMMARY: 121 errors from 12 contexts (suppressed: 0 from 0)

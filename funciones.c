@@ -1770,13 +1770,13 @@ int  * asignarBloques(int ** bloquesAsignados,int unaCantidad, t_bitarray** bita
 			}
 			unBit++;
 		}
-		if(!(unBit<tamanioBitarray))
-		{
-			for ( i = 0; i < unaCantidad; ++i)
-			{
-				(*bloquesAsignados)[i]=-1;
-			}
-		}
+		// if(!(unBit<tamanioBitarray))
+		// {
+		// 	for ( i = 0; i < unaCantidad; ++i)
+		// 	{
+		// 		(*bloquesAsignados)[i]=-1;
+		// 	}
+		// }
 		return *bloquesAsignados;
 		
 }

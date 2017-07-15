@@ -996,10 +996,48 @@ while(1) {
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
 							escribirEnArchivoLog("en case pcb", &CPULog,nombreLog);
- 							PROXIMOOFFSET=0;
- 							PROXIMAPAG=0;
 							pcb=malloc(sizeof(t_pcb));
 							recibirDinamico(PCB,socketKernel,pcb);
+							if (pcb->indiceStack[pcb->posicionStack].cantidadVariables==0 && pcb->indiceStack[pcb->posicionStack].cantidadArgumentos==0)
+							{
+								PROXIMAPAG=0;
+								PROXIMOOFFSET=0;
+							}
+							else if(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos==0)
+							{
+								PROXIMAPAG=pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].pagina;
+								PROXIMOOFFSET=(pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].offset)+4;
+							}
+							else if(pcb->indiceStack[pcb->posicionStack].cantidadVariables==0){
+								PROXIMAPAG=pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].pagina;
+								PROXIMOOFFSET=(pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].offset)+4;
+							}
+							else if(pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].pagina > pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].pagina)
+ 							{
+ 								PROXIMAPAG=pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].pagina;
+ 								PROXIMOOFFSET=(pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].offset)+4;
+ 							}
+ 							else if (pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].pagina < pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].pagina){
+ 								PROXIMAPAG=pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].pagina;
+ 							}
+ 							else
+ 							{
+ 								if (pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].offset > pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].offset)
+ 								{
+ 									PROXIMOOFFSET=(pcb->indiceStack[pcb->posicionStack].variables[(pcb->indiceStack[pcb->posicionStack].cantidadVariables)-1].offset)+4;
+ 								}
+ 								else{
+ 								PROXIMOOFFSET=(pcb->indiceStack[pcb->posicionStack].argumentos[(pcb->indiceStack[pcb->posicionStack].cantidadArgumentos)-1].offset)+4;
+								}
+ 							}
+
+ 							
+ 							if (PROXIMOOFFSET==TAMPAGINA)
+ 							{
+ 								PROXIMOOFFSET=0;
+ 								PROXIMAPAG++;
+ 							}
+
 							escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 							PID=pcb->pid;
 							printf("Proceso %i:\n", pcb->pid);
@@ -1023,7 +1061,8 @@ while(1) {
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
-							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;		
+							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;	
+							peticion->offset=peticion->offset%TAMPAGINA;
 							printf("%i,%i,%i,%i\n", peticion->pid,peticion->pagina,peticion->offset,peticion->size);		
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
@@ -1085,6 +1124,7 @@ while(1) {
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;		
+							peticion->offset=peticion->offset%TAMPAGINA;
 							printf("%i,%i,%i,%i\n", peticion->pid,peticion->pagina,peticion->offset,peticion->size);	
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);

@@ -1,8 +1,4 @@
 #define clear() printf("\033[H\033[J")
-#define CREARARCHIVO 1
-#define BORRARARCHIVO 2 
-#define OBTENERDATOS 3
-#define GUARDARDATOS 4
 #include "estructuras.h"
 #include "funciones.h"
 #include <commons/collections/list.h>
@@ -382,12 +378,12 @@ while(1){
 			free(listaBloques);
 
 			break;
-			case BORRARARCHIVO: printf("%s \n", "Borrado, papu.\n");
+			case BORRARARCHIVOFS: printf("%s \n", "Borrado, papu.\n");
 			/*Parámetros: [Path]
 			Borrará el archivo en el path indicado, eliminando su archivo de metadata y marcando los
 			bloques como libres dentro del bitmap*/
 				path=malloc(sizeof(t_path));
-				recibirDinamico(BORRARARCHIVO,socketKernel,path);
+				recibirDinamico(BORRARARCHIVOFS,socketKernel,path);
 				auxChar=calloc(1,PATH_MAX);
 				strcpy(auxChar,ARCHIVOS_MONTAJE);
 				strcat(auxChar,"/");

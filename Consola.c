@@ -196,9 +196,6 @@ switch (seleccionador->tipoPaquete){
 							{
 								tiempoEjecucion=calloc(1,9);
 								calcularTiempo(prints[i].horaInicio,horaFin,tiempoEjecucion);
-								printf("Inicio: %s\n", prints[i].horaInicio);
-								printf("Fin: %s\n", horaFin);
-								printf("Ejecucion: %s\n", tiempoEjecucion);
 								break;
 							}
 						}
@@ -429,8 +426,8 @@ while(cancelarThread==0){
 							
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
-								
 								pids->pids[unPid]=*(int *)list_get(procesos,unPid);
+								printf("pids->pids[unPid]: %i\n", pids->pids[unPid]);
 
 							}
 							
