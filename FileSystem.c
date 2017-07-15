@@ -295,7 +295,7 @@ char*unBloque;
 int TAMANIO,totalBloques;
 int cantidadBloques,primerBloqueAEscribir,cantAPedir,offsetAEscribir;
 t_paqueteFS* resultado;
-char * auxChar,*ptoMont;
+char * auxChar,*ptoMont,*aux;
 int sizeAux;
 int restoUltimoBloque;
 void*auxResultado;
@@ -532,6 +532,8 @@ while(1){
 				printf("Para escribir lo pedido necesito %i bloques.\n", bloquesNecesarios);
 				cantAPedir=bloquesNecesarios-cantidadBloques;
 				printf("Por lo que tengo que pedir %i bloques mas.\n", cantAPedir);
+				aux=calloc(1,strlen(bloquesArray)+1);
+				strcpy(aux,bloquesArray);
 				if (cantAPedir>0)
 				{
 					totalBloques=cantAPedir+cantidadBloques;
@@ -548,13 +550,11 @@ while(1){
 						printf("no hay bloques libres\n");
 					}
 					printf("Mi cantidad total de bloques es: %i\n",cantidadBloques+cantAPedir);
-					bloquesArray=strtok(bloquesArray,"]");
+					aux=strtok(aux,"]");
 					bloquesAsignadosChar++;
-					strcat(bloquesArray,",");
-					strcat(bloquesArray,bloquesAsignadosChar);
-					printf("Finalmente mis bloques son: %s\n",bloquesArray);
-					free(bloquesAsignados);
-					free(bloquesAsignadosChar);
+					strcat(aux,",");
+					strcat(aux,bloquesAsignadosChar);
+					printf("Finalmente mis bloques son: %s\n",aux);
 				}
 				else{
 					totalBloques=cantidadBloques;
@@ -568,11 +568,11 @@ while(1){
 					strcpy(ptoMont,BLOQUES_MONTAJE);
 					strcat(ptoMont,"/");
 					unBloque=calloc(1,20);
-					bloquesFinal=calloc(1,strlen(bloquesArray)+1);
-					strcpy(bloquesFinal,bloquesArray);
+					bloquesFinal=calloc(1,strlen(aux));
+					strcpy(bloquesFinal,aux);
 					strcpy(unBloque,"-");
-					bloquesArray=strcat(unBloque,bloquesArray);
-					strtok(bloquesArray,"[");
+					aux=strcat(unBloque,aux);
+					strtok(aux,"[");
 					for (i = 0; i < primerBloqueAEscribir; i++)
 					{
 						strtok(NULL,",");
@@ -644,9 +644,9 @@ while(1){
 				send(socketKernel,&rv,sizeof(int),0);
 				free(ptoMont);
 				free(auxChar);
+				free(aux);
 				free(unBloque);
 				free(escribirArchivoFS->path);
-				free(escribirArchivoFS->buffer);
 				free(escribirArchivoFS);
 				config_destroy(CFG);
 			break;

@@ -336,6 +336,7 @@ int finalizarPidConsola(int pid,int exitCode){
 		PIDFIN=pid;
 		WAITFINALIZAR=1;
 		while(WAITFINALIZAR);
+		PIDFIN=-1;
 		// estadoAnterior=EXEC;
 	// }
 	// else{
@@ -648,7 +649,10 @@ void liberarContenidoPcbTabla(int pid){
 			free((PCBS[pid]).indiceStack[i].variables);
 		}
 	}
-	free((PCBS[pid]).indiceEtiquetas.etiquetas);
+	if ((PCBS[pid]).indiceEtiquetas.etiquetas_size>0)
+	{
+		free((PCBS[pid]).indiceEtiquetas.etiquetas);
+	}
 	free((PCBS[pid]).indiceStack);
 }
 void updatePCB(t_pcb * pcb){
@@ -1224,7 +1228,6 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						usleep(QUANTUM_SLEEP*1000);
 						enviarDinamico(PCB,socket,pcb);
 						escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
-						cpuLibre=0;
 						if (!strcmp(ALGORITMO,"RR"))
 						{	
 							flagQuantum=QUANTUM;
@@ -1612,7 +1615,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 											sacarHeapMetadata(i,j,k+1);
 											tablaHeap[i].paginas[j].espacioLibre+=sizeof(t_heapMetaData);
 										}
-										if (tablaHeap[i].paginas[j].contenido[k-1].isFree && k!=0)
+										if ( k!=0 && tablaHeap[i].paginas[j].contenido[k-1].isFree)
 										{
 											tablaHeap[i].paginas[j].contenido[k-1].size+=tablaHeap[i].paginas[j].contenido[k].size+sizeof(t_heapMetaData);
 											sacarHeapMetadata(i,j,k);
@@ -1669,6 +1672,8 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 				recibirDinamico(ABRIRARCHIVO,socket,abrirArchivo);
 				escribirEnArchivoLog("recibo abrir archivo", &KernelLog,nombreLog);
 				while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
+				path=malloc(sizeof(t_path));
+					path->path=calloc(1,abrirArchivo->tamanio+1);
 				
 						pcb=malloc(sizeof(t_pcb));
 				recibirDinamico(PCB,socket,pcb);
@@ -1685,9 +1690,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						estaba=1;
 					}
 				}
-				if (!estaba)
-				{	path=malloc(sizeof(t_path));
-					path->path=calloc(1,abrirArchivo->tamanio+1);
+				if (!estaba){
 					strip(&(abrirArchivo->direccionArchivo));
 					strcpy(path->path,abrirArchivo->direccionArchivo);
 					strip(&(path->path));
@@ -1701,7 +1704,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion){
 						proximoFd++;
 						CANTTABLAARCHIVOS++;
 						tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
-						tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,path->tamanio);
+						tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,path->tamanio+1);
 						tablaArchivos[CANTTABLAARCHIVOS-1].tamanioPath=path->tamanio;
 						strip(&(abrirArchivo->direccionArchivo));
 						strcpy(tablaArchivos[CANTTABLAARCHIVOS-1].path,abrirArchivo->direccionArchivo);

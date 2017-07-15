@@ -124,6 +124,8 @@ void calcularTiempo(char* inicio,char* fin,char* tiempoEjecucion){
 	minuto=intResultado/60-hora*60;
 	segundo=intResultado%60;
 	sprintf(tiempoEjecucion,"%i:%i:%i",hora,minuto,segundo);
+	inicioAux-=11;
+	finAux-=11;
 	free(inicioAux);
 	free(finAux);
 }
@@ -422,6 +424,7 @@ while(cancelarThread==0){
 							
 							pids->cantidad=list_size(procesos);
 						
+							printf("pids>cantidad: %i\n", pids->cantidad);
 							pids->pids=malloc(list_size(procesos)*sizeof(int));
 							
 							for(unPid=0;unPid<list_size(procesos);unPid++)
@@ -431,7 +434,15 @@ while(cancelarThread==0){
 
 							}
 							
-							enviarDinamico(ARRAYPIDS,serverSocket,(void *)pids); 
+							enviarDinamico(ARRAYPIDS,serverSocket,pids); 
+
+							for(unPid=0;unPid<list_size(procesos);unPid++)
+							{
+								list_remove(procesos,unPid);
+								printf("pids->pids[unPid]: %i\n", pids->pids[unPid]);
+
+							}
+
 							escribirEnArchivoLog("envio arrays pids", &consolaLog,nombreLog);
 							printf("sali\n");
 							free(pids->pids);
