@@ -91,8 +91,7 @@ void * memoria;
 t_marco * marcos;
 t_estructuraCache* memoriaCache;
 int socketKernel;
-void * memoria;
-void * cache;
+
 t_list**overflow;
 FILE *MemoriaLog;
 char * horaActual;
@@ -206,28 +205,60 @@ bloquesAdmin[unaAdmin].pagina=-1;
 	
 }
  
-marcos=(t_marco*)(bloquesAdmin+tamanioAdministrativas);
+marcos=(t_marco*)calloc(1,MARCOS*sizeof(t_marco));
 int unMarco=0;
 
-memoria=calloc(1,MARCOS*MARCO_SIZE);
-cache=calloc(1,ENTRADAS_CACHE*MARCO_SIZE);
+
+
+
+
+
 memoriaCache=(t_estructuraCache*)calloc(1,sizeof(t_estructuraCache)*ENTRADAS_CACHE);
  // marcos es un bloque de punteros a void porque el tipo void en c no existe y aca quiero pegar lo que me de la gana.
-for(unMarco;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
+for(unMarco=0;unMarco<MARCOS; unMarco++) //asignar su numero de marco a cada region de memoria
 	{ 
-		marcos[unMarco].numeroPagina=memoria+(unMarco*MARCO_SIZE);
+		marcos[unMarco].numeroPagina=calloc(1,MARCO_SIZE);
 		
 	}
+	
+	
 for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a cada region de memoria
 	{
-		memoriaCache[unMarco].contenido=cache+(unMarco*MARCO_SIZE);
+		memoriaCache[unMarco].contenido=calloc(1,MARCO_SIZE);
 		memoriaCache[unMarco].frame=-666; //para distinguir  una pagina real de una virgen
 		memoriaCache[unMarco].pid=-1;
 		memoriaCache[unMarco].antiguedad=-1;
 		memoriaCache[unMarco].modificado=0;
 			}
-	
+	/*for(unMarco=0;unMarco<MARCOS;unMarco++)
+	{	 printf("el contenido de la pag numero %i es :\n",unMarco );
+		 DumpHex(memoriaCache[unMarco].contenido,MARCO_SIZE);	
+		
+		sleep(1);}*/
 	asignador=&marcos[0];
+
+	int adminPorPagina=MARCO_SIZE/sizeof(t_estructuraADM); 
+	int marcoParaAdmin;
+	int offsetAdmin=0;
+	t_estructuraADM * copiaAdmins=calloc(1,adminPorPagina*sizeof(t_estructuraADM)+1);
+	if(MARCOS<2){printf("%s\n", "imposible gestionar la memoria");return -1;}
+	int unaPagina=0;
+	int paginasParaAdmin=(MARCOS/adminPorPagina)+1;
+	for(unaPagina=0;unaPagina<paginasParaAdmin;unaPagina++)
+	{	
+		for (unaAdmin = 0; unaAdmin < adminPorPagina; unaAdmin++)
+		{
+		copiaAdmins[unaAdmin].pid=bloquesAdmin[unaAdmin+(unaPagina*adminPorPagina)].pid;
+		copiaAdmins[unaAdmin].pagina=bloquesAdmin[unaAdmin+(unaPagina*adminPorPagina)].pagina;
+		copiaAdmins[unaAdmin].estado=bloquesAdmin[unaAdmin+(unaPagina*adminPorPagina)].estado;
+
+		}
+		printf(" unaPagina %i\n", unaPagina);
+		memcpy(marcos[unaPagina].numeroPagina,copiaAdmins,adminPorPagina*sizeof(t_estructuraADM));
+		bloquesAdmin[unaPagina].estado=1;
+		
+	}
+	free(copiaAdmins);
 ////////////////////////////////INICIAMOS HILOS DE COMINICACION/////////////////////////////////////////////
 
 
@@ -237,7 +268,7 @@ pthread_t hiloConsolaMemoria;
 pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
 pthread_join(hiloAceptador,NULL);
 pthread_join(hiloConsolaMemoria,NULL);
-free(memoria);free(cache);
+
 free(bloquesAdmin); 
 free(asignador);
 free(marcos);
@@ -249,7 +280,7 @@ for ( unaLista = 0; unaLista < MARCOS; unaLista++)
 free(overflow); 
 free(unData);
 
-}
+} 
 
 
 
@@ -349,14 +380,15 @@ while(flagHilo) {
 	 										printf("size: %i\n", peticionBytes->size);
 	 										printf("offset: %i\n", peticionBytes->offset);
 	 										pthread_mutex_lock(&controlMemoria);
-	 										usleep(retardo*1000);
+	 										
 	 										if(-1==existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
 											{	
 												pthread_mutex_unlock(&controlMemoria);confirmacion=-1;
 												send(unData, &confirmacion, sizeof(int),0);
 												escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 											}
-											else{pthread_mutex_unlock(&controlMemoria);
+											else{fflush(stdout);
+												pthread_mutex_unlock(&controlMemoria);
 												confirmacion=1;
 												send(unData, &confirmacion, sizeof(int),0);
 												escribirEnArchivoLog("envio informancion", &MemoriaLog,nombreLog);
@@ -364,6 +396,7 @@ while(flagHilo) {
 
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
 	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en cache
+	 											printf("%s\n","estoy solicitando a cache" );
 	 											paquete=calloc(1,peticionBytes->size);
 	 											auxiliar=calloc(1,peticionBytes->size);
 	 											auxiliar=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
@@ -371,7 +404,9 @@ while(flagHilo) {
 	 											free(auxiliar);
 	 										}
 	 										else
-	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en memoria
+	 										{printf("no esta entrando a solicitar a cache porque entrada = %i\n",entrada );
+	 										pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en memoria
+	 											printf("no, no esta en cache%i\n",entrada );
 	 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); printf("el indice en memoria: %i\n",indice );
 	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
 	 											pthread_mutex_lock(&controlMemoria);
@@ -583,54 +618,34 @@ void consolaMemoria()
 										printf("%s\n","el contenido en cache es: " );
 										DumpHex(memoriaCache[unFrame].contenido,MARCO_SIZE);
 										fwrite(memoriaCache[unFrame].contenido,MARCO_SIZE,1,dumpLog);
-										fwrite("\n",1,1,dumpLog);
+										
 									}
 									
 									
 									fclose(dumpLog);
 									printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
-									
+									break;
 						case MEMORIA:
 										system("clear");
 										usleep(retardo*1000);
 										
 										
 										dumpLog=fopen("memoriaDump.bin","wb");
-
+										if(dumpLog!=NULL)
+										{	printf("dumpLog valor %p\n",dumpLog );perror ("Error opening threshold file");
 										for(unMarco=0;unMarco<MARCOS;unMarco++)
 										{	
 											printf("el numero de frame es: %i\n", unMarco);
 											printf("%s\n","el contenido del frame es :");
 											DumpHex(marcos[unMarco].numeroPagina,MARCO_SIZE);
 
-											fwrite(marcos[unFrame].numeroPagina,MARCO_SIZE,1,dumpLog);
-											fwrite("\n",1,1,dumpLog);
-											/*strcpy(bufferLog, "Marco  numero:"); 
-											sprintf(datoAdmin,"%d",unMarco);
-
-											strcat(bufferLog,datoAdmin);
-											fseek(dumpLog,0,SEEK_END);
-											fwrite(bufferLog,strlen(bufferLog),1,dumpLog);
-											fwrite("\n",1,1,dumpLog);
-
-											strcpy(bufferLog, "el contenido de marco es: ");
-											
-											
-											fseek(dumpLog,0,SEEK_END);
-											fwrite(bufferLog,strlen(bufferLog),1,dumpLog);
-											fwrite("\n",1,1,dumpLog);
-
-											strcpy(bufferLog, dumpEntero); 
-											
-											
-											fseek(dumpLog,0,SEEK_END);
-											fwrite(bufferLog,MARCO_SIZE,1,dumpLog);
-											fwrite("\n",1,1,dumpLog);
-*/
+											fwrite(marcos[unMarco].numeroPagina,MARCO_SIZE,1,dumpLog);
+										
 										}
 										
 									
-										fclose(dumpLog);
+										fclose(dumpLog);}
+										else{perror ("Error opening threshold file");}
 										printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 										
 						break;

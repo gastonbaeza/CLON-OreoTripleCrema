@@ -99,8 +99,7 @@
 
 
 void DumpHex(const void* data, size_t size) {
-	char * aDumpear=calloc(1,size+1); int primeraVez=1;
-	char * ascii=calloc(1,17 * sizeof(char));
+	char ascii[17];
 	size_t i, j;
 	ascii[16] = '\0';
 	for (i = 0; i < size; ++i) {
@@ -122,14 +121,10 @@ void DumpHex(const void* data, size_t size) {
 				for (j = (i+1) % 16; j < 16; ++j) {
 					printf("   ");
 				}
-
 				printf("|  %s \n", ascii);
-				if(primeraVez){strcpy(aDumpear,ascii);primeraVez=0;}
-				else{strcat(aDumpear,ascii);}
-				
 			}
 		}
-	} 
+	}
 }
 void horaYFechaActual (char ** horaActual) {
     time_t tiempo = time(0);      //al principio no tengo ningún valor en la variable tiempo
@@ -215,7 +210,7 @@ void generarDumpMemoriaExtra(t_marco * marcos, int MARCOS,int MARCO_SIZE)
 	}
 }
 int estaEnCache(int unPid,int pagina, t_estructuraCache * memoriaCache, int  ENTRADAS_CACHE)// si esta presente en cache me devuelve la posicion de la entrada, sino devuelve -1
-{	int paginaEncontrada=0;
+{	
 	int paginasRecorridas=0;
 	for(paginasRecorridas;paginasRecorridas<ENTRADAS_CACHE;paginasRecorridas++)
 	{
@@ -240,12 +235,12 @@ int buscarEntradaMasAntigua(int pid, int pagina,t_estructuraCache * memoriaCache
 	{
 		if(memoriaCache[unaEntrada].pid==pid)cantidadPorProceso++;
 	}
-	printf("cache de este pid en total hay %i\n", cantidadPorProceso);
+	
 	if(CACHE_X_PROC==0)
-	{
+	{	
 		return -2;
 	}
-			
+	
 	if(cantidadPorProceso<CACHE_X_PROC)
 	{	
 		
@@ -285,28 +280,28 @@ return entradaADevolver;
 }					                                                                                                                                           
 void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio,int modificado,int MARCOS,t_list ** overflow,t_estructuraADM * bloquesAdmin,t_marco * marcos,int MARCO_SIZE,int CACHE_X_PROC,int retardo)
 {	
-	int entrada,indice;
+	int entrada,indice; int entradaMemoria;
 	if(-1!=(entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE)));
 	else
 	{					
 		
 			//le delegamos todo a entradaMas antigua
-			entrada=buscarEntradaMasAntigua(unPid,pagina,memoriaCache,ENTRADAS_CACHE,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
+	entrada=buscarEntradaMasAntigua(unPid,pagina,memoriaCache,ENTRADAS_CACHE,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
 			
-		
-	} 
-	if (entrada==-2)
-	{
+		if (entrada==-2)
+	{	
 		indice=calcularPosicion(unPid,pagina,MARCOS);
-		entrada=buscarEnOverflow(indice,unPid,pagina,bloquesAdmin,MARCOS,overflow);
+		entradaMemoria=buscarEnOverflow(indice,unPid,pagina,bloquesAdmin,MARCOS,overflow);
 		usleep(retardo*1000);
-		memmove(marcos[entrada].numeroPagina+offset,buffer,tamanio);
+		memmove(marcos[entradaMemoria].numeroPagina+offset,buffer,tamanio);
 	}
-	printf("la entrada donde queiero reemplazar cuando estra lleno es%i:\n", entrada );
-	if(entrada!=-1){
-	printf("offset: %i\n", offset);
-	printf("buffer: %i\n", *(int*)buffer);
-	printf("tamaño: %i\n", tamanio);
+
+	} 
+	
+	
+	if(entrada>=0){
+		
+	
 	memmove((memoriaCache[entrada]).contenido+offset,buffer,tamanio);
 	
 	
@@ -321,6 +316,7 @@ void escribirEnCache(int unPid, int pagina,void *buffer,t_estructuraCache *memor
 void * solicitarBytesCache(int unPid, int pagina, t_estructuraCache * memoriaCache, int ENTRADAS_CACHE ,int offset, int tamanio)
 {	void * buffer=calloc(1,tamanio);
 	int entrada=estaEnCache(unPid,pagina, memoriaCache, ENTRADAS_CACHE);
+
 	memcpy(buffer, memoriaCache[entrada].contenido+offset,tamanio-1);
 	incrementarAntiguedadPorAcceso(memoriaCache,ENTRADAS_CACHE); 
 	return buffer;
@@ -329,7 +325,7 @@ int hayEspacioEnCache(t_estructuraCache * memoriaCache, int ENTRADAS_CACHE)// si
 {	int unaEntrada=0;
 	for (unaEntrada; unaEntrada< ENTRADAS_CACHE; unaEntrada++)
 	{
-			if(memoriaCache[unaEntrada].pid==-1) return unaEntrada;
+			if(memoriaCache[unaEntrada].pid==-1) {return unaEntrada;}
 	}return -1;
 	
 }
@@ -1583,10 +1579,10 @@ void inicializarOverflow(int MARCOS, t_list**overflow) {
  * Retorna el número de frame donde se encuentra la página. */
 int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAdmin,int MARCOS, t_list**overflow) {
     int i = 0;
-    int frameDelIndice;printf("el indice que entra es :%i\n", indice);
-    int  miFrame; printf("%s\n","declare miFrame" );printf("size %i\n", list_size(overflow[indice]));
+    int frameDelIndice;
+    int  miFrame; 
     for (i = 0; i < list_size(overflow[indice]); i++) { 
-    	frameDelIndice=*(int*)list_get(overflow[indice], i);printf("frameDelIndice es: %i\n",frameDelIndice );
+    	frameDelIndice=*(int*)list_get(overflow[indice], i);
         if ((esPaginaCorrecta(frameDelIndice, pid, pagina,bloquesAdmin,MARCOS))!=-1) {
             memcpy(&miFrame,(list_get(overflow[indice], i)),sizeof(int)); 
             return miFrame;
@@ -1597,12 +1593,12 @@ int buscarEnOverflow(int indice, int pid, int pagina,t_estructuraADM * bloquesAd
 /* Agrega una entrada a la lista enlazada correspondiente a una posición del vector de overflow */
 void agregarSiguienteEnOverflow(int pos_inicial, int ** nro_frame, t_list**overflow) {
 	int * aux=malloc(4);
-	printf(" el marco en agregarsiguente es %i\n",**nro_frame );
-	 memcpy(aux,*nro_frame,sizeof(int)); printf(" el aux vale%i\n", *aux );
-	printf("pos inicial: %i\n", pos_inicial);
+	
+	 memcpy(aux,*nro_frame,sizeof(int)); 
+	
     list_add(overflow[pos_inicial], aux);
-    printf(" despues de guardar en la lista %i\n", *(int*)list_get(overflow[pos_inicial],0));
-    printf("pase add\n");
+    
+   
     
 }
 
@@ -1634,9 +1630,9 @@ void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco *
 	for ( unMarco = 0; unMarco < MARCOS; unMarco++)
 	{
 		if (bloquesAdmin[unMarco].pid==*pidALiberar)
-		{	printf("el pid a liberar es %i\n", *pidALiberar );
+		{	
 			indice=calcularPosicion(bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,MARCOS);
-			entrada=buscarEnOverflow(indice,bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,bloquesAdmin,MARCOS,overflow); printf("entrada a cleanear %i\n",entrada );
+			entrada=buscarEnOverflow(indice,bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,bloquesAdmin,MARCOS,overflow); 
 			marcos[entrada].numeroPagina=calloc(1,MARCO_SIZE);
 			bloquesAdmin[entrada].estado=0;
 			bloquesAdmin[entrada].pid=-1;
