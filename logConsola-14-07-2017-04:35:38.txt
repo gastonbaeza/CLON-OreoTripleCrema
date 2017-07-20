@@ -1,3 +1,0 @@
-en iniciar programa
-envio path
-en resultado reiniciar programa

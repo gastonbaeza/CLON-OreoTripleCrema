@@ -1,7 +1,0 @@
-en aceptar 
-en comunicarse
-en comunicarse
-en case path
-recibo path
-envio solicitud memoria
-envio resultado iniciar programa
