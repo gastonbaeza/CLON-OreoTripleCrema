@@ -51,6 +51,7 @@
 #define FAIL 0
 #define BLOQUE 20
 #define PRINT 72
+#define LEAKS 73
 
 
 typedef struct { 
@@ -168,7 +169,7 @@ void receptor(){
 	hints.ai_socktype = SOCK_STREAM;
 	int  serverSocket;
 	char* tiempoEjecucion;
-	int rv; 
+	int rv,*processid; 
 	if ((rv =getaddrinfo(IP, PUERTO, &hints, &kernel)) != 0) fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv)); 
 	serverSocket = socket(kernel->ai_family, kernel->ai_socktype, kernel->ai_protocol);
 	if(-1==connect(serverSocket, kernel->ai_addr, kernel->ai_addrlen)) perror("connect:");
@@ -189,6 +190,7 @@ switch (seleccionador->tipoPaquete){
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
 						while(0>recv(serverSocket,&pid,sizeof(int),0));
+						printf("pid: %i.\n", pid);
 						printf("Kernel: %s.\n",unMensaje->mensaje);
 						horaFin=calloc(1,20);
 						horaYFechaActual(&horaFin);
@@ -212,9 +214,24 @@ switch (seleccionador->tipoPaquete){
 								memcpy(&(prints[j]),&(prints[j+1]),sizeof(t_printsConsola));
 							}
 						}
-						list_remove(procesos, i);
-						free(prints[i].horaInicio);
-						prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+						for (j = 0; j < list_size(procesos); ++j)
+						{
+							if (pid==*(int*)(list_get(procesos,j)))
+							{
+								break;
+							}
+						}
+						list_remove(procesos, j);
+						printf("index en mensaje: %i.\n", i);
+						// free(prints[i].horaInicio);
+						if (list_size(procesos)==0)
+						{
+							free(prints);
+						}
+						else
+						{
+							prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+						}
 						free(tiempoEjecucion);
 						free(horaFin);
 						free(unMensaje->mensaje);
@@ -243,18 +260,36 @@ switch (seleccionador->tipoPaquete){
 
 					if (resultado->resultado){
 						pthread_mutex_lock(&semaforoProcesos);
-						list_add(procesos,(void *)(&(resultado->pid)));
-						prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+						processid=malloc(sizeof(int));
+						memcpy(processid,&(resultado->pid),sizeof(int));
+						list_add(procesos,(void *)processid);
+						if (list_size(procesos)==1)
+						{
+							prints=malloc(sizeof(t_printsConsola));
+						}
+						else
+						{
+							prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+						}
 						prints[list_size(procesos)-1].pid=resultado->pid;
 						prints[list_size(procesos)-1].prints=0;
+						printf("index en result: %i.\n", list_size(procesos)-1);
 						prints[list_size(procesos)-1].horaInicio=calloc(1,20);
 						horaYFechaActual(&(prints[list_size(procesos)-1].horaInicio));
-						printf("horaInicio: %s\n", prints[list_size(procesos)-1].horaInicio);
+						printf("horaInicio: %s.\n",prints[list_size(procesos)-1].horaInicio);
 						printf("El pid asignado es : %i\n", resultado->pid);
 						pthread_mutex_unlock(&semaforoProcesos);
 						escribirEnArchivoLog("en resultado reiniciar programa", &consolaLog,nombreLog);
 						
 					}
+		break;
+		case LEAKS:	
+						unMensaje=malloc(sizeof(t_mensaje));
+						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
+						recibirDinamico(LEAKS, serverSocket, unMensaje);
+						printf("Kernel: %s.\n", unMensaje->mensaje);
+						free(unMensaje->mensaje);
+						free(unMensaje);
 		break;
 		default: ; break;
 
@@ -334,7 +369,7 @@ signal(SIGINT,cortar);
 	t_programaSalida * prog;
 
 while(cancelarThread==0){
-	clear();
+	system("clear");
 	printf("Seleccione una de las siguientes opciones ingresando el número correspondiente.\n");
 	printf("%s\n","1-Iniciar programa.");
 	printf("%s\n","2-Desconectar consola.");
@@ -382,34 +417,34 @@ while(cancelarThread==0){
 							
 							enviarDinamico(FINALIZARPROGRAMA,serverSocket,&pid);
 
-							horaFin=calloc(1,20);
-							horaYFechaActual(&horaFin);
-							for (i = 0; i < list_size(procesos); i++)
-							{
-								if (prints[i].pid==pid)
-								{
-									printf("qwe\n");
-									tiempoEjecucion=calloc(1,9);
-									calcularTiempo(prints[i].horaInicio,horaFin,tiempoEjecucion);
-									break;
-								}
-							}
-							printf("Inicio: %s.\n", prints[i].horaInicio);
-							printf("Fin: %s.\n", horaFin);
-							printf("Cantidad de impresiones: %i.\n", prints[i].prints);
-							printf("Tiempo de ejecucion: %sHs.\n", tiempoEjecucion);
-							for (j=i; j < list_size(procesos); j++)
-							{
-								if (!(j+1==list_size(procesos)))
-								{
-									memcpy(&(prints[j]),&(prints[j+1]),sizeof(t_printsConsola));
-								}
-							}
-							list_remove(procesos, i);
-							free(prints[i].horaInicio);
-							prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
-							free(tiempoEjecucion);
-							free(horaFin);
+							// horaFin=calloc(1,20);
+							// horaYFechaActual(&horaFin);
+							// for (i = 0; i < list_size(procesos); i++)
+							// {
+							// 	if (prints[i].pid==pid)
+							// 	{
+							// 		printf("qwe\n");
+							// 		tiempoEjecucion=calloc(1,9);
+							// 		calcularTiempo(prints[i].horaInicio,horaFin,tiempoEjecucion);
+							// 		break;
+							// 	}
+							// }
+							// printf("Inicio: %s.\n", prints[i].horaInicio);
+							// printf("Fin: %s.\n", horaFin);
+							// printf("Cantidad de impresiones: %i.\n", prints[i].prints);
+							// printf("Tiempo de ejecucion: %sHs.\n", tiempoEjecucion);
+							// for (j=i; j < list_size(procesos); j++)
+							// {
+							// 	if (!(j+1==list_size(procesos)))
+							// 	{
+							// 		memcpy(&(prints[j]),&(prints[j+1]),sizeof(t_printsConsola));
+							// 	}
+							// }
+							// list_remove(procesos, i);
+							// free(prints[i].horaInicio);
+							// prints=realloc(prints,list_size(procesos)*sizeof(t_printsConsola));
+							// free(tiempoEjecucion);
+							// free(horaFin);
 
 							escribirEnArchivoLog("envio finalizar programa", &consolaLog,nombreLog);	
 	
@@ -418,33 +453,29 @@ while(cancelarThread==0){
 							//Recibo los PIDs que Kernel fue guardando y se los mando para que los mate
 							pthread_mutex_lock(&semaforoProcesos);
 							escribirEnArchivoLog("en desconectar consola", &consolaLog,nombreLog);
-							printf("%s\n"," ha inicializado el proceso de desconexion" );
-							printf("%i\n",list_size(procesos));
 							t_arrayPids * pids=malloc(sizeof(t_arrayPids));
 							
 							pids->cantidad=list_size(procesos);
-						
-							printf("pids>cantidad: %i\n", pids->cantidad);
 							pids->pids=malloc(list_size(procesos)*sizeof(int));
 							
+							printf("list_size: %i.\n", list_size(procesos));
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
+								// printf("pid en list: %i\n", list_get(procesos,unPid));
 								pids->pids[unPid]=*(int *)list_get(procesos,unPid);
-								printf("pids->pids[unPid]: %i\n", pids->pids[unPid]);
-
+								printf("pid en consoul: %i.\n", pids->pids[unPid]);
 							}
 							
 							enviarDinamico(ARRAYPIDS,serverSocket,pids); 
 
-							for(unPid=0;unPid<list_size(procesos);unPid++)
-							{
-								list_remove(procesos,unPid);
-								printf("pids->pids[unPid]: %i\n", pids->pids[unPid]);
+							// for(unPid=0;unPid<list_size(procesos);unPid++)
+							// {
+							// 	list_remove(procesos,unPid);
+							// 	printf("pids->pids[unPid]: %i\n", pids->pids[unPid]);
 
-							}
+							// }
 
 							escribirEnArchivoLog("envio arrays pids", &consolaLog,nombreLog);
-							printf("sali\n");
 							free(pids->pids);
 							free(pids);
 
@@ -452,10 +483,10 @@ while(cancelarThread==0){
 	
 		break;
 	case 3:
-							clear();
+							system("clear");
 		break;
 	case 5:
-							clear();
+							system("clear");
 							printf("Exit Codes:\n");
 							printf("\t0: El programa finalizó correctamente.\n");
 							printf("\t-1: No se pudieron reservar recursos para ejecutar el programa.\n");
@@ -474,12 +505,13 @@ while(cancelarThread==0){
 							printf("\t-14: Se intenta acceder a un archivo sin abrir.\n");
 							printf("\t-15: Se intenta acceder a una pagina no permitida.\n");
 							printf("\t-16: Stack overflow.\n");
+							printf("\t-17: Finalizacion forzada de consola.\n");
 							printf("Presione una tecla para volver al menú\n");
 							getchar();getchar();
 		break;
 
 	default:	printf("%s\n","habia una veez un barco chicquito");//error no se declara
-	
+	break;
 	}
 }
 	printf("%s\n",mensajeFinalizacionHilo);

@@ -96,6 +96,7 @@
 #define RESERVADOESPACIO 69
 #define LIBERARPAGINA 71
 #define PRINT 72
+#define LEAKS 72
 
 
 void DumpHex(const void* data, size_t size) {
@@ -778,13 +779,15 @@ void serial_arrayPids(t_arrayPids * arraypids,int unSocket){
 		serial_int(&(arraypids->pids[i]),unSocket);
 	}
 }
-void dserial_arrayPids(t_arrayPids * arraypids,int unSocket){
+void dserial_arrayPids(t_arrayPids ** arraypids,int unSocket){
 	int i;
-	dserial_int(&(arraypids->cantidad),unSocket);
-	arraypids->pids=calloc(sizeof(int),arraypids->cantidad);
-	for (i = 0; i < arraypids->cantidad; i++)
+	dserial_int(&((*arraypids)->cantidad),unSocket);
+	printf("cantidad de pids: %i.\n", (*arraypids)->cantidad);
+	(*arraypids)->pids=calloc(sizeof(int),(*arraypids)->cantidad);
+	for (i = 0; i < (*arraypids)->cantidad; i++)
 	{
-		dserial_int(&(arraypids->pids[i]),unSocket);
+		dserial_int(&((*arraypids)->pids[i]),unSocket);
+		printf("pid en sderial: %i.\n", (*arraypids)->pids[i]);
 	}
 }
 
@@ -1144,7 +1147,7 @@ void enviarDinamico(int tipoPaquete,int unSocket,void * paquete)
 			
 		break;
 
-		case MENSAJE:	case PRINT:
+		case MENSAJE:	case PRINT:	case LEAKS:
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 			serial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
@@ -1307,7 +1310,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 					dserial_int((int*)paquete,unSocket);
 		break;
 
-		case MENSAJE:	case PRINT:
+		case MENSAJE:	case PRINT:	case LEAKS:
 					dserial_mensaje((t_mensaje * )paquete,unSocket);			
 		break;
 
@@ -1340,7 +1343,7 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 			dserial_solicitudSemaforo((t_solicitudSemaforo *)paquete,unSocket);
 		break;
 		case ARRAYPIDS:	
-					dserial_arrayPids((t_arrayPids *)paquete,unSocket);
+					dserial_arrayPids((t_arrayPids **)paquete,unSocket);
 		break;
 		case ASIGNARPAGINAS:	
 					dserial_solicitudAsignar((t_solicitudAsignar *)paquete,unSocket);

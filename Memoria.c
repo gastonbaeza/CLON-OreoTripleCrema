@@ -426,8 +426,8 @@ while(flagHilo) {
 	 											escribirEnArchivoLog("envio paquete", &MemoriaLog,nombreLog);
 	 											printf("paquete: %i\n",*(int*) paquete);
 	 											printf("paquete: %s\n",(char*) paquete);
-	 										}
 	 											free(paquete);
+	 										}
 	 											free(peticionBytes);
 	 					break;
 	 					case ASIGNARPAGINAS: //: [Identificador del Programa] [Páginas requeridas]

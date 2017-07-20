@@ -428,6 +428,7 @@ void posicionarPC(int pos){
 			liberarContenidoPcb();
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
+			printf("qwe\n");
 			return valor;
 		}
 
@@ -648,13 +649,14 @@ void posicionarPC(int pos){
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(RESERVADOESPACIO,socketKernel,reservar);
+			printf("puntero: %i.\n", reservar->puntero);
 			escribirEnArchivoLog("recibo reservado espacio", &CPULog,nombreLog);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
-				
 			printf("puntero: %i.\n", reservar->puntero);
+				
 			return reservar->puntero;
 			
 
