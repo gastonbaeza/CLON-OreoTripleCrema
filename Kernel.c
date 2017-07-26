@@ -161,6 +161,7 @@ pthread_mutex_t mutexAlocar;
 pthread_mutex_t mutexFinConsola;
 pthread_mutex_t mutexFinPid;
 pthread_mutex_t mutexSocketPid;
+pthread_mutex_t mutexDespuesFin;
 sem_t semReadys;
 
 t_pcb * PCBS;
@@ -369,32 +370,54 @@ void wait(char ** semaforo, int pid)
 		}
 	}
 }
+void mandarAExit(int pid){
+	int i;
+	oust(pid,&COLANEW,&CANTIDADNEWS,&mutexColaNew);
+	oust(pid,&COLAREADY,&CANTIDADREADYS,&mutexColaReady);
+	oust(pid,&COLAEXEC,&CANTIDADEXECS,&mutexColaExec);
+	oust(pid,&COLABLOCK,&CANTIDADBLOCKS,&mutexColaBlock);
+	oust(pid,&COLAEXIT,&CANTIDADEXITS,&mutexColaExit);
+	add(pid,&COLAEXIT,&CANTIDADEXITS,&mutexColaExit);
+	if (PCBS[pid].estado==BLOCKED)
+	{
+		for (i = 0; i < CANTIDADSEM; i++)
+		{
+			oust(pid,&(BLOQUEADOSPORSEM[i]),&(CANTIDADBLOCKPORSEM[i]),&mutexSemaforos);
+		}
+	}
+}
 void warn(char ** semaforo)
 {
 	strip(semaforo);
-	int pid,valorInt,i;
+	int pid,valorInt,i,j;
 	char * valorString;
 	for (i = 0; i < CANTIDADSEM; i++)
 	{
 		if (!strcmp(SEM_IDS[i],*semaforo))
 		{
-			if(CANTIDADBLOCKPORSEM[i]>0)
+			for (j= 0; j < CANTIDADBLOCKPORSEM[i]; ++j)
 			{
-				pid=head(&(BLOQUEADOSPORSEM[i]),&(CANTIDADBLOCKPORSEM[i]),&mutexSemaforos);
-				oust(pid,&COLABLOCK,&CANTIDADBLOCKS,&mutexColaBlock);
-				add(pid,&COLAREADY,&CANTIDADREADYS,&mutexColaReady);
-				cambiarEstado(pid,READY);
-				sem_post(&semReadys);
+				if(PCBS[(BLOQUEADOSPORSEM[i])[0]].estado!=EXIT)
+				{
+					pid=head(&(BLOQUEADOSPORSEM[i]),&(CANTIDADBLOCKPORSEM[i]),&mutexSemaforos);
+					oust(pid,&COLABLOCK,&CANTIDADBLOCKS,&mutexColaBlock);
+					add(pid,&COLAREADY,&CANTIDADREADYS,&mutexColaReady);
+					cambiarEstado(pid,READY);
+					sem_post(&semReadys);
+					return;
+				}
+				else
+				{
+					pid=head(&(BLOQUEADOSPORSEM[i]),&(CANTIDADBLOCKPORSEM[i]),&mutexSemaforos);
+					mandarAExit(pid);
+				}
 			}
-			else
-			{
-				valorInt=atoi(SEM_INIT[i]);
-				valorInt++;
-				valorString=calloc(1,10);
-				sprintf(valorString, "%i", valorInt);
-				strcpy(SEM_INIT[i],valorString);
-				free(valorString);
-			}
+			valorInt=atoi(SEM_INIT[i]);
+			valorInt++;
+			valorString=calloc(1,10);
+			sprintf(valorString, "%i", valorInt);
+			strcpy(SEM_INIT[i],valorString);
+			free(valorString);
 		}
 	}
 }
@@ -422,6 +445,7 @@ int alocar(int espacio, int pid, int pagina)
 	{	
 		if (tablaHeap[pid].paginas[pagina].contenido[k].isFree)
 		{
+			printf("encontre libre\n");
 			if (k==tablaHeap[pid].paginas[pagina].cantidadMetadatas-1)
 			{
 				printf("es el ultimo metadata\n");
@@ -439,6 +463,7 @@ int alocar(int espacio, int pid, int pagina)
 					printf("espacioLibre anteasdasfe: %i.\n", tablaHeap[pid].paginas[pagina].espacioLibre);
 					tablaHeap[pid].paginas[pagina].espacioLibre-=(sizeof(t_heapMetaData)+espacio);
 					printf("espacioLibre anteasdasfe: %i.\n", tablaHeap[pid].paginas[pagina].espacioLibre);
+					break;
 
 				}
 			}
@@ -448,9 +473,11 @@ int alocar(int espacio, int pid, int pagina)
 				{	
 					tablaHeap[pid].paginas[pagina].contenido[k].isFree=false;
 					tablaHeap[pid].paginas[pagina].espacioLibre-=espacio;
+					break;
 				}
 				else
 				{
+					printf("no es el ultimo y sobra espacio\n");
 					tablaHeap[pid].paginas[pagina].contenido[k].isFree=false;
 					espacioAnterior=tablaHeap[pid].paginas[pagina].contenido[k].size;
 					tablaHeap[pid].paginas[pagina].contenido[k].size=espacio;
@@ -459,12 +486,14 @@ int alocar(int espacio, int pid, int pagina)
 					tablaHeap[pid].paginas[pagina].contenido[k+1].isFree=true;
 					tablaHeap[pid].paginas[pagina].contenido[k+1].size=espacioAnterior-espacio-sizeof(t_heapMetaData);
 					tablaHeap[pid].paginas[pagina].espacioLibre-=(sizeof(t_heapMetaData)+espacio);
+					break;
 				}
 			}
 		}
+		printf("no esta libre\n");
 	}
 	pthread_mutex_unlock(&mutexAlocar);
-	k--;
+	// k--;
 	puntero=(tablaHeap[pid].paginas[pagina].pagina-PCBS[pid].paginasCodigo)*TAMPAGINA;
 	printf("puntero: %i\n", puntero);
 	for (l = 0; l < k; l++)
@@ -531,17 +560,22 @@ int liberarHeap(int pid, int pagina, int offset)
 	pthread_mutex_lock(&mutexAlocar);
 	for (j = 0; j < tablaHeap[pid].cantPaginas; j++)
 	{
+		printf("pagina tabla: %i.\n",tablaHeap[pid].paginas[j].pagina);
+		printf("pagina busca3: %i.\n", pagina);
 		if (tablaHeap[pid].paginas[j].pagina==pagina)
 		{
+			printf("encontre la pagina\n");
 			for (k = 0; k < tablaHeap[pid].paginas[j].cantidadMetadatas; k++)
 			{
 				offset-=sizeof(t_heapMetaData);
 				if (offset==0)
 				{
+					printf("encontre la metadata\n");
 					tablaHeap[pid].paginas[j].espacioLibre+=tablaHeap[pid].paginas[j].contenido[k].size;
 					tablaHeap[pid].paginas[j].contenido[k].isFree=true;
 					if (k!=tablaHeap[pid].paginas[j].cantidadMetadatas-1 && tablaHeap[pid].paginas[j].contenido[k+1].isFree)
 					{
+						printf("el siguiente esta libre\n");
 						if (k+1==tablaHeap[pid].paginas[j].cantidadMetadatas-1)
 						{
 							if (tablaHeap[pid].paginas[j].contenido[k+1].size==0)
@@ -562,6 +596,7 @@ int liberarHeap(int pid, int pagina, int offset)
 					}
 					if ( k!=0 && tablaHeap[pid].paginas[j].contenido[k-1].isFree)
 					{
+						printf("el anterior esta free\n");
 						tablaHeap[pid].paginas[j].contenido[k-1].size+=tablaHeap[pid].paginas[j].contenido[k].size+sizeof(t_heapMetaData);
 						sacarHeapMetadata(pid,j,k);
 						tablaHeap[pid].paginas[j].espacioLibre+=sizeof(t_heapMetaData);
@@ -648,16 +683,25 @@ int nuevaEntradaTablaArchivos(char * path)
 {
 	int globalFd;
 	pthread_mutex_lock(&mutexTablaArchivos);
+	printf("proximoFd: %i.\n", proximoFd);
 	globalFd=proximoFd;
 	proximoFd++;
 	CANTTABLAARCHIVOS++;
-	tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
-	tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,string_length(path));
+	if (CANTTABLAARCHIVOS==1)
+	{
+		tablaArchivos=malloc(CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+	}
+	else
+	{
+		tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+	}
+	tablaArchivos[CANTTABLAARCHIVOS-1].path=calloc(1,string_length(path)+1);
 	tablaArchivos[CANTTABLAARCHIVOS-1].tamanioPath=string_length(path);
 	strcpy(tablaArchivos[CANTTABLAARCHIVOS-1].path,path);
 	tablaArchivos[CANTTABLAARCHIVOS-1].vecesAbierto=1;
 	tablaArchivos[CANTTABLAARCHIVOS-1].fd=globalFd;
 	pthread_mutex_unlock(&mutexTablaArchivos);
+	return CANTTABLAARCHIVOS-1;
 }
 int puedeBorrarse(int globalFd)
 {
@@ -676,6 +720,8 @@ int getPosicionTabla(int globalFd)
 	int i;
 	for (i = 0; i < CANTTABLAARCHIVOS; i++)
 	{
+		printf("fd de tabla: %i.\n", tablaArchivos[i].fd);
+		printf("fd busca3: %i.\n", globalFd);
 		if (globalFd==tablaArchivos[i].fd)
 		{
 			return i;
@@ -690,6 +736,7 @@ int closeFile(int globalFd)
 	tablaArchivos[i].vecesAbierto--;
 	if (tablaArchivos[i].vecesAbierto==0)
 	{
+		free(tablaArchivos[i].path);
 		for (; i < CANTTABLAARCHIVOS; i++)
 		{
 			if (!(i+1==CANTTABLAARCHIVOS))
@@ -708,22 +755,6 @@ int getPidReady(){
 	printf("Valor semaforo: %i\n", value);
 	sem_wait(&semReadys);
 	return head(&COLAREADY,&CANTIDADREADYS,&mutexColaReady);
-}
-void mandarAExit(int pid){
-	int i;
-	oust(pid,&COLANEW,&CANTIDADNEWS,&mutexColaNew);
-	oust(pid,&COLAREADY,&CANTIDADREADYS,&mutexColaReady);
-	oust(pid,&COLAEXEC,&CANTIDADEXECS,&mutexColaExec);
-	oust(pid,&COLABLOCK,&CANTIDADBLOCKS,&mutexColaBlock);
-	oust(pid,&COLAEXIT,&CANTIDADEXITS,&mutexColaExit);
-	add(pid,&COLAEXIT,&CANTIDADEXITS,&mutexColaExit);
-	if (PCBS[pid].estado==BLOCKED)
-	{
-		for (i = 0; i < CANTIDADSEM; i++)
-		{
-			oust(pid,&(BLOQUEADOSPORSEM[i]),&(CANTIDADBLOCKPORSEM[i]),&mutexSemaforos);
-		}
-	}
 }
 void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
 	
@@ -774,15 +805,17 @@ void finalizarPid(int pid, int exitCode)
 		pthread_mutex_lock(&mutexFinConsola);
 		PIDFIN=-1;
 		pthread_mutex_unlock(&mutexFinPid);
+		pthread_mutex_unlock(&mutexDespuesFin);
 	}
 	else
 	{
 		if (PCBS[pid].estado!=EXIT)
 		{
+			mandarAExit(pid);
 			setExitCode(pid,EXITCODE);
 			cambiarEstado(pid,EXIT);
-			mandarAExit(pid);
 			aux=calloc(1,100);
+			printf("exitCode: %i\n", exitCode);
 			sprintf(aux,"Proceso Pid=%i finalizado, exitCode=%i",pid,exitCode);
 			mensaje=malloc(sizeof(t_mensaje));
 			mensaje->tamanio=strlen(aux);
@@ -1680,19 +1713,20 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					escribirEnArchivoLog("recibo abrir archivo", &KernelLog,nombreLog);
 					while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
 					path=malloc(sizeof(t_path));
-					path->path=calloc(1,abrirArchivo->tamanio);
+					path->path=calloc(1,abrirArchivo->tamanio+1);
 					pcb=malloc(sizeof(t_pcb));
 					recibirDinamico(PCB,socket,pcb);
 					escribirEnArchivoLog("recibo pcb", &KernelLog,nombreLog);
 					pcb->privilegiadasEjecutadas++;
-					if ((globalFd=estaAbierto(abrirArchivo->direccionArchivo))==-1)
+					if ((i=estaAbierto(abrirArchivo->direccionArchivo))==-1)
 					{
+						printf("entro aca\n");
 						strcpy(path->path,abrirArchivo->direccionArchivo);
 						path->tamanio=string_length(path->path);
 						enviarDinamico(VALIDARARCHIVO,SOCKETFS,path);
 						escribirEnArchivoLog("envio validar archivo", &KernelLog,nombreLog);
 						while(0>recv(SOCKETFS,&rv,sizeof(int),0));
-						globalFd=nuevaEntradaTablaArchivos(path->path);
+						i=nuevaEntradaTablaArchivos(path->path);
 						if (abrirArchivo->flags.creacion && rv==-1)
 						{
 							enviarDinamico(CREARARCHIVOFS,SOCKETFS,path);
@@ -1706,7 +1740,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					else
 					{
 						pthread_mutex_lock(&mutexTablaArchivos);
-						tablaArchivos[globalFd].vecesAbierto++;
+						tablaArchivos[i].vecesAbierto++;
 						pthread_mutex_unlock(&mutexTablaArchivos);
 					}
 					if (error!=-10)
@@ -1719,7 +1753,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						else
 							pcb->referenciaATabla=realloc(pcb->referenciaATabla,pcb->cantidadArchivos*sizeof(t_tablaArchivosDeProcesos));
 						memcpy(&(pcb->referenciaATabla[pcb->cantidadArchivos-1].flags),&(abrirArchivo->flags),sizeof(t_banderas));
-						pcb->referenciaATabla[pcb->cantidadArchivos-1].globalFd=globalFd;
+						pcb->referenciaATabla[pcb->cantidadArchivos-1].globalFd=tablaArchivos[i].fd;
 						pcb->referenciaATabla[pcb->cantidadArchivos-1].cursor=0;
 						pcb->referenciaATabla[pcb->cantidadArchivos-1].abierto=1;
 					}
@@ -1759,6 +1793,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						path->tamanio=tablaArchivos[i].tamanioPath;
 						strcpy(path->path,tablaArchivos[i].path);
 						enviarDinamico(BORRARARCHIVOFS,SOCKETFS,path);
+						free(path->path);
 						free(path);
 					}
 					else
@@ -1853,7 +1888,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 							globalFd=pcb->referenciaATabla[(escribirArchivo->fdArchivo)-3].globalFd;
 							i=getPosicionTabla(globalFd);
 							escribirArchivoFS->tamanioPath=tablaArchivos[i].tamanioPath;
-							escribirArchivoFS->path=calloc(1,escribirArchivoFS->tamanioPath);
+							escribirArchivoFS->path=calloc(1,escribirArchivoFS->tamanioPath+1);
 							strcpy(escribirArchivoFS->path,tablaArchivos[i].path);
 							enviarDinamico(GUARDARDATOSFS,SOCKETFS,escribirArchivoFS);
 							escribirEnArchivoLog("envio guardar datos fs", &KernelLog,nombreLog);
@@ -1904,7 +1939,9 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 							globalFd=pcb->referenciaATabla[(leerArchivo->descriptor)-3].globalFd;
 							i=getPosicionTabla(globalFd);
 							leerArchivoFS->tamanioPath=tablaArchivos[i].tamanioPath;
-							leerArchivoFS->path=calloc(1,leerArchivoFS->tamanioPath);
+							leerArchivoFS->path=calloc(1,leerArchivoFS->tamanioPath+1);
+							printf("CANTTABLAARCHIVOS: %i.\n", CANTTABLAARCHIVOS);
+							printf("i: %i.\n", i);
 							strcpy(leerArchivoFS->path,tablaArchivos[i].path);
 							enviarDinamico(OBTENERDATOSFS,SOCKETFS,leerArchivoFS);
 							escribirEnArchivoLog("envio obtener datos fs", &KernelLog,nombreLog);
@@ -1992,7 +2029,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					cambiarEstado(pid,EXIT);
 					mandarAExit(pid);
 					aux=calloc(1,100);
-					sprintf(aux,"Proceso Pid=%i finalizado, exitCode=%i",pid,error);
+					sprintf(aux,"Proceso Pid=%i finalizado, exitCode=%i",pid,EXITCODE);
 					error=0;
 					mensaje=malloc(sizeof(t_mensaje));
 					mensaje->tamanio=strlen(aux);
@@ -2014,6 +2051,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					}
 					primerAcceso=1;
 					pthread_mutex_unlock(&mutexFinConsola);
+					pthread_mutex_lock(&mutexDespuesFin);
 					free(mensaje);
 					free(aux);
 					liberarContenidoPcb(&pcb);
@@ -2397,7 +2435,9 @@ pthread_mutex_init(&mutexAlocar,NULL);
 pthread_mutex_init(&mutexFinConsola,NULL);
 pthread_mutex_init(&mutexFinPid,NULL);
 pthread_mutex_init(&mutexSocketPid,NULL);
+pthread_mutex_init(&mutexDespuesFin,NULL);
 pthread_mutex_lock(&mutexFinConsola);
+pthread_mutex_lock(&mutexDespuesFin);
 sem_init(&semReadys,0,0);
 // INICIO COLA READYS
 // RETURN VALUES

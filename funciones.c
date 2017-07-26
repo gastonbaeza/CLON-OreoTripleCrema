@@ -495,7 +495,6 @@ int dserial_string(char ** unString,int unSocket)
 	int b=1;
 	memcpy(buffer1,&b,sizeof(int));
 	while(0>recv(unSocket,&tamanio,sizeof(int),0));
-	*unString=calloc(1,tamanio+1);
 	send(unSocket,buffer1, sizeof(int),0);
 	// for (unChar= 0; unChar <tamanio; unChar++)
 	// {
@@ -505,6 +504,7 @@ int dserial_string(char ** unString,int unSocket)
 	// }
 	if (tamanio>0)
 	{
+	*unString=calloc(1,tamanio+1);
 	while(0>recv(unSocket,*unString,tamanio,0));
 	send(unSocket,buffer1, sizeof(int),0);
 	}
@@ -997,6 +997,7 @@ void serial_abrirArchivo(t_abrirArchivo * abrirArchivo, int unSocket){
 	serial_string(abrirArchivo->direccionArchivo,abrirArchivo->tamanio,unSocket);
 	send(unSocket,&(abrirArchivo->flags),sizeof(t_banderas),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
+	free(buffer);
 }
 
 void dserial_abrirArchivo(t_abrirArchivo * abrirArchivo,int unSocket){
@@ -1006,6 +1007,7 @@ void dserial_abrirArchivo(t_abrirArchivo * abrirArchivo,int unSocket){
 	abrirArchivo->tamanio=dserial_string(&(abrirArchivo->direccionArchivo),unSocket);
 	while(0>recv(unSocket,&(abrirArchivo->flags),sizeof(t_banderas),0));
 	send(unSocket,buffer, sizeof(int),0);
+	free(buffer);
 }
 void serial_borrarArchivo(t_borrarArchivo * borrarArchivo, int unSocket)
 {
@@ -1816,6 +1818,7 @@ char * enlistadorDeBloques(char**lista,int * bloquesAsignados, int cantidadAsign
 		sprintf(block,"%i",bloquesAsignados[i]);
 		cantidadCaracteres+=strlen(block);
 	}
+	free(block);
 	printf("cantidadCaracteres: %i.\n", cantidadCaracteres);
 	*lista=calloc(1,cantidadCaracteres+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
 	char * aux=calloc(1,10);
