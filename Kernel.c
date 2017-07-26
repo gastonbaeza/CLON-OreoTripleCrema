@@ -162,6 +162,7 @@ pthread_mutex_t mutexFinConsola;
 pthread_mutex_t mutexFinPid;
 pthread_mutex_t mutexSocketPid;
 pthread_mutex_t mutexDespuesFin;
+pthread_mutex_t mutexSolicitudMem;
 sem_t semReadys;
 
 t_pcb * PCBS;
@@ -515,12 +516,14 @@ int nuevaPaginaHeap(int pid)
 	solicitudPaginaHeap=malloc(sizeof(t_solicitudAsignar));
 	solicitudPaginaHeap->pid=pid;
 	solicitudPaginaHeap->paginasAAsignar=1;
+	pthread_mutex_lock(&mutexSolicitudMem);
 	enviarDinamico(ASIGNARPAGINAS,SOCKETMEMORIA,solicitudPaginaHeap);
 	free(solicitudPaginaHeap);
 	while(0>recv(SOCKETMEMORIA,&rv,sizeof(int),0))
 	{
 		perror("error en nuevaPaginaHeap:");
 	}
+	pthread_mutex_unlock(&mutexSolicitudMem);
 	if (rv==-1)
 	{
 		return -1;
@@ -617,12 +620,14 @@ int liberarHeap(int pid, int pagina, int offset)
 		liberarPagina=malloc(sizeof(t_liberarPagina));
 		liberarPagina->pid=pid;
 		liberarPagina->pagina=tablaHeap[pid].paginas[j].pagina;
+		pthread_mutex_lock(&mutexSolicitudMem);
 		enviarDinamico(LIBERARPAGINA,SOCKETMEMORIA,liberarPagina);
 		while(0>recv(SOCKETMEMORIA,&rv,sizeof(int),0));
 		if (rv==-1)
 		{
 			return -1;
 		}
+		pthread_mutex_unlock(&mutexSolicitudMem);
 		pthread_mutex_lock(&mutexAlocar);
 		for (k = j; k < tablaHeap[pid].cantPaginas; k++)
 		{
@@ -824,9 +829,11 @@ void finalizarPid(int pid, int exitCode)
 			send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pid),sizeof(int),0);
 			informarLeaks(pid);
 			escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
+			pthread_mutex_lock(&mutexSolicitudMem);
 			enviarDinamico(LIBERARMEMORIA,SOCKETMEMORIA,NULL);
 			escribirEnArchivoLog("envio liberar memomria ", &KernelLog,nombreLog);
 			send(SOCKETMEMORIA,&pid,sizeof(int),0);
+			pthread_mutex_unlock(&mutexSolicitudMem);
 			free(aux);
 			free(mensaje);
 		}
@@ -854,9 +861,11 @@ void finalizarPidForzoso(int pid)
 			cambiarEstado(pid,EXIT);
 			mandarAExit(pid);
 			escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
+			pthread_mutex_lock(&mutexSolicitudMem);
 			enviarDinamico(LIBERARMEMORIA,SOCKETMEMORIA,NULL);
 			escribirEnArchivoLog("envio liberar memomria ", &KernelLog,nombreLog);
 			send(SOCKETMEMORIA,&pid,sizeof(int),0);
+			pthread_mutex_unlock(&mutexSolicitudMem);
 		}
 	}
 }
@@ -2005,9 +2014,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pcb->pid),sizeof(int),0);
 					informarLeaks(pcb->pid);
 					escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
+					pthread_mutex_lock(&mutexSolicitudMem);
 					enviarDinamico(LIBERARMEMORIA,SOCKETMEMORIA,NULL);
 					escribirEnArchivoLog("envio liberar memomria ", &KernelLog,nombreLog);
 					send(SOCKETMEMORIA,&pid,sizeof(int),0);
+					pthread_mutex_unlock(&mutexSolicitudMem);
 					while(0>recv(socket,&rv,sizeof(int),0));
 					if (rv)
 					{
@@ -2041,9 +2052,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						informarLeaks(pcb->pid);
 					}
 					escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
+					pthread_mutex_lock(&mutexSolicitudMem);
 					enviarDinamico(LIBERARMEMORIA,SOCKETMEMORIA,NULL);
 					escribirEnArchivoLog("envio liberar memomria ", &KernelLog,nombreLog);
 					send(SOCKETMEMORIA,&pid,sizeof(int),0);
+					pthread_mutex_unlock(&mutexSolicitudMem);
 					while(0>recv(socket,&rv,sizeof(int),0));
 					if (rv)
 					{
@@ -2076,9 +2089,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					informarLeaks(pcb->pid);
 					error=0;
 					escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
+					pthread_mutex_lock(&mutexSolicitudMem);
 					enviarDinamico(LIBERARMEMORIA,SOCKETMEMORIA,NULL);
 					escribirEnArchivoLog("envio liberar memomria ", &KernelLog,nombreLog);
 					send(SOCKETMEMORIA,&pid,sizeof(int),0);
+					pthread_mutex_unlock(&mutexSolicitudMem);
 					while(0>recv(socket,&rv,sizeof(int),0));
 					if (rv)
 					{
@@ -2233,6 +2248,7 @@ void comunicarse(dataParaComunicarse ** dataDeConexion){
 				solicitudMemoria->cantidadPaginasStack=STACK_SIZE;
 				solicitudMemoria->pid=pid;
 				solicitudMemoria->respuesta=0;
+				pthread_mutex_lock(&mutexSolicitudMem);
 				enviarDinamico(SOLICITUDMEMORIA,SOCKETMEMORIA,solicitudMemoria);
 				escribirEnArchivoLog("envio solicitud memoria", &KernelLog,nombreLog);
 				//LIBERO PUNTEROS
@@ -2243,6 +2259,7 @@ void comunicarse(dataParaComunicarse ** dataDeConexion){
 				free(pcb);
 				// RECIBO LA RESPUESTA DE MEMORIA
 				while(0>recv(SOCKETMEMORIA, &respuesta, sizeof(int), 0));
+				pthread_mutex_unlock(&mutexSolicitudMem);
 				// PREPARO LA RESPUESTA A CONSOLA
 				resultado=malloc(sizeof(t_resultadoIniciarPrograma));
 				resultado->pid=pid;
@@ -2436,6 +2453,7 @@ pthread_mutex_init(&mutexFinConsola,NULL);
 pthread_mutex_init(&mutexFinPid,NULL);
 pthread_mutex_init(&mutexSocketPid,NULL);
 pthread_mutex_init(&mutexDespuesFin,NULL);
+pthread_mutex_init(&mutexSolicitudMem,NULL);
 pthread_mutex_lock(&mutexFinConsola);
 pthread_mutex_lock(&mutexDespuesFin);
 sem_init(&semReadys,0,0);
