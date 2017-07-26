@@ -543,7 +543,7 @@ while(1){
 					cantAPedir=0;
 				}
 				printf("Por lo que tengo que pedir %i bloques mas.\n", cantAPedir);
-				aux=calloc(1,250);
+				aux=calloc(1,strlen(bloquesArray)+1);
 				auxDeAux=aux;
 				strcpy(aux,bloquesArray);
 				if (cantAPedir>0)
@@ -562,6 +562,8 @@ while(1){
 						printf("no hay bloques libres\n");
 					}
 					printf("Mi cantidad total de bloques es: %i\n",cantidadBloques+cantAPedir);
+					aux=realloc(aux,strlen(aux)+strlen(bloquesAsignadosChar)+1);
+					auxDeAux=aux;
 					aux=strtok(aux,"]"); 
 					bloquesAsignadosChar++;
 					strcat(aux,",");
