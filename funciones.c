@@ -96,7 +96,7 @@
 #define RESERVADOESPACIO 69
 #define LIBERARPAGINA 71
 #define PRINT 72
-#define LEAKS 72
+#define LEAKS 73
 
 
 void DumpHex(const void* data, size_t size) {
@@ -1809,8 +1809,15 @@ void ultimoDirectorio(char * unPath,char** laDir)
 }
 
 char * enlistadorDeBloques(char**lista,int * bloquesAsignados, int cantidadAsignados)
-{	int unBloque=0;
-	*lista=calloc(1,cantidadAsignados+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
+{	int unBloque=0,i,cantidadCaracteres=0;
+	char*block=calloc(1,10);
+	for (i = 0; i < cantidadAsignados; ++i)
+	{
+		sprintf(block,"%i",bloquesAsignados[i]);
+		cantidadCaracteres+=strlen(block);
+	}
+	printf("cantidadCaracteres: %i.\n", cantidadCaracteres);
+	*lista=calloc(1,cantidadCaracteres+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
 	char * aux=calloc(1,10);
 	strcpy(*lista,"["); 
 	for (unBloque = 0; unBloque < cantidadAsignados; unBloque++)
@@ -1830,32 +1837,72 @@ char * enlistadorDeBloques(char**lista,int * bloquesAsignados, int cantidadAsign
 	return *lista;
 
 }
-void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
+void crearBloques(int *  listaDeBloques,int cantBloques, char* direccionMontaje,int tamBloques)
+{	FILE * bitmap;
+	int unBloque=0;
+	char * unString;
+	char * direccionBloques;
+	char * puntoBin=".bin";
+	for ( unBloque = 0; unBloque < cantBloques; ++unBloque)
+	{	unString=calloc(1,20);
+		direccionBloques=calloc(1,200);
+		strcpy(direccionBloques,direccionMontaje);
+		strcat(direccionBloques,"/Bloques/");
+		sprintf(unString,"%d",listaDeBloques[unBloque]);
+		strcat(unString,puntoBin);
+			strcat(direccionBloques,unString);
+			
+			bitmap = fopen(direccionBloques,"wb"); 
+			if (bitmap!=NULL)
+			{
+			truncate(direccionBloques,tamBloques);
+			fclose(bitmap);
+			}
+			free(unString);
+			free(direccionBloques);
+	}
+	
+
+	
+}
+
+/*void crearBloques(char *  listaDeBloques, char* direccionMontaje,int tamBloques)
 {	
 	FILE * bitmap;
 	int tamanio=strlen(listaDeBloques);
 	int unCaracter=0;
 	char * puntoBin=".bin";
-	char string[20];
-	char * direccionBloques=calloc(1,200);
-	strcpy(direccionBloques,direccionMontaje);
-	strcat(direccionBloques,"/Bloques/");
+	
+	char * string;
+	char * direccionBloques;
+	
 	for(unCaracter = 0; unCaracter < tamanio; unCaracter++)
-	{
+	{	printf("voy por este caracter %c\n",listaDeBloques[unCaracter] );
 		if(listaDeBloques[unCaracter]!='['&&listaDeBloques[unCaracter]!=']'&&listaDeBloques[unCaracter]!=',')
-		{	string[0]=listaDeBloques[unCaracter];
+		{	
+			string=calloc(1,20);
+			direccionBloques=calloc(1,200);
+			strcpy(direccionBloques,direccionMontaje);
+			strcat(direccionBloques,"/Bloques/");
+			string[0]=listaDeBloques[unCaracter];
 			string[1]='\0';
 			strcat(string,puntoBin);
 			strcat(direccionBloques,string);
+			printf("%s\n",direccionBloques );
 			bitmap = fopen(direccionBloques,"wb"); 
+			
 		if (bitmap!=NULL)
 			{
 			truncate(direccionBloques,tamBloques);
 			fclose(bitmap);
 			}
+			free(string);
+			free(direccionBloques);
 		}
+
 	}
-	free(direccionBloques);
+	
+
 	printf("%s\n","genere los Bloques" );
 }
-
+*/
