@@ -789,7 +789,7 @@ void informarLeaks(int pid){
 				sprintf(mensaje->mensaje,"Memory leaks pid=%i:\n\tPaginas sin liberar: %i.\n\tBytes Alocados: %i,\tBytes Liberados: %i,\tBytes sin liberar: %i.\n\tHeap structs generadas: %i,\tHeap structs desechadas: %i,\tHeap structs sin desechar: %i.",pid,paginasSinLiberar,bytesAlocados,bytesLiberados,bytesSinLiberar,estructurasHeapAlocadas,estructurasHeapLiberadas,estructurasHeapSinLiberar);
 				mensaje->tamanio=string_length(mensaje->mensaje);
 				enviarDinamico(LEAKS,SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],mensaje);
-				send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pid),sizeof(int),0);
+				//send(SOCKETSCONSOLAMENSAJE[SOCKETSCONSOLA[pid]],&(pid),sizeof(int),0);
 				escribirEnArchivoLog(mensaje->mensaje,&KernelLog,nombreLog);
 				free(mensaje->mensaje);
 				free(mensaje);
@@ -1003,7 +1003,7 @@ void updatePCB(t_pcb * pcb){
 		PCBS[pcb->pid].indiceStack[i].cantidadVariables=pcb->indiceStack[i].cantidadVariables;
 		if (pcb->indiceStack[i].cantidadVariables)
 		{
-			PCBS[pcb->pid].indiceStack[i].variables=malloc(pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
+			PCBS[pcb->pid].indiceStack[i].variables=calloc(1,pcb->indiceStack[i].cantidadVariables*sizeof(t_variable));
 		}
 		for (j = 0; j < pcb->indiceStack[i].cantidadVariables; j++)
 		{
