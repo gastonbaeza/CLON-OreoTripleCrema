@@ -189,7 +189,7 @@ void posicionarPC(int pos){
 		 * @return	Puntero a la variable recien asignada
 		 */
 		t_puntero cpu_definirVariable(t_nombre_variable identificador_variable){
-			printf("en cpu_definirVariable\n");
+			printf("%s\n","en cpu_definirVariable\n");
 			escribirEnArchivoLog("en definir variable", &CPULog,nombreLog);
 			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
@@ -259,7 +259,7 @@ void posicionarPC(int pos){
 		 * @return	Donde se encuentre la variable buscada
 		 */
 		t_puntero cpu_obtenerPosicionVariable (t_nombre_variable identificador_variable){
-			printf("en cpu_obtenerPosicionVariable\n");
+			printf("%s\n","en cpu_obtenerPosicionVariable\n");
 			escribirEnArchivoLog("en obtener posicion variable", &CPULog,nombreLog);
 			int i;
 			printf("identificador: %c.\n", identificador_variable);
@@ -270,7 +270,7 @@ void posicionarPC(int pos){
 			else // es una variable
 			{
 				printf("pcb->posicionStack: %i.\n", pcb->posicionStack);
-				printf("es variable\n");
+		
 				printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 				printf("primerVariable: %c.\n", pcb->indiceStack[pcb->posicionStack].variables[0].id);
 				for (i = 0; i < pcb->indiceStack[pcb->posicionStack].cantidadVariables; i++)
@@ -294,7 +294,7 @@ void posicionarPC(int pos){
 		 * @return	Valor que se encuentra en esa posicion
 		 */
 		t_valor_variable cpu_dereferenciar(t_puntero direccion_variable){
-			printf("en cpu_dereferenciar\n");
+			printf("%s\n","en cpu_dereferenciar\n");
 			escribirEnArchivoLog("en dereferenciar", &CPULog,nombreLog);
 			printf("Direccion: %i.\n", direccion_variable);
 			int offset,pagina,valor,foo,resultado;
@@ -310,12 +310,13 @@ void posicionarPC(int pos){
 			printf("%i\n", peticion->offset);
 			printf("%i\n", peticion->size);
 			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
+			free(peticion);
 			escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
 			while(0>recv(socketMemoria,&foo,sizeof(int),0)){
 				perror("asd:");
 			}
 			if(foo==1){
-				free(peticion);
+				
 				while(0>recv(socketMemoria,&resultado,sizeof(int),0));
 				printf("valor dereferenciado: %i.\n", resultado);
 				return resultado;
@@ -363,7 +364,7 @@ void posicionarPC(int pos){
 			}
 			if (rv==-1)
 			{
-				printf("me devolvio error\n");
+				printf("%s\n","me devolvio error\n");
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
 				escribirEnArchivoLog("envio stack overflow", &CPULog,nombreLog);
 			}
@@ -382,7 +383,7 @@ void posicionarPC(int pos){
 		 */
 		t_valor_variable cpu_obtenerValorCompartida(t_nombre_compartida variable){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_obtenerValorCompartida\n");
+			printf("%s\n","en cpu_obtenerValorCompartida\n");
 			escribirEnArchivoLog("en obtener valor compartida", &CPULog,nombreLog);
 			int valor;
 			t_solicitudValorVariable * solicitudValorVariable;
@@ -396,7 +397,7 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("envio solicitud valor variable", &CPULog,nombreLog);
 			recv(socketKernel,&valor,sizeof(int),0);
 			printf("valor compartida: %i\n", valor);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			return valor;
 		}
@@ -414,7 +415,7 @@ void posicionarPC(int pos){
 		 */
 		t_valor_variable cpu_asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_asignarValorCompartida\n");
+			printf("%s\n","en cpu_asignarValorCompartida\n");
 			escribirEnArchivoLog("en asignar valor compartida", &CPULog,nombreLog);
 			printf("valor: %i.\n", valor);
 			t_asignarVariableCompartida * asignarVariableCompartida;
@@ -426,9 +427,9 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("envio asignar variable compartida", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
-			printf("qwe\n");
+			
 			return valor;
 		}
 
@@ -443,7 +444,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_irAlLabel(t_nombre_etiqueta nombre_etiqueta){
-			printf("en cpu_irAlLabel\n");
+			printf("%s\n","en cpu_irAlLabel\n");
 			escribirEnArchivoLog("en ir a label", &CPULog,nombreLog);
 			int i,pos;
 			printf("%s\n",nombre_etiqueta );
@@ -466,7 +467,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_llamarSinRetorno(t_nombre_etiqueta etiqueta){
-			printf("en cpu_llamarSinRetorno\n");
+			printf("%s\n","en cpu_llamarSinRetorno\n");
 			escribirEnArchivoLog("en llamada sin retorno", &CPULog,nombreLog);
 			int i,pos;
 			nuevoNivelStack();
@@ -489,7 +490,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
-			printf("en cpu_llamarConRetorno\n");
+			printf("%s\n","en cpu_llamarConRetorno\n");
 			escribirEnArchivoLog("en llamada con retorno", &CPULog,nombreLog);
 			nuevoNivelStack();
 			int pos;
@@ -519,7 +520,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_finalizar(void){
-			printf("en cpu_finalizar\n");
+			printf("%s\n","en cpu_finalizar\n");
 			escribirEnArchivoLog("en finalizar", &CPULog,nombreLog);
 			if (pcb->posicionStack==0)
 			{	
@@ -549,7 +550,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_retornar(t_valor_variable retorno){
-			printf("en cpu_retornar\n");
+			printf("%s\n","en cpu_retornar\n");
 			escribirEnArchivoLog("en retornar", &CPULog,nombreLog);
 			t_almacenarBytes * bytes=malloc(sizeof(t_almacenarBytes));
 			bytes->valor=calloc(1,sizeof(int));
@@ -586,7 +587,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_wait(t_nombre_semaforo identificador_semaforo){
-			printf("en cpu_wait\n");
+			printf("%s\n","en cpu_wait\n");
 			escribirEnArchivoLog("en wait", &CPULog,nombreLog);
 		t_solicitudSemaforo * solicitudSemaforo;
 		void * paquete;
@@ -610,7 +611,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_signal(t_nombre_semaforo identificador_semaforo){
-			printf("en cpu_signal\n");
+			printf("%s\n","en cpu_signal\n");
 			escribirEnArchivoLog("en signal", &CPULog,nombreLog);
 		t_solicitudSemaforo * solicitudSemaforo;
 		solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
@@ -634,7 +635,7 @@ void posicionarPC(int pos){
 		t_puntero cpu_reservar(t_valor_variable espacio)
 		{	
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_reservar\n");
+			printf("%s\n","en cpu_reservar\n");
 			escribirEnArchivoLog("en reservar", &CPULog,nombreLog);
 			t_reservarEspacioMemoria * reservarEspacioMemoria;
 			reservarEspacioMemoria=malloc(sizeof(t_reservarEspacioMemoria));
@@ -647,11 +648,11 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(RESERVADOESPACIO,socketKernel,reservar);
 			printf("puntero: %i.\n", reservar->puntero);
 			escribirEnArchivoLog("recibo reservado espacio", &CPULog,nombreLog);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
@@ -678,17 +679,16 @@ void posicionarPC(int pos){
 		void cpu_liberar(t_puntero puntero){
 			
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_liberar\n");
+			printf("%s\n","en cpu_liberar\n");
 			escribirEnArchivoLog("en liberar", &CPULog,nombreLog);
-			t_liberarMemoria * liberarMemoria;
-			liberarMemoria=malloc(sizeof(t_liberarMemoria));
+			t_liberarMemoria * liberarMemoria=malloc(sizeof(t_liberarMemoria));
 			liberarMemoria->direccionMemoria=puntero;
 			enviarDinamico(LIBERARESPACIOMEMORIA,socketKernel,liberarMemoria);
 			escribirEnArchivoLog("envio liberar espacio memoria", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 			
@@ -706,7 +706,7 @@ void posicionarPC(int pos){
 		 */
 		t_descriptor_archivo cpu_abrir(t_direccion_archivo direccion, t_banderas flags){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_abrir\n");
+			printf("%s\n","en cpu_abrir\n");
 			escribirEnArchivoLog("en abrir archivo", &CPULog,nombreLog);
 			printf("flags: C=%i,L=%i,E=%i.\n", flags.creacion,flags.lectura,flags.escritura);
 			printf("direccion: %s.\n", direccion);
@@ -724,11 +724,11 @@ void posicionarPC(int pos){
 					escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 					free(abrirArchivo->direccionArchivo);
 					free(abrirArchivo);
-					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 					recibirDinamico(PCB,socketKernel,pcb);
 					escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 					t_fdParaLeer * fdParaLeer= malloc(sizeof(t_fdParaLeer));
-					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
 					escribirEnArchivoLog("recibo abrio archivo", &CPULog,nombreLog);
 					printf("fd: %i\n",fdParaLeer->fd );
@@ -745,7 +745,7 @@ void posicionarPC(int pos){
 		 */
 		void cpu_borrar(t_descriptor_archivo descriptor_archivo){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_borrar\n");
+			printf("%s\n","en cpu_borrar\n");
 			escribirEnArchivoLog("en borrar archivo", &CPULog,nombreLog);
 			t_borrarArchivo * borrarArchivo;
 			borrarArchivo=malloc(sizeof(t_borrarArchivo));
@@ -755,7 +755,7 @@ void posicionarPC(int pos){
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 			
@@ -772,7 +772,7 @@ void posicionarPC(int pos){
 		 */
 
 		void cpu_cerrar(t_descriptor_archivo descriptor_archivo){
-			printf("en cpu_cerrar\n");
+			printf("%s\n","en cpu_cerrar\n");
 			escribirEnArchivoLog("en cerrar archivo", &CPULog,nombreLog);
 					t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			t_cerrarArchivo * cerrarArchivo;
@@ -783,7 +783,7 @@ void posicionarPC(int pos){
 					enviarDinamico(PCB,socketKernel,pcb);
 					liberarContenidoPcb();
 					escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
-					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 					recibirDinamico(PCB,socketKernel,pcb);
 					escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 				}
@@ -799,7 +799,7 @@ void posicionarPC(int pos){
 		 */
 		void cpu_moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en moverCursor\n");
+			printf("%s\n","en moverCursor\n");
 			escribirEnArchivoLog("en mover cursor", &CPULog,nombreLog);
 			t_moverCursor * moverCursor;
 			moverCursor=malloc(sizeof(t_moverCursor));
@@ -810,7 +810,7 @@ void posicionarPC(int pos){
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 		}
@@ -829,14 +829,17 @@ void posicionarPC(int pos){
 		 */
 		void cpu_escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_escribir\n");
+			printf("%s\n","en cpu_escribir\n");
 			escribirEnArchivoLog("en escribir archivo", &CPULog,nombreLog);
+			
+
 			printf("fd: %i\n", descriptor_archivo);
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
-			escribirArchivo->informacion=malloc(tamanio);
-			memcpy(escribirArchivo->informacion,informacion,tamanio);
+			escribirArchivo->informacion=malloc(tamanio+1);
+			memmove(escribirArchivo->informacion,informacion,tamanio);
+			memmove((escribirArchivo->informacion)+tamanio,"\0",strlen("\0"));
 			printf("escribirArchivo->informacion: %s.\n",(char*) escribirArchivo->informacion);
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
@@ -844,7 +847,7 @@ void posicionarPC(int pos){
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 			free(seleccionador);
@@ -867,7 +870,7 @@ void posicionarPC(int pos){
 		 */
 		void cpu_leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
-			printf("en cpu_leer\n");
+			printf("%s\n","en cpu_leer\n");
 			escribirEnArchivoLog("en leer archivo", &CPULog,nombreLog);
 			t_leerArchivo * leerArchivo;
 			t_paqueteFS * paqueteFS;
@@ -877,15 +880,15 @@ void posicionarPC(int pos){
 			leerArchivo->tamanio=tamanio;
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
 			escribirEnArchivoLog("envio leer archivo", &CPULog,nombreLog);
-			printf("paso l primero\n");
+			
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			paqueteFS=malloc(sizeof(t_paqueteFS));
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PAQUETEFS,socketKernel,paqueteFS);
 			escribirEnArchivoLog("recibo paquete fs", &CPULog,nombreLog);
-			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 			t_almacenarBytes * bytes;
@@ -950,7 +953,7 @@ void iniciarEjecucion(char *  linea){
 		
 		printf("\t Evaluando -> %s", linea);
 		analizadorLinea(linea, &functions, &kernel_functions);
-		printf("ya esta?\n");
+		
 		
 
 		//tengo que guardar en que linea estoy en el program counter para que cuando tuermine un quantum guardar ese contexto para que despues pueda seguir desde ahi
@@ -994,13 +997,13 @@ while(1) {
 		else
 			enviarDinamico(ESPERONOVEDADES,socketKernel,NULL);
 		escribirEnArchivoLog("envio espero novedades", &CPULog,nombreLog);
-		while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0)){printf("asddsa\n");}
+		while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 	printf("tipoPaquete: %i\n",seleccionador->tipoPaquete);
 	
 	switch (seleccionador->tipoPaquete){
 		case PCB: 
 							escribirEnArchivoLog("en case pcb", &CPULog,nombreLog);
-							pcb=malloc(sizeof(t_pcb));
+							pcb=calloc(1,sizeof(t_pcb));
 							recibirDinamico(PCB,socketKernel,pcb);
 							if (pcb->indiceStack[pcb->posicionStack].cantidadVariables==0 && pcb->indiceStack[pcb->posicionStack].cantidadArgumentos==0)
 							{
@@ -1061,7 +1064,7 @@ while(1) {
 							printf("\tEtiquetas: %.*s\n", pcb->indiceEtiquetas.etiquetas_size,pcb->indiceEtiquetas.etiquetas);
 							printf("\tExit Code: %i\n", pcb->exitCode);
 
-							peticion=malloc(sizeof(t_peticionBytes));
+							peticion=calloc(1,sizeof(t_peticionBytes));
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
@@ -1076,22 +1079,22 @@ while(1) {
 							if (rv==1)
 							{
 								linea=calloc(1,peticion->size+1);
-								printf("esperandoLinea\n");
+								printf("%s\n","esperandoLinea\n");
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
 								}
-								linea=strcat(linea,"\0");
+								strcat(linea,"\0");
 			 					iniciarEjecucion(linea);
+								free(linea);
 							}
 							else{
 								enviarDinamico(PAGINAINVALIDA,socketKernel,1);
 								escribirEnArchivoLog("envio pagina invalida", &CPULog,nombreLog);
 							}
 							free(peticion);
-							free(linea);
 		 					break;							
 		case CONTINUAR:
-							printf("en continuar\n");
+							printf("%s\n","en continuar\n");
 							escribirEnArchivoLog("en case continuar", &CPULog,nombreLog);
 						// printf("\tIndice Stack:\n");
 						// for (j = 0; j < pcb->cantidadStack; j++)
@@ -1142,17 +1145,17 @@ while(1) {
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
 								}
-								linea=strcat(linea,"\0");
+								strcat(linea,"\0");
 								printf("linea: %s.\n", linea);
 								printf("linea: %i.\n",*(int*) linea);
 			 					iniciarEjecucion(linea);
+								free(linea);
 							}
 							else{
 								enviarDinamico(PAGINAINVALIDA,socketKernel,1);
 								escribirEnArchivoLog("envio pagina invalida", &CPULog,nombreLog);
 							}
 							free(peticion);
-							free(linea);
 		break;
 
  		case FINALIZARPROCESO: 
