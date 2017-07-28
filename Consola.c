@@ -186,7 +186,7 @@ while(1) {
 	while(0>recv(serverSocket,seleccionador, sizeof(t_seleccionador),0));
 switch (seleccionador->tipoPaquete){
 		case MENSAJE:	
-						unMensaje=malloc(sizeof(t_mensaje));
+						unMensaje=calloc(1,sizeof(t_mensaje));
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
 						while(0>recv(serverSocket,&pid,sizeof(int),0));
@@ -238,7 +238,7 @@ switch (seleccionador->tipoPaquete){
 						free(unMensaje);
 		break;
 		case PRINT:	
-						unMensaje=malloc(sizeof(t_mensaje));
+						unMensaje=calloc(1,sizeof(t_mensaje));
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
 						while(0>recv(serverSocket,&pid,sizeof(int),0));
@@ -284,10 +284,10 @@ switch (seleccionador->tipoPaquete){
 					}
 		break;
 		case LEAKS:	
-						unMensaje=malloc(sizeof(t_mensaje));
+						unMensaje=calloc(1,sizeof(t_mensaje));
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						recibirDinamico(LEAKS, serverSocket, unMensaje);
-						printf("Kernel: %s.\n", unMensaje->mensaje);
+						printf("Kernel1: %s.\n", unMensaje->mensaje);
 						free(unMensaje->mensaje);
 						free(unMensaje);
 		break;
