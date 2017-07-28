@@ -296,7 +296,7 @@ char*unBloque;
 int TAMANIO,totalBloques;
 int cantidadBloques,primerBloqueAEscribir,cantAPedir,offsetAEscribir;
 t_paqueteFS* resultado;
-char * auxChar,*ptoMont,*aux,*auxDeAux;
+char * auxChar,*ptoMont,*aux;
 int sizeAux;
 int restoUltimoBloque;
 void*auxResultado;
@@ -342,7 +342,6 @@ while(1){
 			break;
 			case CREARARCHIVOFS: 
 			/*Parámetros: [Path]
-
 			Cuando el Proceso Kernel reciba la operación de abrir un archivo deberá, en caso que el
 			archivo no exista y este sea abierto en modo de creación (“c”), llamar a esta operación que
 			creará el archivo dentro del path solicitado. Por default todo archivo creado se le debe
@@ -357,9 +356,8 @@ while(1){
 			ultimoDirectorio(dir,&soloDir); printf("%s\n",soloDir ); 
 
 			makeDir(soloDir,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-			bloquesAsignados=(int*)asignarBloques(&bloquesAsignados,1,&bitarray,bloques);
+			bloquesAsignados=asignarBloques(&bloquesAsignados,1,&bitarray,bloques);
 			enlistadorDeBloques(&listaBloques,bloquesAsignados,1);
-			auxResultado=listaBloques;
 			crearBloques(bloquesAsignados,1,PUNTO_MONTAJE,tamBloques);
 			strcpy(pegador,"BLOQUES=");
 			listaBloques=strcat(pegador,listaBloques);printf("lo que va en la conf %s\n",listaBloques );
@@ -380,7 +378,7 @@ while(1){
 			free(soloDir);
 			free(dir);
 			free(bloquesAsignados);
-			free(auxResultado);
+		//	free(listaBloques);
 
 			break;
 			case BORRARARCHIVOFS: 
@@ -431,12 +429,10 @@ while(1){
 				printf("tamaño: %i.\n", TAMANIO);
 				BLOQUES= config_get_array_value(CFG ,"BLOQUES");
 				printf("config leido\n");
-				bloqueDondeEstoy=calloc(1,200);
 				index=enQueBloqueEstoy(&(leerArchivoFS->offset),&tamBloques);
 				bloqueDondeEstoy=obtenerBloque(BLOQUES,&index);
 				bloqueConBin=calloc(1,200);
 				strcpy(bloqueConBin,bloqueDondeEstoy);
-				free(bloqueDondeEstoy);
 				bloqueConBin=strcat(bloqueConBin,".bin");
 				rutaParcial=calloc(1,PATH_MAX);
 				strcpy(rutaParcial,BLOQUES_MONTAJE);
@@ -498,6 +494,7 @@ while(1){
 				free(leerArchivoFS->path);
 				free(leerArchivoFS);
 				free(auxChar);
+				free(bloqueDondeEstoy);
 				free(resultado->paquete);
 				free(resultado);
 				free(bloqueConBin);
@@ -543,15 +540,14 @@ while(1){
 					cantAPedir=0;
 				}
 				printf("Por lo que tengo que pedir %i bloques mas.\n", cantAPedir);
-				aux=calloc(1,strlen(bloquesArray)+1);
-				auxDeAux=aux;
+				aux=calloc(1,250);
 				strcpy(aux,bloquesArray);
 				if (cantAPedir>0)
 				{
 					totalBloques=cantAPedir+cantidadBloques;
 					if (hayBloquesLibres(cantAPedir,&bitarray,metadataFS->cantBloques))
 					{
-						bloquesAsignados=(int*)asignarBloques(&bloquesAsignados,cantAPedir,&bitarray,metadataFS->cantBloques);
+						bloquesAsignados=asignarBloques(&bloquesAsignados,cantAPedir,&bitarray,metadataFS->cantBloques);
 						enlistadorDeBloques(&bloquesAsignadosChar,bloquesAsignados,cantAPedir);
 						printf("Los bloques nuevos que se asignaron son: %s.\n", bloquesAsignadosChar);
 						crearBloques(bloquesAsignados,cantAPedir,PUNTO_MONTAJE,tamBloques);
@@ -560,11 +556,10 @@ while(1){
 					else{
 						rv=0;
 						printf("no hay bloques libres\n");
+						//IVAN FALTA CODEAR ESTO
 					}
 					printf("Mi cantidad total de bloques es: %i\n",cantidadBloques+cantAPedir);
-					aux=realloc(aux,strlen(aux)+strlen(bloquesAsignadosChar)+1);
-					auxDeAux=aux;
-					aux=strtok(aux,"]"); 
+					strtok(aux,"]"); 
 					bloquesAsignadosChar++;
 					strcat(aux,",");
 					strcat(aux,bloquesAsignadosChar);
@@ -585,7 +580,9 @@ while(1){
 					bloquesFinal=calloc(1,strlen(aux)+1); 
 					strcpy(bloquesFinal,aux); 
 					strcpy(unBloque,"-");
-					aux=strcat(unBloque,aux);
+					strcat(unBloque,aux);
+					strcpy(aux,unBloque);
+					free(unBloque);
 					strtok(aux,"["); 
 					for (i = 0; i < primerBloqueAEscribir; i++)
 					{
@@ -657,11 +654,12 @@ while(1){
 				}
 				printf("despues de escribir\n");
 				send(socketKernel,&rv,sizeof(int),0);
+				fflush(stdout); printf("%s\n","hice el send" );
 				free(ptoMont);
 				free(auxChar);
-				free(auxDeAux);
-				free(unBloque);
+				free(aux);
 				free(auxResultado);
+				
 				free(escribirArchivoFS->path);
 				free(escribirArchivoFS);
 				config_destroy(CFG);
@@ -674,6 +672,3 @@ while(1){
 	 		
 	return 0;
 }
-
-
-
