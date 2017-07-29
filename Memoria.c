@@ -429,9 +429,9 @@ while(flagHilo) {
 	 											send(unData,paquete,peticionBytes->size,0);
 	 											
 	 											escribirEnArchivoLog("envio paquete", &MemoriaLog,nombreLog);
-	 											printf("paquete: %i\n",*(int*) paquete);
-	 											strcat(paquete,"\0");
-	 											printf("paquete: %s\n",(char*) paquete);
+	 											// printf("paquete: %i\n",*(int*) paquete);
+	 											// strcat(paquete,"\0");
+	 											// printf("paquete: %s\n",(char*) paquete);
 	 											free(paquete);
 	 										}
 	 											free(peticionBytes);
