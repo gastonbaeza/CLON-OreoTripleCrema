@@ -69,6 +69,7 @@
 #define PIDSIZE 1
 #define MEMORIASIZE 0
 int retardo=0;
+int HAB=1;
 pthread_mutex_t controlMemoria;
 
 t_estructuraADM * bloquesAdmin;
@@ -100,7 +101,6 @@ int len;
 
 void stripLog(char** string){
 	int i ;
-	printf("%s\n", *string);
 	for(i=0;i<string_length(*string); i++){
 		if((*string)[i]==' ' || (*string)[i]=='/' )
 			(*string)[i]='-';
@@ -276,7 +276,6 @@ for(unMarco=0;unMarco<ENTRADAS_CACHE; unMarco++) //asignar su numero de marco a 
 		copiaAdmins[unaAdmin].estado=bloquesAdmin[unaAdmin+(unaPagina*adminPorPagina)].estado;
 
 		}
-		printf(" unaPagina %i\n", unaPagina);
 		memcpy(marcos[unaPagina].numeroPagina,copiaAdmins,adminPorPagina*sizeof(t_estructuraADM));
 		bloquesAdmin[unaPagina].estado=1;
 		
@@ -342,11 +341,7 @@ while(flagHilo) {
 							solicitud=malloc(sizeof(t_solicitudMemoria));
 								recibirDinamico(SOLICITUDMEMORIA,unData,solicitud);
 								escribirEnArchivoLog("recibo solicitud memoria", &MemoriaLog,nombreLog);
-								fflush(stdout);printf("Tamaño: %i\n", solicitud->tamanioCodigo);
-								printf("Codigo: %s\n", solicitud->codigo); 
-								printf("Cant Pags Codigo: %i\n", solicitud->cantidadPaginasCodigo);
-								printf("Cant Pags Stack: %i\n", solicitud->cantidadPaginasStack);
-								printf("PID: %i\n", solicitud->pid);
+								fflush(stdout);
 								
 	 							
 	 							paginasRequeridas=solicitud->cantidadPaginasCodigo;
@@ -370,8 +365,8 @@ while(flagHilo) {
 	 							usleep(retardo*1000);
 								test=reservarYCargarPaginas(paginasRequeridas,stackRequeridas,MARCOS,bloquesAdmin,&marcos,solicitud->tamanioCodigo, solicitud->pid,&(solicitud->codigo),MARCO_SIZE,overflow,ENTRADAS_CACHE,memoriaCache,CACHE_X_PROC,retardo);
 	 							pthread_mutex_unlock(&controlMemoria);
-								if(test==1)printf("%s\n","las paginas fueron reservadas bien" );
-	 							else printf("%s\n","algo malo paso en la reserva" );
+								if(test==1){}
+	 							else printf("%s\n","Error en la reserva" );
 	 							free(solicitud->codigo);
 	 							free(solicitud);
 	 							
@@ -409,14 +404,13 @@ while(flagHilo) {
 
 	 										if((entrada=estaEnCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE))!=-1)
 	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en cache
-	 											printf("%s\n","estoy solicitando a cache" );
 	 											paquete=calloc(1,peticionBytes->size);
 	 											auxiliar=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
 	 											memcpy(paquete,auxiliar,peticionBytes->size);
 	 											free(auxiliar);
 	 										}
 	 										else
-	 										{printf(" no voy a solicitar a cache porque la entrada es = %i\n",entrada );
+	 										{
 	 										pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en memoria
 	 											
 	 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); 
@@ -799,7 +793,7 @@ pthread_t hiloComunicador;
 struct sockaddr_in addr;
 int addrlen = sizeof(addr);
 if(rv=listen(unData->socket,BACKLOG)==-1) perror("Error en el listen");
-while(1){
+while(HAB){
 	int * unBuffer=calloc(1,sizeof(int));
 	if ((socketNuevaConexion = accept(unData->socket, (struct sockaddr *)&addr,&addrlen)) == -1) perror("Error con conexion entrante");
 	else {

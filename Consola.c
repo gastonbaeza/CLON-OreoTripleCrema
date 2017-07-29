@@ -81,6 +81,7 @@ FILE *consolaLog;
 char * horaActual;
 char* nombreLog;
 int len;
+int RECEPCIONHABILITADA=1;
 
 void strip(char** string){
 	int i ;
@@ -181,7 +182,7 @@ void receptor(){
 t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 t_mensaje * unMensaje;
 t_resultadoIniciarPrograma * resultado;
-while(1) {
+while(RECEPCIONHABILITADA) {
 	resultado=malloc(sizeof(t_resultadoIniciarPrograma));
 	while(0>recv(serverSocket,seleccionador, sizeof(t_seleccionador),0));
 switch (seleccionador->tipoPaquete){
@@ -190,7 +191,6 @@ switch (seleccionador->tipoPaquete){
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						recibirDinamico(MENSAJE, serverSocket, unMensaje);
 						while(0>recv(serverSocket,&pid,sizeof(int),0));
-						printf("pid: %i.\n", pid);
 						printf("Kernel: %s.\n",unMensaje->mensaje);
 						horaFin=calloc(1,20);
 						horaYFechaActual(&horaFin);
@@ -222,7 +222,6 @@ switch (seleccionador->tipoPaquete){
 							}
 						}
 						list_remove(procesos, j);
-						printf("index en mensaje: %i.\n", i);
 						// free(prints[i].horaInicio);
 						if (list_size(procesos)==0)
 						{
@@ -273,10 +272,8 @@ switch (seleccionador->tipoPaquete){
 						}
 						prints[list_size(procesos)-1].pid=resultado->pid;
 						prints[list_size(procesos)-1].prints=0;
-						printf("index en result: %i.\n", list_size(procesos)-1);
 						prints[list_size(procesos)-1].horaInicio=calloc(1,20);
 						horaYFechaActual(&(prints[list_size(procesos)-1].horaInicio));
-						printf("horaInicio: %s.\n",prints[list_size(procesos)-1].horaInicio);
 						printf("El pid asignado es : %i\n", resultado->pid);
 						pthread_mutex_unlock(&semaforoProcesos);
 						escribirEnArchivoLog("en resultado reiniciar programa", &consolaLog,nombreLog);
@@ -287,7 +284,7 @@ switch (seleccionador->tipoPaquete){
 						unMensaje=calloc(1,sizeof(t_mensaje));
 						escribirEnArchivoLog("en mensaje", &consolaLog,nombreLog);
 						recibirDinamico(LEAKS, serverSocket, unMensaje);
-						printf("Kernel1: %s.\n", unMensaje->mensaje);
+						printf("Kernel: %s.\n", unMensaje->mensaje);
 						free(unMensaje->mensaje);
 						free(unMensaje);
 		break;
@@ -320,10 +317,8 @@ int main(){
 	horaActual=calloc(1,40);
 	horaYFechaActual(&horaActual);
 	strip(&horaActual);
-	printf("horaActual: %s\n", horaActual);
 	strcat(horaActual,".txt");
 	strcat(nombreLog,horaActual);
-	printf("nombreLog: %s\n", nombreLog);
 	////////////////////////////////////////
 
 	pthread_t  hiloPrograma,hiloReceptor;
@@ -355,7 +350,6 @@ int main(){
 	send(serverSocket,&primer,sizeof(int),0);
 	consolaLog=fopen(nombreLog,"w+");
 	perror("asd");
-	printf("consolaLog%p.\n",consolaLog);
 pthread_mutex_init(&semaforoProcesos,NULL);
 int cancelarThread=0;
 int unPid,i,j,pid;
@@ -465,12 +459,10 @@ while(cancelarThread==0){
 							pids->cantidad=list_size(procesos);
 							pids->pids=malloc(list_size(procesos)*sizeof(int));
 							
-							printf("list_size: %i.\n", list_size(procesos));
 							for(unPid=0;unPid<list_size(procesos);unPid++)
 							{
 								// printf("pid en list: %i\n", list_get(procesos,unPid));
 								pids->pids[unPid]=*(int *)list_get(procesos,unPid);
-								printf("pid en consoul: %i.\n", pids->pids[unPid]);
 							}
 							
 							enviarDinamico(ARRAYPIDS,serverSocket,pids); 
@@ -517,7 +509,7 @@ while(cancelarThread==0){
 							getchar();getchar();
 		break;
 
-	default:	printf("%s\n","habia una veez un barco chicquito");//error no se declara
+	default:	printf("%s\n","Opcion incorrecta.");//error no se declara
 	break;
 	}
 }

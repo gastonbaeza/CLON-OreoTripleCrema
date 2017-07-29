@@ -80,6 +80,7 @@ FILE *CPULog;
 char * horaActual;
 char* nombreLog;
 int len;
+int HAB=1;
 
 
 
@@ -88,7 +89,7 @@ int socketMemoria;
 
 void stripLog(char** string){
 	int i ;
-	printf("%s\n", *string);
+
 	for(i=0;i<string_length(*string); i++){
 		if((*string)[i]==' ' || (*string)[i]=='/' )
 			(*string)[i]='-';
@@ -266,24 +267,18 @@ void posicionarPC(int pos){
 			printf("%s\n","en cpu_obtenerPosicionVariable\n");
 			escribirEnArchivoLog("en obtener posicion variable", &CPULog,nombreLog);
 			int i;
-			printf("identificador: %c.\n", identificador_variable);
 			if (identificador_variable>=48 && identificador_variable<=57) // es un parametro
 			{
 				return (pcb->indiceStack[pcb->posicionStack].argumentos[identificador_variable-48].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].argumentos[identificador_variable-48].offset);
 			}
 			else // es una variable
 			{
-				printf("pcb->posicionStack: %i.\n", pcb->posicionStack);
 		
-				printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
-				printf("primerVariable: %c.\n", pcb->indiceStack[pcb->posicionStack].variables[0].id);
 				for (i = 0; i < pcb->indiceStack[pcb->posicionStack].cantidadVariables; i++)
-				{	printf("%c==%c?\n",identificador_variable, pcb->indiceStack[pcb->posicionStack].variables[i].id);
+				{
 					if (identificador_variable==pcb->indiceStack[pcb->posicionStack].variables[i].id)
-						{break;
-							printf("entre!\n");}
+						{break;}
 				}
-				printf("direccion: %i.\n", (pcb->indiceStack[pcb->posicionStack].variables[i].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[i].offset));
 				return (pcb->indiceStack[pcb->posicionStack].variables[i].pagina)*TAMPAGINA+(pcb->indiceStack[pcb->posicionStack].variables[i].offset);
 			}
 		}
@@ -300,7 +295,6 @@ void posicionarPC(int pos){
 		t_valor_variable cpu_dereferenciar(t_puntero direccion_variable){
 			printf("%s\n","en cpu_dereferenciar\n");
 			escribirEnArchivoLog("en dereferenciar", &CPULog,nombreLog);
-			printf("Direccion: %i.\n", direccion_variable);
 			int offset,pagina,valor,foo,resultado;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -309,10 +303,6 @@ void posicionarPC(int pos){
 			peticion->pagina=pagina;
 			peticion->offset=offset;
 			peticion->size=SIZE;
-			printf("%i\n", peticion->pid);
-			printf("%i\n", peticion->pagina);
-			printf("%i\n", peticion->offset);
-			printf("%i\n", peticion->size);
 			enviarDinamico(SOLICITUDBYTES,socketMemoria,peticion);
 			free(peticion);
 			escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
@@ -322,7 +312,6 @@ void posicionarPC(int pos){
 			if(foo==1){
 				
 				while(0>recv(socketMemoria,&resultado,sizeof(int),0));
-				printf("valor dereferenciado: %i.\n", resultado);
 				return resultado;
 			}
 			else{
@@ -345,8 +334,6 @@ void posicionarPC(int pos){
 		void cpu_asignar(t_puntero direccion_variable, t_valor_variable valor){
 			printf("%s\n","en cpu_asignar\n");
 			escribirEnArchivoLog("en asignar", &CPULog,nombreLog);
-			printf("direccion a asignar: %i.\n",direccion_variable );
-			printf("valor a asignar: %i.\n", valor);
 			int offset,pagina,rv;
 			offset=direccion_variable%TAMPAGINA;
 			pagina=pcb->paginasCodigo+direccion_variable/TAMPAGINA;
@@ -357,10 +344,6 @@ void posicionarPC(int pos){
 			bytes->offset=offset;
 			memcpy(bytes->valor,&valor,sizeof(int));
 			bytes->size=SIZE;
-			printf("este es el valor pagina %i\n", bytes->pagina);
-			printf("este es el valor offset %i\n", bytes->offset);
-			printf("este es el valor size %i\n", bytes->size);
-			printf("este es el buffer : %i\n",*(int*)(bytes->valor) );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			escribirEnArchivoLog("envio almacenar bytes", &CPULog,nombreLog);
 			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -368,7 +351,6 @@ void posicionarPC(int pos){
 			}
 			if (rv==-1)
 			{
-				printf("%s\n","me devolvio error\n");
 				enviarDinamico(STACKOVERFLOW,socketKernel,1);
 				escribirEnArchivoLog("envio stack overflow", &CPULog,nombreLog);
 			}
@@ -400,7 +382,6 @@ void posicionarPC(int pos){
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio solicitud valor variable", &CPULog,nombreLog);
 			recv(socketKernel,&valor,sizeof(int),0);
-			printf("valor compartida: %i\n", valor);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			free(solicitudValorVariable);
@@ -423,7 +404,6 @@ void posicionarPC(int pos){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("%s\n","en cpu_asignarValorCompartida\n");
 			escribirEnArchivoLog("en asignar valor compartida", &CPULog,nombreLog);
-			printf("valor: %i.\n", valor);
 			t_asignarVariableCompartida * asignarVariableCompartida;
 			asignarVariableCompartida=malloc(sizeof(t_asignarVariableCompartida));
 			asignarVariableCompartida->tamanioNombre=strlen(variable);
@@ -454,10 +434,8 @@ void posicionarPC(int pos){
 			printf("%s\n","en cpu_irAlLabel\n");
 			escribirEnArchivoLog("en ir a label", &CPULog,nombreLog);
 			int i,pos;
-			printf("%s\n",nombre_etiqueta );
 			limpiar_string(&nombre_etiqueta);
 			pos=metadata_buscar_etiqueta(nombre_etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
-			printf("pos:%i\n", pos);
 			pcb->programCounter=pos;
 		}
 
@@ -508,9 +486,6 @@ void posicionarPC(int pos){
 			pthread_mutex_unlock(&mutexPcb);
 			limpiar_string(&etiqueta);
 			pos=metadata_buscar_etiqueta(etiqueta, pcb->indiceEtiquetas.etiquetas, pcb->indiceEtiquetas.etiquetas_size);
-			printf("pcb->indiceEtiquetas.etiquetas: %s.\n", pcb->indiceEtiquetas.etiquetas);
-			printf("pcb->indiceEtiquetas.etiquetas_size: %i.\n", pcb->indiceEtiquetas.etiquetas_size);
-			printf("pos: %i\n", pos);
 			pcb->programCounter=pos;
 			
 		}
@@ -567,7 +542,6 @@ void posicionarPC(int pos){
 			bytes->pagina=pcb->paginasCodigo+pcb->indiceStack[pcb->posicionStack].varRetorno.pagina;
 			bytes->offset=pcb->indiceStack[pcb->posicionStack].varRetorno.offset;
 			bytes->size=pcb->indiceStack[pcb->posicionStack].varRetorno.size;
-			printf("este es el buffer : %i\n",*(int*)(bytes->valor) );
 			enviarDinamico(ALMACENARBYTES,socketMemoria,bytes);
 			escribirEnArchivoLog("envio almacenar bytes", &CPULog,nombreLog);
 			while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -650,7 +624,6 @@ void posicionarPC(int pos){
 			t_reservarEspacioMemoria * reservarEspacioMemoria;
 			reservarEspacioMemoria=malloc(sizeof(t_reservarEspacioMemoria));
 			reservarEspacioMemoria->espacio=espacio;
-			printf("alocar%i\n",reservarEspacioMemoria->espacio );
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
 			free(reservarEspacioMemoria);
 			escribirEnArchivoLog("envio reservar espacio", &CPULog,nombreLog);
@@ -659,16 +632,12 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
 			int rv;
-			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(RESERVADOESPACIO,socketKernel,reservar);
-			printf("puntero: %i.\n", reservar->puntero);
 			escribirEnArchivoLog("recibo reservado espacio", &CPULog,nombreLog);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
-			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
-			printf("puntero: %i.\n", reservar->puntero);
 				
 			free(seleccionador);
 			rv=reservar->puntero;
@@ -723,8 +692,6 @@ void posicionarPC(int pos){
 			t_seleccionador * seleccionador=malloc(sizeof(t_seleccionador));
 			printf("%s\n","en cpu_abrir\n");
 			escribirEnArchivoLog("en abrir archivo", &CPULog,nombreLog);
-			printf("flags: C=%i,L=%i,E=%i.\n", flags.creacion,flags.lectura,flags.escritura);
-			printf("direccion: %s.\n", direccion);
 					limpiar_string(&direccion);
 					t_abrirArchivo * abrirArchivo;
 					abrirArchivo=malloc(sizeof(t_abrirArchivo));
@@ -746,7 +713,6 @@ void posicionarPC(int pos){
 					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
 					escribirEnArchivoLog("recibo abrio archivo", &CPULog,nombreLog);
-					printf("fd: %i\n",fdParaLeer->fd );
 		free(seleccionador);
 					int fdParaAbrir;
 					fdParaAbrir=fdParaLeer->fd;
@@ -854,14 +820,12 @@ void posicionarPC(int pos){
 			escribirEnArchivoLog("en escribir archivo", &CPULog,nombreLog);
 			
 
-			printf("fd: %i\n", descriptor_archivo);
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
 			escribirArchivo->informacion=malloc(tamanio);
 			memmove(escribirArchivo->informacion,informacion,tamanio);
 			memmove((escribirArchivo->informacion)+tamanio,"\0",strlen("\0"));
-			printf("escribirArchivo->informacion: %s.\n",(char*) escribirArchivo->informacion);
 			escribirArchivo->tamanio=tamanio;
 			enviarDinamico(ESCRIBIRARCHIVO,socketKernel,escribirArchivo);
 			escribirEnArchivoLog("envio escribir archivo", &CPULog,nombreLog);
@@ -896,7 +860,6 @@ void posicionarPC(int pos){
 			t_leerArchivo * leerArchivo;
 			t_paqueteFS * paqueteFS;
 			leerArchivo=malloc(sizeof(t_leerArchivo));
-			printf("FD: %i\n", descriptor_archivo);
 			leerArchivo->descriptor=descriptor_archivo;
 			leerArchivo->tamanio=tamanio;
 			enviarDinamico(LEERARCHIVO,socketKernel,leerArchivo);
@@ -1011,7 +974,7 @@ void conectarKernel(void){
 	int rv;
 
 t_peticionBytes * peticion;
-while(1) {
+while(HAB) {
 	seleccionador=malloc(sizeof(t_seleccionador));
 		if (primerAcceso){
 					primerAcceso=0;
@@ -1072,29 +1035,28 @@ while(1) {
 							escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
 							PID=pcb->pid;
 							printf("Proceso %i:\n", pcb->pid);
-							printf("\tEstado: %i\n", pcb->estado);
-							printf("\tPC: %i\n", pcb->programCounter);
+							// printf("\tEstado: %i\n", pcb->estado);
+							// printf("\tPC: %i\n", pcb->programCounter);
 							// printf("\tReferencia a tabla de archivos: %i\n", pcb->referenciaATabla);
-							printf("\tPaginas de codigo: %i\n", pcb->paginasCodigo);
-							printf("\tPosicion stack: %i\n", pcb->posicionStack);
-							printf("\tCantidad de instrucciones: %i\n", pcb->cantidadInstrucciones);
-							printf("\tIndice Codigo:\n");
+							// printf("\tPaginas de codigo: %i\n", pcb->paginasCodigo);
+							// printf("\tPosicion stack: %i\n", pcb->posicionStack);
+							// printf("\tCantidad de instrucciones: %i\n", pcb->cantidadInstrucciones);
+							// printf("\tIndice Codigo:\n");
 							for (j = 0; j < pcb->cantidadInstrucciones; j++)
 							{
-								printf("\t\tInstruccion: %i,\tOffset: %i.\n", pcb->indiceCodigo[j].start, pcb->indiceCodigo[j].offset);
+								// printf("\t\tInstruccion: %i,\tOffset: %i.\n", pcb->indiceCodigo[j].start, pcb->indiceCodigo[j].offset);
 							}
-							printf("\tCantidad de stack: %i\n", pcb->cantidadStack);
-							printf("etiquetas_size: %i\n", pcb->indiceEtiquetas.etiquetas_size);
-							printf("\tEtiquetas: %.*s\n", pcb->indiceEtiquetas.etiquetas_size,pcb->indiceEtiquetas.etiquetas);
-							printf("\tExit Code: %i\n", pcb->exitCode);
+							// printf("\tCantidad de stack: %i\n", pcb->cantidadStack);
+							// printf("etiquetas_size: %i\n", pcb->indiceEtiquetas.etiquetas_size);
+							// printf("\tEtiquetas: %.*s\n", pcb->indiceEtiquetas.etiquetas_size,pcb->indiceEtiquetas.etiquetas);
+							// printf("\tExit Code: %i\n", pcb->exitCode);
 
 							peticion=calloc(1,sizeof(t_peticionBytes));
 							peticion->pid=PID;
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;	
-							peticion->offset=peticion->offset%TAMPAGINA;
-							printf("%i,%i,%i,%i\n", peticion->pid,peticion->pagina,peticion->offset,peticion->size);		
+							peticion->offset=peticion->offset%TAMPAGINA;		
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
 							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -1103,7 +1065,6 @@ while(1) {
 							if (rv==1)
 							{
 								linea=calloc(1,peticion->size+1);
-								printf("%s\n","esperandoLinea\n");
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
 								}
@@ -1155,8 +1116,7 @@ while(1) {
 					 		peticion->pagina=pcb->indiceCodigo[pcb->programCounter].start/TAMPAGINA;
 							peticion->offset=pcb->indiceCodigo[pcb->programCounter].start;
 							peticion->size=pcb->indiceCodigo[pcb->programCounter].offset+1;		
-							peticion->offset=peticion->offset%TAMPAGINA;
-							printf("%i,%i,%i,%i\n", peticion->pid,peticion->pagina,peticion->offset,peticion->size);	
+							peticion->offset=peticion->offset%TAMPAGINA;	
 							enviarDinamico(SOLICITUDBYTES,socketMemoria,(void *) peticion);
 							escribirEnArchivoLog("envio solicitud bytes", &CPULog,nombreLog);
 							while(0>recv(socketMemoria,&rv,sizeof(int),0)){
@@ -1165,13 +1125,10 @@ while(1) {
 							if (rv==1)
 							{
 								linea=calloc(1,peticion->size+1);
-								printf("esperandoLinea\n");
 								while(0>recv(socketMemoria,linea,peticion->size,0)){
 									perror("asd:");
 								}
 								strcat(linea,"\0");
-								printf("linea: %s.\n", linea);
-								printf("linea: %i.\n",*(int*) linea);
 			 					iniciarEjecucion(linea);
 								free(linea);
 							}
@@ -1296,12 +1253,9 @@ int main(){
 	strcpy(nombreLog,"logCPU-");
 	horaActual=calloc(1,200);
 	horaYFechaActual(&horaActual);
-	printf("%s\n", horaActual);
 	stripLog(&horaActual);
-	printf("horaActual: %s\n", horaActual);
 	strcat(horaActual,".txt");
 	strcat(nombreLog,horaActual);
-	printf("nombreLog: %s\n", nombreLog);
 	struct addrinfo hints;
 	struct addrinfo *serverInfo;
 

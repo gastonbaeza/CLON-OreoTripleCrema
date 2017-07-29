@@ -784,12 +784,10 @@ void serial_arrayPids(t_arrayPids * arraypids,int unSocket){
 void dserial_arrayPids(t_arrayPids ** arraypids,int unSocket){
 	int i;
 	dserial_int(&((*arraypids)->cantidad),unSocket);
-	printf("cantidad de pids: %i.\n", (*arraypids)->cantidad);
 	(*arraypids)->pids=calloc(sizeof(int),(*arraypids)->cantidad);
 	for (i = 0; i < (*arraypids)->cantidad; i++)
 	{
 		dserial_int(&((*arraypids)->pids[i]),unSocket);
-		printf("pid en sderial: %i.\n", (*arraypids)->pids[i]);
 	}
 }
 
@@ -1423,21 +1421,17 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 
 t_programaSalida * obtenerPrograma( char * unPath){
 	FILE * punteroAlArchivo;
-	printf("asd\n");
-	printf("%s\n", unPath);
 	punteroAlArchivo=fopen(unPath,"r");
-	printf("fopened\n");
 	if((punteroAlArchivo)==NULL)
 		{
 			fflush(stdout); 
-			printf("el archivo no existe" ); 
+			printf("El archivo no existe." ); 
 			t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
 			estructuraPrograma=NULL;
 			return estructuraPrograma;
 		}
 	
 	else{
-		printf("lawea\n");
 		t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
 		fseek (punteroAlArchivo, 0, SEEK_END);
 		estructuraPrograma->tamanio = ftell (punteroAlArchivo)+1;
@@ -1660,7 +1654,8 @@ void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco *
 			borrarDeOverflow(indice,entrada,overflow);
 			paginasLiberadas++;
 		}
-	} printf("se liberaron %i paginas correctamente\n",paginasLiberadas );
+	} 
+
 }
 void compactarYAlocar(int entrada, int MARCO_SIZE,t_marco * marcos, int MARCOS) 
 {	
@@ -1833,7 +1828,6 @@ char * enlistadorDeBloques(char**lista,int * bloquesAsignados, int cantidadAsign
 		cantidadCaracteres+=strlen(block);
 	}
 	free(block);
-	printf("cantidadCaracteres: %i.\n", cantidadCaracteres);
 	*lista=calloc(1,cantidadCaracteres+cantidadAsignados-1+2+1);// bloques+comas+corchetes+barraceroF
 	char * aux=calloc(1,10);
 	strcpy(*lista,"["); 
