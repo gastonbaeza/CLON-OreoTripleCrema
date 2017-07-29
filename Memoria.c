@@ -371,7 +371,6 @@ while(flagHilo) {
 	 							free(solicitud);
 	 							
 	 							
-	 							
 	 							 }	
 	 							
 	 							
@@ -417,7 +416,7 @@ while(flagHilo) {
 	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);
 	 											pthread_mutex_lock(&controlMemoria);
 	 											usleep(retardo*1000);
-	 											paquete=calloc(1,peticionBytes->size);
+	 											paquete=calloc(1,peticionBytes->size+1);
 	 											memcpy(paquete,marcos[entrada].numeroPagina+peticionBytes->offset,peticionBytes->size);
 	 											escribirEnCache(peticionBytes->pid,peticionBytes->pagina,marcos[entrada].numeroPagina,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE,0,MARCOS,overflow,bloquesAdmin,marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
 	 											pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//uso escribirEnCache para guardar una pagina entera en cache que esta en memoria
@@ -431,6 +430,7 @@ while(flagHilo) {
 	 											
 	 											escribirEnArchivoLog("envio paquete", &MemoriaLog,nombreLog);
 	 											printf("paquete: %i\n",*(int*) paquete);
+	 											strcat(paquete,"\0");
 	 											printf("paquete: %s\n",(char*) paquete);
 	 											free(paquete);
 	 										}
@@ -703,7 +703,7 @@ void consolaMemoria()
 											{
 											fflush(stdout);printf("proceso: %i\n",bloquesAdmin[unProceso].pid);
 
-											strcat(aEscribir, "********************Listado de procesos Activos********************");
+											/*strcat(aEscribir, "********************Listado de procesos Activos********************");
 											
 											strcat(aEscribir,datoAdmin);
 											fseek(dumpLog,0,SEEK_END);
@@ -715,7 +715,7 @@ void consolaMemoria()
 											strcat(aEscribir,datoAdmin);
 											fseek(dumpLog,0,SEEK_END);
 											fwrite(aEscribir,strlen(aEscribir),1,dumpLog);
-											fwrite("\n",1,1,dumpLog);
+											fwrite("\n",1,1,dumpLog);*/
 
 											}
 		

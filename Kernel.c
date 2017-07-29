@@ -848,6 +848,7 @@ void finalizarPidForzoso(int pid)
 		pthread_mutex_lock(&mutexFinConsola);
 		PIDFIN=-1;
 		pthread_mutex_unlock(&mutexFinPid);
+		pthread_mutex_unlock(&mutexDespuesFin);
 	}
 	else
 	{
@@ -1484,6 +1485,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 		rv=1;
 		if (primerAcceso)
 		{
+			printf("aca\n");
 			seleccionador->tipoPaquete=PCB;
 			primerAcceso=0;
 		}
