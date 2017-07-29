@@ -390,10 +390,8 @@ while(flagHilo) {
 	 										peticionBytes=calloc(1,sizeof(t_peticionBytes));
 	 										recibirDinamico(SOLICITUDBYTES,unData,peticionBytes);
 	 										escribirEnArchivoLog("recibo solicitud bytes", &MemoriaLog,nombreLog);
-	 										printf("pid: %i\n", peticionBytes->pid);
-	 										printf("pagina: %i\n",peticionBytes->pagina );
-	 										printf("size: %i\n", peticionBytes->size);
-	 										printf("offset: %i\n", peticionBytes->offset);
+	 										
+	 										
 	 										pthread_mutex_lock(&controlMemoria);
 	 										
 	 										if(-1==existePagina(peticionBytes->pid,peticionBytes->pagina ,bloquesAdmin,MARCOS))
@@ -418,11 +416,11 @@ while(flagHilo) {
 	 											free(auxiliar);
 	 										}
 	 										else
-	 										{printf("no esta entrando a solicitar a cache porque entrada = %i\n",entrada );
+	 										{printf(" no voy a solicitar a cache porque la entrada es = %i\n",entrada );
 	 										pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en memoria
-	 											printf("no, no esta en cache%i\n",entrada );
-	 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); printf("el indice en memoria: %i\n",indice );
-	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);printf("la entrada de hash en memoria: %i\n",entrada );
+	 											
+	 											indice=calcularPosicion(peticionBytes->pid,peticionBytes->pagina,MARCOS); 
+	 											entrada=buscarEnOverflow(indice,peticionBytes->pid,peticionBytes->pagina,bloquesAdmin,MARCOS,overflow);
 	 											pthread_mutex_lock(&controlMemoria);
 	 											usleep(retardo*1000);
 	 											paquete=calloc(1,peticionBytes->size);
@@ -449,7 +447,7 @@ while(flagHilo) {
 	 										pedidoAsignacion=calloc(1,sizeof(t_solicitudAsignar));
 	 										recibirDinamico(ASIGNARPAGINAS,unData,pedidoAsignacion);
 	 										escribirEnArchivoLog("recibo asignar paginas", &MemoriaLog,nombreLog);
-	 										printf("%s\n", "recibi la asignacion de paginas");
+	 										
 	 										pthread_mutex_lock(&controlMemoria);
 	 										usleep(retardo*1000);
 	 										if(hayPaginasLibres(pedidoAsignacion->paginasAAsignar,bloquesAdmin,MARCOS)==-1) 
@@ -469,13 +467,12 @@ while(flagHilo) {
 												pthread_mutex_unlock(&controlMemoria);
 	        									ultimaPagina++;
 												indice=calcularPosicion(pedidoAsignacion->pid,ultimaPagina,MARCOS);
-												printf("el indice es  %i\n",indice );
+												
 												pthread_mutex_lock(&controlMemoria);
 												usleep(retardo*1000);
 												mLibre=buscarMarcoLibre(marcos,MARCOS,bloquesAdmin);
 	         									memcpy(marco,&mLibre,sizeof(int)); 
-	         									printf("elmarco libre es %i\n",*marco );
-
+	         									
 	         									if(*marco!=-1)
 	         									{
 	         									agregarSiguienteEnOverflow(indice,&marco,overflow);
@@ -496,9 +493,7 @@ while(flagHilo) {
 									// bytesAAlmacenar->valor=calloc(1,20); dserial_void ya le hace malloc
 	 								recibirDinamico(ALMACENARBYTES,unData,bytesAAlmacenar);
 	 								escribirEnArchivoLog("recibo almacenar bytes", &MemoriaLog,nombreLog);
-	 								printf("el pid que tengo qe almacenar es :%i\n",bytesAAlmacenar->pid ); printf("la pagina que tengo que almacenar es :%i\n",bytesAAlmacenar->pagina );
-	 								printf(" offset de almacenar %i\n", bytesAAlmacenar->offset);
-	 								printf("el valor es %i\n",*(int*)bytesAAlmacenar->valor );
+	 								
 	 								pthread_mutex_lock(&controlMemoria);
 	 								usleep(retardo*1000);
 									if(existePagina(bytesAAlmacenar->pid,bytesAAlmacenar->pagina,bloquesAdmin,MARCOS)==-1)
@@ -522,7 +517,7 @@ while(flagHilo) {
 	 											buffer=calloc(1,sizeof(int));
 												memcpy(buffer,&a,sizeof(int));
 	 											while(0>recv(unData,pidALiberar,sizeof(int),0));
-	 											printf("pid:%i\n", *pidALiberar);
+	 											
 	 											pthread_mutex_lock(&controlMemoria);
 	 											usleep(retardo*1000);
 	 											liberarPaginas(pidALiberar,bloquesAdmin,marcos,MARCOS,overflow,MARCO_SIZE);
@@ -546,7 +541,7 @@ while(flagHilo) {
 										pthread_mutex_unlock(&controlMemoria);confirmacion=1;
 										send(unData, &confirmacion, sizeof(int),0);
 		 								indice=calcularPosicion(liberarPagina->pid,liberarPagina->pagina,MARCOS);
-										entrada=buscarEnOverflow(indice,liberarPagina->pid,liberarPagina->pagina,bloquesAdmin,MARCOS,overflow); printf("entrada a cleanear %i\n",entrada );
+										entrada=buscarEnOverflow(indice,liberarPagina->pid,liberarPagina->pagina,bloquesAdmin,MARCOS,overflow); 
 										memset(marcos[entrada].numeroPagina,0,MARCO_SIZE);
 										bloquesAdmin[entrada].estado=0;
 										bloquesAdmin[entrada].pid=-1;
@@ -742,8 +737,8 @@ void consolaMemoria()
 						case 4 : system("clear");
 									generarDumpOverflow(overflow,MARCOS);printf("%s\n", "presione una tecla para volver al menu de la consola");getchar();getchar();
 									break;
-						default: pagaraprata();
-						break;
+						default: break;
+						
 					}
 							
 							
@@ -767,11 +762,11 @@ void consolaMemoria()
 			switch(*instruccionConsola)
 			{
 				case MEMORIASIZE:	system("clear");
-								fflush(stdout);printf("cantidadDePaginas: %i\n", MARCOS);
+								fflush(stdout);printf("el tamaño de la memoria es de  %i bytes\n", MARCOS*MARCO_SIZE);
 								bloquesLibre=cantidadBloquesLibres(MARCOS,bloquesAdmin);
-								fflush(stdout);printf("cantidadBloquesLibres: %i\n", bloquesLibre);
+								fflush(stdout);printf("cantidad paginas libres: %i\n", bloquesLibre);
 								bloquesOcupados=cantidadBloquesOcupados(MARCOS,bloquesAdmin);
-								fflush(stdout);printf("cantidadBloquesOcupados: %i\n", bloquesOcupados);
+								fflush(stdout);printf("cantidad paginas ocupadas: %i\n", bloquesOcupados);
 								printf("%s\n", "presione una tecla para volver al menu de la consola");
 								fflush(stdout);
 								getchar();getchar();

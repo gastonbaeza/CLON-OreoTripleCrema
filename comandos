@@ -1,0 +1,22 @@
+para compilar
+Memoria
+gcc -g funciones.h funciones.c estructuras.h Memoria.c -o Memoria -lpthread -lcommons
+
+Kernel
+gcc  -g funciones.h funciones.c estructuras.h Kernel.c -o Kernel -lpthread -lcommons -lparser-ansisop
+
+Consola
+gcc -g  funciones.h funciones.c estructuras.h Consola.c -o Consola -lpthread -lcommons
+
+cpu
+gcc -g funciones.h funciones.c estructuras.h Cpu.c -o Cpu -lpthread -lcommons -lparser-ansisop
+
+FS
+gcc -g  funciones.h funciones.c estructuras.h FileSystem.c -o FS -lpthread -lcommons
+
+valgrind --track-origins=yes  --leak-check=full --show-leak-kinds=all --log-file=
+
+https://github.com/sisoputnfrba/ansisop-parser.git
+https://github.com/sisoputnfrba/ansisop-parser
+https://github.com/sisoputnfrba/so-commons-library.git
+https://github.com/sisoputnfrba/so-commons-library

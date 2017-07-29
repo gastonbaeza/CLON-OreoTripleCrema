@@ -391,14 +391,21 @@ while(cancelarThread==0){
 							scanf("%s",path);
 							 //puede pasar que lo que esriba en una consola me afecte esto? jaja seria malo.
 							prog= obtenerPrograma(path);
-							path_ansisop->path=calloc(1,prog->tamanio);
-							strcpy(path_ansisop->path,prog->elPrograma);
-							path_ansisop->tamanio=prog->tamanio;
-							free(prog->elPrograma);
-							free(prog);
-							free(path);
-							pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
-							
+							if (prog==NULL)
+							{
+								free(prog);
+								printf("path incorrecto\n");
+							}
+							else
+							{
+								path_ansisop->path=calloc(1,prog->tamanio);
+								strcpy(path_ansisop->path,prog->elPrograma);
+								path_ansisop->tamanio=prog->tamanio;
+								free(prog->elPrograma);
+								free(prog);
+								free(path);
+								pthread_create(&hiloPrograma, NULL, (void *) programa, path_ansisop);
+							}
 
 							/*
 							escribirEnArchivoLog("escribir1",&consolaLog,"consolaLog.txt");

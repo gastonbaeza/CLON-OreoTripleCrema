@@ -94,6 +94,7 @@
 #define BLOCKED 3
 #define EXIT 4
 // VARIABLES GLOBALES
+int cantCpus=0;
 char *PUERTO_PROG;
 char *IP_MEMORIA;
 char *PUERTO_MEMORIA;
@@ -163,7 +164,9 @@ pthread_mutex_t mutexFinPid;
 pthread_mutex_t mutexSocketPid;
 pthread_mutex_t mutexDespuesFin;
 pthread_mutex_t mutexSolicitudMem;
+pthread_mutex_t mutexCantCpus;
 sem_t semReadys;
+sem_t semPausa;
 
 t_pcb * PCBS;
 int CANTIDADPCBS=0;
@@ -736,23 +739,38 @@ int getPosicionTabla(int globalFd)
 }
 int closeFile(int globalFd)
 {	int i;
-	i=getPosicionTabla(globalFd);
-	pthread_mutex_lock(&mutexTablaArchivos);
-	tablaArchivos[i].vecesAbierto--;
-	if (tablaArchivos[i].vecesAbierto==0)
+	if (CANTTABLAARCHIVOS)
 	{
-		free(tablaArchivos[i].path);
-		for (; i < CANTTABLAARCHIVOS; i++)
+		i=getPosicionTabla(globalFd);
+		pthread_mutex_lock(&mutexTablaArchivos);
+		tablaArchivos[i].vecesAbierto--;
+		if (tablaArchivos[i].vecesAbierto==0)
 		{
-			if (!(i+1==CANTTABLAARCHIVOS))
+			free(tablaArchivos[i].path);
+			for (; i < CANTTABLAARCHIVOS; i++)
 			{
-				memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+				if (!(i+1==CANTTABLAARCHIVOS))
+				{
+					memcpy(&tablaArchivos[i],&tablaArchivos[i+1],sizeof(t_tablaGlobalArchivos));
+				}
 			}
+			CANTTABLAARCHIVOS--;
+			tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
 		}
-		CANTTABLAARCHIVOS--;
-		tablaArchivos=realloc(tablaArchivos,CANTTABLAARCHIVOS*sizeof(t_tablaGlobalArchivos));
+		pthread_mutex_unlock(&mutexTablaArchivos);
+
 	}
-	pthread_mutex_unlock(&mutexTablaArchivos);
+}
+void cerrarArchivosRestantes(int pid)
+{
+	int i;
+	for (i = 0; i < PCBS[pid].cantidadArchivos; ++i)
+	{
+		if (PCBS[pid].referenciaATabla[i].abierto)
+		{
+			closeFile(PCBS[pid].referenciaATabla[i].globalFd);
+		}
+	}
 }
 int getPidReady(int socket){
 	int value,a=0;
@@ -847,6 +865,8 @@ void finalizarPid(int pid, int exitCode)
 			free(mensaje);
 		}
 	}
+	cerrarArchivosRestantes(pid);
+	rellenarColaReady();
 }
 void finalizarPidForzoso(int pid)
 {
@@ -877,6 +897,8 @@ void finalizarPidForzoso(int pid)
 			pthread_mutex_unlock(&mutexSolicitudMem);
 		}
 	}
+	cerrarArchivosRestantes(pid);
+	rellenarColaReady();
 }
 void stripLog(char** string){
 	int i ;
@@ -1374,6 +1396,7 @@ void consola(){
 				printf("Ingrese el nuevo.\n");
 				pthread_mutex_lock(&mutexGradoMultiprog);
 				scanf("%i",&GRADO_MULTIPROG);
+				rellenarColaReady();
 				pthread_mutex_unlock(&mutexGradoMultiprog);
 				printf("Grado de multiprogramación modificado correctamente: %i.\n", GRADO_MULTIPROG);
 				printf("Presione enter para volver al menú principal.\n");
@@ -1396,6 +1419,10 @@ void consola(){
 				pthread_mutex_lock(&mutexPausaPlanificacion);
 				if (PLANIFICACIONPAUSADA){
 					PLANIFICACIONPAUSADA=0;
+					for (i = 0; i < cantCpus; ++i)
+					{
+						sem_post(&semPausa);
+					}
 				}
 				else
 					PLANIFICACIONPAUSADA=1;
@@ -1451,8 +1478,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 	int socket=(*dataDePlanificacion)->socket;
 	free(*dataDePlanificacion);
 	flagLiberarData=1;
+	pthread_mutex_lock(&mutexCantCpus);
+	cantCpus++;
+	pthread_mutex_unlock(&mutexCantCpus);
 	escribirEnArchivoLog("en planificacion", &KernelLog,nombreLog);
-	int pid,puntero,rv=1,auxInt,i,globalFd,flagQuantum=1,pagina,offset,primerAcceso=1,error=0,valor,estaPlanificacion=1,confirmacion;
+	int pid=-1,puntero,rv=1,auxInt,i,globalFd,flagQuantum=1,pagina,offset,primerAcceso=1,error=0,valor,estaPlanificacion=1,confirmacion;
 	int * buffer;
 	char * aux;
 	t_path * path;
@@ -1482,6 +1512,8 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 	t_liberarPagina * liberarPagina;
 	while(PLANIFICACIONHABILITADA && estaPlanificacion)
 	{
+		if (!PLANIFICACIONPAUSADA)
+		{
 		seleccionador=malloc(sizeof(t_seleccionador));
 		rv=1;
 		if (primerAcceso)
@@ -1496,6 +1528,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 			{
 				printf("CPU desconectado\n");
 				estaPlanificacion=0;
+				if (pid!=-1)
+				{
+					cambiarEstado(pid,10);
+					finalizarPid(pid,-20);
+				}
 			}
 		}
 		if (rv!=0)
@@ -1555,38 +1592,39 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 							flagQuantum=QUANTUM;
 						}
 						liberarContenidoPcb(&pcb);
-						break;
-						// VARIABLES COMPARTIDAS
-						case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
-						escribirEnArchivoLog("en case solicitud valor variable", &KernelLog,nombreLog);
-						solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
-						recibirDinamico(SOLICITUDVALORVARIABLE,socket,solicitudVariable);
-						pcb=malloc(sizeof(t_pcb));
-						while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
-						recibirDinamico(PCB,socket,pcb);
-						pcb->privilegiadasEjecutadas++;
-						escribirEnArchivoLog("recibo solicitud valor variable", &KernelLog,nombreLog);
-						if (existeCompartida(&(solicitudVariable->variable)))
-						{
-							// confirmacion=1;
-							valor=valorCompartida(&(solicitudVariable->variable));
-							// send(socket,&confirmacion,sizeof(int),0);
-							send(socket,&(valor),sizeof(int),0);updatePCB(pcb);
-						}
-						else
-						{
-							// confirmacion=0;
-							// send(socket,&confirmacion,sizeof(int),0);
-							error=-12;
-						}
-						enviarDinamico(PCB,socket,pcb);
-						free(solicitudVariable->variable);
-						free(solicitudVariable);
 					}
 					else
 					{
-						estaPlanificacion=0;
+						// estaPlanificacion=0;
+						free(pcb);
 					}
+					break;
+					// VARIABLES COMPARTIDAS
+					case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
+					escribirEnArchivoLog("en case solicitud valor variable", &KernelLog,nombreLog);
+					solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
+					recibirDinamico(SOLICITUDVALORVARIABLE,socket,solicitudVariable);
+					pcb=malloc(sizeof(t_pcb));
+					while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
+					recibirDinamico(PCB,socket,pcb);
+					pcb->privilegiadasEjecutadas++;
+					escribirEnArchivoLog("recibo solicitud valor variable", &KernelLog,nombreLog);
+					if (existeCompartida(&(solicitudVariable->variable)))
+					{
+						// confirmacion=1;
+						valor=valorCompartida(&(solicitudVariable->variable));
+						// send(socket,&confirmacion,sizeof(int),0);
+						send(socket,&(valor),sizeof(int),0);updatePCB(pcb);
+					}
+					else
+					{
+						// confirmacion=0;
+						// send(socket,&confirmacion,sizeof(int),0);
+						error=-12;
+					}
+					enviarDinamico(PCB,socket,pcb);
+					free(solicitudVariable->variable);
+					free(solicitudVariable);
 					liberarContenidoPcb(&pcb);
 					break;
 					case ASIGNARVARIABLECOMPARTIDA: // CPU QUIERE ASIGNAR UN VALOR A UNA VARIABLE COMPARTIDA
@@ -2046,9 +2084,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						estaPlanificacion=0;
 					}
 					primerAcceso=1;
+					pid=-1;
 					free(mensaje);
 					free(aux);
 					liberarContenidoPcb(&pcb);
+					rellenarColaReady();
 					break;
 					case PCBFINALIZADOPORCONSOLA:
 					escribirEnArchivoLog("en case finalizado por consola", &KernelLog,nombreLog);
@@ -2084,6 +2124,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						estaPlanificacion=0;
 					}
 					primerAcceso=1;
+					pid=-1;
 					pthread_mutex_unlock(&mutexFinConsola);
 					pthread_mutex_lock(&mutexDespuesFin);
 					free(mensaje);
@@ -2121,6 +2162,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						estaPlanificacion=0;
 					}
 					primerAcceso=1;
+					pid=-1;
 					escribirEnArchivoLog("envio mensaje", &KernelLog,nombreLog);
 					free(mensaje);
 					free(aux);	
@@ -2143,6 +2185,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						estaPlanificacion=0;
 					}
 					primerAcceso=1;
+					pid=-1;
 					liberarContenidoPcb(&pcb);
 					break;
 					case PCBBLOQUEADO:
@@ -2159,12 +2202,21 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						estaPlanificacion=0;
 					}
 					primerAcceso=1;
+					pid=-1;
 					liberarContenidoPcb(&pcb);
 					break;
 				}
 		}
-	free(seleccionador);
+		free(seleccionador);
+		}
+		else
+		{
+			sem_wait(&semPausa);
+		}	
 	}
+	pthread_mutex_lock(&mutexCantCpus);
+	cantCpus--;
+	pthread_mutex_unlock(&mutexCantCpus);
 }
 void comunicarse(dataParaComunicarse ** dataDeConexion){
 	escribirEnArchivoLog("en comunicarse", &KernelLog,nombreLog);
@@ -2189,7 +2241,6 @@ void comunicarse(dataParaComunicarse ** dataDeConexion){
 		while(0>(rv=recv(socket, seleccionador, sizeof(t_seleccionador), 0)));
 		if (rv==0)
 		{
-			printf("Consola desconectada.\n");
 			estaComunicacion=0;
 			for (i = 0; i < ULTIMOPID; ++i)
 			{
@@ -2198,6 +2249,7 @@ void comunicarse(dataParaComunicarse ** dataDeConexion){
 					finalizarPidForzoso(i);
 				}
 			}
+			printf("Consola desconectada.\n");
 		}
 		else
 		{
@@ -2467,6 +2519,7 @@ pthread_mutex_init(&mutexColaBlock,NULL);
 pthread_mutex_init(&mutexPausaPlanificacion,NULL);
 pthread_mutex_init(&mutexProcesosReady,NULL);
 pthread_mutex_init(&mutexTablaArchivos,NULL);
+pthread_mutex_init(&mutexCantCpus,NULL);
 pthread_mutex_init(&mutexCompartidas,NULL);
 pthread_mutex_init(&mutexSemaforos,NULL);
 pthread_mutex_init(&mutexAlocar,NULL);
@@ -2478,6 +2531,7 @@ pthread_mutex_init(&mutexSolicitudMem,NULL);
 pthread_mutex_lock(&mutexFinConsola);
 pthread_mutex_lock(&mutexDespuesFin);
 sem_init(&semReadys,0,0);
+sem_init(&semPausa,0,0);
 // INICIO COLA READYS
 // RETURN VALUES
 int rv;

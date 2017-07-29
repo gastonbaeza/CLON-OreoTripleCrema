@@ -403,6 +403,8 @@ void posicionarPC(int pos){
 			printf("valor compartida: %i\n", valor);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
+			free(solicitudValorVariable);
+			free(seleccionador);
 			return valor;
 		}
 
@@ -425,10 +427,9 @@ void posicionarPC(int pos){
 			t_asignarVariableCompartida * asignarVariableCompartida;
 			asignarVariableCompartida=malloc(sizeof(t_asignarVariableCompartida));
 			asignarVariableCompartida->tamanioNombre=strlen(variable);
-			strcpy(asignarVariableCompartida->variable,variable);
+			asignarVariableCompartida->variable=variable;
 			asignarVariableCompartida->valor=valor;
 			enviarDinamico(ASIGNARVARIABLECOMPARTIDA,socketKernel,asignarVariableCompartida);
-			free(asignarVariableCompartida->variable);
 			free(asignarVariableCompartida);
 			escribirEnArchivoLog("envio asignar variable compartida", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
@@ -599,11 +600,12 @@ void posicionarPC(int pos){
 		void * paquete;
 		solicitudSemaforo=malloc(sizeof(t_solicitudSemaforo));
 		solicitudSemaforo->tamanioIdentificador=strlen(identificador_semaforo);
-		solicitudSemaforo->identificadorSemaforo=malloc(solicitudSemaforo->tamanioIdentificador);
+		//solicitudSemaforo->identificadorSemaforo=malloc(solicitudSemaforo->tamanioIdentificador);
 		solicitudSemaforo->identificadorSemaforo=identificador_semaforo;
 		solicitudSemaforo->estadoSemaforo=-1;
 		enviarDinamico(SOLICITUDSEMWAIT,socketKernel,solicitudSemaforo);
 		escribirEnArchivoLog("envio sem wait", &CPULog,nombreLog);
+		//free(solicitudSemaforo->identificadorSemaforo);
 		free(solicitudSemaforo);
 		}
 		/*
@@ -626,7 +628,9 @@ void posicionarPC(int pos){
 		solicitudSemaforo->estadoSemaforo=-1;
 		enviarDinamico(SOLICITUDSEMSIGNAL,socketKernel,solicitudSemaforo);
 		escribirEnArchivoLog("envio solicitud sem signal", &CPULog,nombreLog);
+		free(solicitudSemaforo);
 		}
+
 	
 		/*
 		 * RESERVAR MEMORIA
@@ -744,7 +748,10 @@ void posicionarPC(int pos){
 					escribirEnArchivoLog("recibo abrio archivo", &CPULog,nombreLog);
 					printf("fd: %i\n",fdParaLeer->fd );
 		free(seleccionador);
-					return fdParaLeer->fd;}
+					int fdParaAbrir;
+					fdParaAbrir=fdParaLeer->fd;
+					free(fdParaLeer);
+					return fdParaAbrir;}
 		/*
 		 * BORRAR ARCHIVO
 		 *
@@ -797,6 +804,7 @@ void posicionarPC(int pos){
 					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 					recibirDinamico(PCB,socketKernel,pcb);
 					escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
+					free(cerrarArchivo);
 					free(seleccionador);
 				}
 		/*
@@ -1317,7 +1325,7 @@ int main(){
 	CPULog=fopen(nombreLog,"w+");
 	signal(SIGINT,cortar);
 	recv(socketMemoria, &TAMPAGINA, sizeof(int), 0);
-
+	free(unBuffer);
 
 
 

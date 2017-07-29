@@ -258,6 +258,7 @@ int buscarEntradaMasAntigua(int pid, int pagina,t_estructuraCache * memoriaCache
 					}
 
 				}
+				memset(memoriaCache[entradaADevolver].contenido,0,MARCO_SIZE);
 			}
 	}
 	else
@@ -270,6 +271,7 @@ int buscarEntradaMasAntigua(int pid, int pagina,t_estructuraCache * memoriaCache
 			}
 
 		}
+		memset(memoriaCache[entradaADevolver].contenido,0,MARCO_SIZE);
 	}	
 	if(memoriaCache[unaEntrada].modificado==1)
 	{	indice=calcularPosicion(pid,pagina,MARCOS);
@@ -1421,13 +1423,21 @@ void recibirDinamico(int tipoPaquete,int unSocket, void * paquete)
 
 t_programaSalida * obtenerPrograma( char * unPath){
 	FILE * punteroAlArchivo;
-	if((punteroAlArchivo=fopen(unPath,"r"))==NULL)
+	printf("asd\n");
+	printf("%s\n", unPath);
+	punteroAlArchivo=fopen(unPath,"r");
+	printf("fopened\n");
+	if((punteroAlArchivo)==NULL)
 		{
 			fflush(stdout); 
 			printf("el archivo no existe" ); 
+			t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
+			estructuraPrograma=NULL;
+			return estructuraPrograma;
 		}
 	
 	else{
+		printf("lawea\n");
 		t_programaSalida * estructuraPrograma=malloc(sizeof(t_programaSalida));
 		fseek (punteroAlArchivo, 0, SEEK_END);
 		estructuraPrograma->tamanio = ftell (punteroAlArchivo)+1;
@@ -1514,6 +1524,7 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 	 int indice;
      int unFrame=0;
      int mLibre=0;
+     char* simuladorStack=calloc(1,MARCO_SIZE);
      int * marco=calloc(1,sizeof(int));
      int paginasCargadas=0;
      int tamanioAPegar=MARCO_SIZE*sizeof(char);
@@ -1540,10 +1551,12 @@ int reservarYCargarPaginas(int paginasCodigo,int paginasStack, int MARCOS, t_est
 					escribirEnCache(unPid,unFrame,(void*)(*codigo)+acumulador,memoriaCache,ENTRADAS_CACHE,0,tamanioAPegar,0,MARCOS,overflow,bloquesAdmin,*marcos,MARCO_SIZE,CACHE_X_PROC,retardo);
 					acumulador+=tamanioAPegar*sizeof(char);
 	    		}
-    		
+	    		else{escribirEnCache(unPid,unFrame,(void*)simuladorStack,memoriaCache,ENTRADAS_CACHE,0,MARCO_SIZE,0,MARCOS,overflow,bloquesAdmin,*marcos,MARCO_SIZE,CACHE_X_PROC,retardo);}
+    			
     	paginasCargadas++;
     	} else { free(marco);return -1;}
      }
+     free(simuladorStack);
      free(marco);
      return 1;
     }
@@ -1632,6 +1645,7 @@ void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco *
 	int unMarco=0;
 	int entrada=0;
 	int indice=0;
+	int paginasLiberadas=0;
 	for ( unMarco = 0; unMarco < MARCOS; unMarco++)
 	{
 		if (bloquesAdmin[unMarco].pid==*pidALiberar)
@@ -1642,11 +1656,11 @@ void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco *
 			bloquesAdmin[entrada].estado=0;
 			bloquesAdmin[entrada].pid=-1;
 			bloquesAdmin[entrada].pagina=-1;
-			printf("%s\n","solo queda borrar de of" );
+			
 			borrarDeOverflow(indice,entrada,overflow);
-
+			paginasLiberadas++;
 		}
-	}
+	} printf("se liberaron %i paginas correctamente\n",paginasLiberadas );
 }
 void compactarYAlocar(int entrada, int MARCO_SIZE,t_marco * marcos, int MARCOS) 
 {	

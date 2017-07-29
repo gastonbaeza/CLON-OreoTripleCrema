@@ -418,7 +418,7 @@ while(1){
 				config_destroy(CFG);
 			break;
 			
-			case OBTENERDATOSFS: printf("%s \n", "Tomá, comela.\n");
+			case OBTENERDATOSFS: printf("%s \n", "en obtener datos.\n");
 			/*Parámetros: [Path, Offset, Size]
 			Ante un pedido de datos el File System devolverá del path enviado por parámetro, la
 			cantidad de bytes definidos por el Size a partir del offset solicitado. Requiere que el archivo
