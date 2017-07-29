@@ -61,7 +61,7 @@
 #define LINEA 19
 #define BLOQUE 5
 #define SIZE 4
-
+t_config * CFG;
 int continuarEjecucion=1;
 int PID;
 int i;
@@ -96,6 +96,10 @@ void stripLog(char** string){
 }
 void cortar(){
 	fclose(CPULog);
+	free(nombreLog);
+	free(horaActual);
+	
+	config_destroy(CFG);
 	exit(0);
 }
 void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
@@ -339,7 +343,7 @@ void posicionarPC(int pos){
 		 * @return	void
 		 */
 		void cpu_asignar(t_puntero direccion_variable, t_valor_variable valor){
-			printf("en cpu_asignar\n");
+			printf("%s\n","en cpu_asignar\n");
 			escribirEnArchivoLog("en asignar", &CPULog,nombreLog);
 			printf("direccion a asignar: %i.\n",direccion_variable );
 			printf("valor a asignar: %i.\n", valor);
@@ -421,15 +425,17 @@ void posicionarPC(int pos){
 			t_asignarVariableCompartida * asignarVariableCompartida;
 			asignarVariableCompartida=malloc(sizeof(t_asignarVariableCompartida));
 			asignarVariableCompartida->tamanioNombre=strlen(variable);
-			asignarVariableCompartida->variable=variable;
+			strcpy(asignarVariableCompartida->variable,variable);
 			asignarVariableCompartida->valor=valor;
 			enviarDinamico(ASIGNARVARIABLECOMPARTIDA,socketKernel,asignarVariableCompartida);
+			free(asignarVariableCompartida->variable);
+			free(asignarVariableCompartida);
 			escribirEnArchivoLog("envio asignar variable compartida", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
-			
+			free(seleccionador);
 			return valor;
 		}
 
@@ -642,11 +648,13 @@ void posicionarPC(int pos){
 			reservarEspacioMemoria->espacio=espacio;
 			printf("alocar%i\n",reservarEspacioMemoria->espacio );
 			enviarDinamico(RESERVARESPACIO,socketKernel,reservarEspacioMemoria);
+			free(reservarEspacioMemoria);
 			escribirEnArchivoLog("envio reservar espacio", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
 			escribirEnArchivoLog("envio pcb", &CPULog,nombreLog);
 			t_reservar * reservar=malloc(sizeof(t_reservar));
+			int rv;
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(RESERVADOESPACIO,socketKernel,reservar);
@@ -658,8 +666,10 @@ void posicionarPC(int pos){
 			printf("cantidad Variables: %i.\n",pcb->indiceStack[pcb->posicionStack].cantidadVariables);
 			printf("puntero: %i.\n", reservar->puntero);
 				
-			return reservar->puntero;
-			
+			free(seleccionador);
+			rv=reservar->puntero;
+			free(reservar);
+			return rv;
 
 			//tengo que ver como es la respuesta de memoria
 			//si puede, la reserva y me da la direccion de memoria
@@ -684,6 +694,7 @@ void posicionarPC(int pos){
 			t_liberarMemoria * liberarMemoria=malloc(sizeof(t_liberarMemoria));
 			liberarMemoria->direccionMemoria=puntero;
 			enviarDinamico(LIBERARESPACIOMEMORIA,socketKernel,liberarMemoria);
+			free(liberarMemoria);
 			escribirEnArchivoLog("envio liberar espacio memoria", &CPULog,nombreLog);
 			enviarDinamico(PCB,socketKernel,pcb);
 			liberarContenidoPcb();
@@ -691,7 +702,7 @@ void posicionarPC(int pos){
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
-			
+			free(seleccionador);
 		}
 
 		/*
@@ -732,7 +743,7 @@ void posicionarPC(int pos){
 					recibirDinamico(ABRIOARCHIVO,socketKernel,fdParaLeer);
 					escribirEnArchivoLog("recibo abrio archivo", &CPULog,nombreLog);
 					printf("fd: %i\n",fdParaLeer->fd );
-		
+		free(seleccionador);
 					return fdParaLeer->fd;}
 		/*
 		 * BORRAR ARCHIVO
@@ -758,7 +769,7 @@ void posicionarPC(int pos){
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
-			
+			free(seleccionador);
 		}
 
 		/*
@@ -786,6 +797,7 @@ void posicionarPC(int pos){
 					while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 					recibirDinamico(PCB,socketKernel,pcb);
 					escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
+					free(seleccionador);
 				}
 		/*
 		 * MOVER CURSOR DE ARCHIVO
@@ -813,6 +825,7 @@ void posicionarPC(int pos){
 			while(0>recv(socketKernel,seleccionador, sizeof(t_seleccionador),0));
 			recibirDinamico(PCB,socketKernel,pcb);
 			escribirEnArchivoLog("recibo pcb", &CPULog,nombreLog);
+			free(seleccionador);
 		}
 		/*
 		 * ESCRIBIR ARCHIVO
@@ -837,7 +850,7 @@ void posicionarPC(int pos){
 			t_escribirArchivo * escribirArchivo;
 			escribirArchivo=malloc(sizeof(t_escribirArchivo));
 			escribirArchivo->fdArchivo=descriptor_archivo;
-			escribirArchivo->informacion=malloc(tamanio+1);
+			escribirArchivo->informacion=malloc(tamanio);
 			memmove(escribirArchivo->informacion,informacion,tamanio);
 			memmove((escribirArchivo->informacion)+tamanio,"\0",strlen("\0"));
 			printf("escribirArchivo->informacion: %s.\n",(char*) escribirArchivo->informacion);
@@ -993,7 +1006,10 @@ t_peticionBytes * peticion;
 while(1) {
 	seleccionador=malloc(sizeof(t_seleccionador));
 		if (primerAcceso){
-					primerAcceso=0;}
+					primerAcceso=0;
+					while(0>recv(socketKernel,&j,sizeof(int),0));
+					send(socketKernel,&a,sizeof(int),0);
+				}
 		else
 			enviarDinamico(ESPERONOVEDADES,socketKernel,NULL);
 		escribirEnArchivoLog("envio espero novedades", &CPULog,nombreLog);
@@ -1256,7 +1272,7 @@ int main(){
     sigaction(SIGUSR1, &sigact, (struct sigaction *)NULL);
 
 
-	t_config * CFG;
+	
 	CFG = config_create("cpuCFG.txt");
 	IP_KERNEL=(char*) config_get_string_value(CFG ,"IP_KERNEL");
 	IP_MEMORIA= (char*)config_get_string_value(CFG, "IP_MEMORIA");
@@ -1268,7 +1284,7 @@ int main(){
 	/*
 	*
 	*/
-	char * nombreLog=calloc(1,200);
+	 nombreLog=calloc(1,200);
 	strcpy(nombreLog,"logCPU-");
 	horaActual=calloc(1,200);
 	horaYFechaActual(&horaActual);
@@ -1311,7 +1327,7 @@ int main(){
 	printf("MARCO SIZE: %i\n", TAMPAGINA);
 	pthread_create(&conectarKernelA, NULL, (void *) conectarKernel,NULL);
 	pthread_join(conectarKernelA,NULL);
-	free(pcb);
+	
 }
 
 
