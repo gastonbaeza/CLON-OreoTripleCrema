@@ -754,11 +754,20 @@ int closeFile(int globalFd)
 	}
 	pthread_mutex_unlock(&mutexTablaArchivos);
 }
-int getPidReady(){
-	int value;
+int getPidReady(int socket){
+	int value,a=0;
 	sem_getvalue(&semReadys,&value);
 	printf("Valor semaforo: %i\n", value);
 	sem_wait(&semReadys);
+	printf("hice wait\n");
+	send(socket,&a,sizeof(int),0);
+	while(0>recv(socket,&a,sizeof(int),0));
+	printf("a: %i.\n", a);
+	if (a==0)
+	{
+		sem_post(&semReadys);
+		return -1;
+	}
 	return head(&COLAREADY,&CANTIDADREADYS,&mutexColaReady);
 }
 void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
@@ -1443,7 +1452,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 	free(*dataDePlanificacion);
 	flagLiberarData=1;
 	escribirEnArchivoLog("en planificacion", &KernelLog,nombreLog);
-	int pid,puntero,rv=1,i,globalFd,flagQuantum=1,pagina,offset,primerAcceso=1,error=0,valor,estaPlanificacion=1,confirmacion;
+	int pid,puntero,rv=1,auxInt,i,globalFd,flagQuantum=1,pagina,offset,primerAcceso=1,error=0,valor,estaPlanificacion=1,confirmacion;
 	int * buffer;
 	char * aux;
 	t_path * path;
@@ -1532,46 +1541,53 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 					case PCB:	
 					escribirEnArchivoLog("en case pcb", &KernelLog,nombreLog);
 					pcb=malloc(sizeof(t_pcb));
-					pid=getPidReady();
-					add(pid,&COLAEXEC,&CANTIDADEXECS,&mutexColaExec);
-					cambiarEstado(pid,EXEC);
-					getPcb(pcb,pid);
-					usleep(QUANTUM_SLEEP*1000);
-					enviarDinamico(PCB,socket,pcb);
-					escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
-					if (!strcmp(ALGORITMO,"RR"))
-					{	
-						flagQuantum=QUANTUM;
-					}
-					liberarContenidoPcb(&pcb);
-					break;
-					// VARIABLES COMPARTIDAS
-					case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
-					escribirEnArchivoLog("en case solicitud valor variable", &KernelLog,nombreLog);
-					solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
-					recibirDinamico(SOLICITUDVALORVARIABLE,socket,solicitudVariable);
-					pcb=malloc(sizeof(t_pcb));
-					while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
-					recibirDinamico(PCB,socket,pcb);
-					pcb->privilegiadasEjecutadas++;
-					escribirEnArchivoLog("recibo solicitud valor variable", &KernelLog,nombreLog);
-					if (existeCompartida(&(solicitudVariable->variable)))
+					pid=getPidReady(socket);
+					if (pid!=-1)
 					{
-						// confirmacion=1;
-						valor=valorCompartida(&(solicitudVariable->variable));
-						// send(socket,&confirmacion,sizeof(int),0);
-						send(socket,&(valor),sizeof(int),0);updatePCB(pcb);
+						add(pid,&COLAEXEC,&CANTIDADEXECS,&mutexColaExec);
+						cambiarEstado(pid,EXEC);
+						getPcb(pcb,pid);
+						usleep(QUANTUM_SLEEP*1000);
+						enviarDinamico(PCB,socket,pcb);
+						escribirEnArchivoLog("envio pcb", &KernelLog,nombreLog);
+						if (!strcmp(ALGORITMO,"RR"))
+						{	
+							flagQuantum=QUANTUM;
+						}
+						liberarContenidoPcb(&pcb);
+						break;
+						// VARIABLES COMPARTIDAS
+						case SOLICITUDVALORVARIABLE: // CPU PIDE EL VALOR DE UNA VARIABLE COMPARTIDA
+						escribirEnArchivoLog("en case solicitud valor variable", &KernelLog,nombreLog);
+						solicitudVariable=malloc(sizeof(t_solicitudValorVariable));
+						recibirDinamico(SOLICITUDVALORVARIABLE,socket,solicitudVariable);
+						pcb=malloc(sizeof(t_pcb));
+						while(0>recv(socket, seleccionador, sizeof(t_seleccionador), 0));
+						recibirDinamico(PCB,socket,pcb);
+						pcb->privilegiadasEjecutadas++;
+						escribirEnArchivoLog("recibo solicitud valor variable", &KernelLog,nombreLog);
+						if (existeCompartida(&(solicitudVariable->variable)))
+						{
+							// confirmacion=1;
+							valor=valorCompartida(&(solicitudVariable->variable));
+							// send(socket,&confirmacion,sizeof(int),0);
+							send(socket,&(valor),sizeof(int),0);updatePCB(pcb);
+						}
+						else
+						{
+							// confirmacion=0;
+							// send(socket,&confirmacion,sizeof(int),0);
+							error=-12;
+						}
+						enviarDinamico(PCB,socket,pcb);
+						free(solicitudVariable->variable);
+						free(solicitudVariable);
 					}
 					else
 					{
-						// confirmacion=0;
-						// send(socket,&confirmacion,sizeof(int),0);
-						error=-12;
+						estaPlanificacion=0;
 					}
-					enviarDinamico(PCB,socket,pcb);
 					liberarContenidoPcb(&pcb);
-					free(solicitudVariable->variable);
-					free(solicitudVariable);
 					break;
 					case ASIGNARVARIABLECOMPARTIDA: // CPU QUIERE ASIGNAR UN VALOR A UNA VARIABLE COMPARTIDA
 					escribirEnArchivoLog("en case asignar variable compartida", &KernelLog,nombreLog);
@@ -1740,6 +1756,11 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 						{
 							enviarDinamico(CREARARCHIVOFS,SOCKETFS,path);
 							escribirEnArchivoLog("envio crear archivo fs", &KernelLog,nombreLog);
+							recv(SOCKETFS,&auxInt,sizeof(int),0);
+							if (auxInt==-1)
+							{
+								error=-20;
+							}
 						}
 						else if (rv==-1 && !(abrirArchivo->flags.creacion))
 						{
@@ -1904,7 +1925,7 @@ void planificar(dataParaComunicarse ** dataDePlanificacion)
 							while(0>recv(SOCKETFS,&rv,sizeof(int),0));
 							if (!rv)
 							{
-								error=-2;
+								error=-20;
 							}
 							free(escribirArchivoFS->path);
 							free(escribirArchivoFS->buffer);

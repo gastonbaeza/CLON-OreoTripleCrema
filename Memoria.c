@@ -87,7 +87,7 @@ int ENTRADAS_CACHE;
 int CACHE_X_PROC;
 char *REEMPLAZO_CACHE;
 int RETARDO_MEMORIA;
-void * memoria;
+
 t_marco * marcos;
 t_estructuraCache* memoriaCache;
 int socketKernel;
@@ -108,6 +108,28 @@ void stripLog(char** string){
 }
 void cortar(){
 	fclose(MemoriaLog);
+	int unMarco=0;
+		int unaLista=0;
+
+	
+		free(bloquesAdmin); 
+
+for(unMarco=0;unMarco<MARCOS;unMarco++)
+{
+	free(marcos[unMarco].numeroPagina);
+	
+}
+free(marcos);
+for(unMarco=0;unMarco<ENTRADAS_CACHE;unMarco++)
+{
+	free(memoriaCache[unMarco].contenido);
+}
+free(memoriaCache); 
+for ( unaLista = 0; unaLista < MARCOS; unaLista++)
+{
+	list_destroy(overflow[unaLista]);
+}
+free(overflow); 
 	exit(0);
 }
 void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char * direccionDelArchivo){
@@ -117,6 +139,7 @@ void escribirEnArchivoLog(char * contenidoAEscribir, FILE ** archivoDeLog,char *
 	fwrite(contenidoAEscribir,strlen(contenidoAEscribir),1,*archivoDeLog);
 	fwrite("\n",1,1,*archivoDeLog);
 	}
+	
 /* LEER CONFIGURACION
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 */
@@ -268,17 +291,9 @@ pthread_t hiloConsolaMemoria;
 pthread_create(&hiloConsolaMemoria,NULL,(void *)consolaMemoria,NULL);
 pthread_join(hiloAceptador,NULL);
 pthread_join(hiloConsolaMemoria,NULL);
-
-free(bloquesAdmin); 
-free(asignador);
-free(marcos);
-free(memoriaCache); int unaLista;
-for ( unaLista = 0; unaLista < MARCOS; unaLista++)
-{
-	list_destroy(overflow[unaLista]);
-}
-free(overflow); 
 free(unData);
+
+
 
 } 
 
@@ -398,7 +413,6 @@ while(flagHilo) {
 	 										{pthread_mutex_unlock(&controlMemoria);confirmacion=-1;//lo busco en cache
 	 											printf("%s\n","estoy solicitando a cache" );
 	 											paquete=calloc(1,peticionBytes->size);
-	 											auxiliar=calloc(1,peticionBytes->size);
 	 											auxiliar=(void*)solicitarBytesCache(peticionBytes->pid,peticionBytes->pagina,memoriaCache,ENTRADAS_CACHE,peticionBytes->offset,peticionBytes->size);
 	 											memcpy(paquete,auxiliar,peticionBytes->size);
 	 											free(auxiliar);
@@ -472,8 +486,8 @@ while(flagHilo) {
 	 											send(unData, &confirmacion, sizeof(int),0);
 	 											escribirEnArchivoLog("envio confirmacion", &MemoriaLog,nombreLog);
 	 											}else{pthread_mutex_unlock(&controlMemoria);printf("se rompio algo\n");} 
-												} 
-											}free(pedidoAsignacion);free(marco);
+												} free(marco);
+											}free(pedidoAsignacion);
 								 			
 	 					break;
 	 					case ALMACENARBYTES:	
@@ -533,7 +547,7 @@ while(flagHilo) {
 										send(unData, &confirmacion, sizeof(int),0);
 		 								indice=calcularPosicion(liberarPagina->pid,liberarPagina->pagina,MARCOS);
 										entrada=buscarEnOverflow(indice,liberarPagina->pid,liberarPagina->pagina,bloquesAdmin,MARCOS,overflow); printf("entrada a cleanear %i\n",entrada );
-										marcos[entrada].numeroPagina=calloc(1,MARCO_SIZE);
+										memset(marcos[entrada].numeroPagina,0,MARCO_SIZE);
 										bloquesAdmin[entrada].estado=0;
 										bloquesAdmin[entrada].pid=-1;
 										bloquesAdmin[entrada].pagina=-1;

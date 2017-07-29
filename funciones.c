@@ -897,7 +897,7 @@ void serial_bytes(t_almacenarBytes * bytes, int unSocket)
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
 	send(unSocket,&(bytes->size),sizeof(int),0);
 	while(0>=recv(unSocket,buffer, sizeof(int),0));
-	serial_void(bytes->valor,20,unSocket);
+	serial_void(bytes->valor,bytes->size,unSocket);
 
 	free(buffer);
 }
@@ -1638,7 +1638,7 @@ void liberarPaginas(int * pidALiberar, t_estructuraADM * bloquesAdmin, t_marco *
 		{	
 			indice=calcularPosicion(bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,MARCOS);
 			entrada=buscarEnOverflow(indice,bloquesAdmin[unMarco].pid,bloquesAdmin[unMarco].pagina,bloquesAdmin,MARCOS,overflow); 
-			marcos[entrada].numeroPagina=calloc(1,MARCO_SIZE);
+			memset(marcos[entrada].numeroPagina,0,MARCO_SIZE);
 			bloquesAdmin[entrada].estado=0;
 			bloquesAdmin[entrada].pid=-1;
 			bloquesAdmin[entrada].pagina=-1;

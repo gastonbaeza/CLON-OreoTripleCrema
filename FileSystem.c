@@ -292,11 +292,11 @@ char*rutaParcial;
 char*rutaFinal;
 char*bloquesArray,*bloquesFinal;
 int tamanio;
-char*unBloque;
+char*unBloque,*auxDeUnBloque;
 int TAMANIO,totalBloques;
 int cantidadBloques,primerBloqueAEscribir,cantAPedir,offsetAEscribir;
 t_paqueteFS* resultado;
-char * auxChar,*ptoMont,*aux;
+char * auxChar,*ptoMont,*aux,*auxDeAux;
 int sizeAux;
 int restoUltimoBloque;
 void*auxResultado;
@@ -356,29 +356,36 @@ while(1){
 			ultimoDirectorio(dir,&soloDir); printf("%s\n",soloDir ); 
 
 			makeDir(soloDir,S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-			bloquesAsignados=asignarBloques(&bloquesAsignados,1,&bitarray,bloques);
-			enlistadorDeBloques(&listaBloques,bloquesAsignados,1);
-			crearBloques(bloquesAsignados,1,PUNTO_MONTAJE,tamBloques);
-			strcpy(pegador,"BLOQUES=");
-			listaBloques=strcat(pegador,listaBloques);printf("lo que va en la conf %s\n",listaBloques );
-			
-			 bitmap= fopen(dir,"ab+"); printf("final 4k %s\n",dir );
-			if (bitmap!=NULL)
-			{	fseek(bitmap,0,SEEK_END);
-				fwrite("TAMANIO=0",strlen("TAMANIO=0"),1,bitmap);
-				fwrite("\n",1,1,bitmap);
-				fwrite(listaBloques,strlen(listaBloques),1,bitmap);
-				fclose(bitmap);
-				printf("%s\n", "fue creado el archivo");
+			if (hayBloquesLibres(1,&bitarray,metadataFS->cantBloques))
+			{
+				rv=1;
+				bloquesAsignados=asignarBloques(&bloquesAsignados,1,&bitarray,bloques);
+				enlistadorDeBloques(&listaBloques,bloquesAsignados,1);
+				crearBloques(bloquesAsignados,1,PUNTO_MONTAJE,tamBloques);
+				free(bloquesAsignados);
+				strcpy(pegador,"BLOQUES=");
+				listaBloques=strcat(pegador,listaBloques);printf("lo que va en la conf %s\n",listaBloques );
+				bitmap= fopen(dir,"ab+"); printf("final 4k %s\n",dir );
+				if (bitmap!=NULL)
+				{	fseek(bitmap,0,SEEK_END);
+					fwrite("TAMANIO=0",strlen("TAMANIO=0"),1,bitmap);
+					fwrite("\n",1,1,bitmap);
+					fwrite(listaBloques,strlen(listaBloques),1,bitmap);
+					fclose(bitmap);
+					printf("%s\n", "fue creado el archivo");
+				}
+				else{perror ("Error opening threshold file");
+					printf("%s\n","se rompio algo" );}
 			}
-			else{perror ("Error opening threshold file");
-				printf("%s\n","se rompio algo" );}
+			else{
+				rv=-1;
+			}
+			send(socketKernel,&rv,sizeof(int),0);
 			free(path->path);
 			free(path);
 			free(soloDir);
 			free(dir);
-			free(bloquesAsignados);
-		//	free(listaBloques);
+			//	free(listaBloques);
 
 			break;
 			case BORRARARCHIVOFS: 
@@ -520,6 +527,8 @@ while(1){
 			strcpy(auxChar,ARCHIVOS_MONTAJE);
 			strip(&escribirArchivoFS->path);
 			strcat(auxChar,escribirArchivoFS->path);
+						printf("size: %i\n", escribirArchivoFS->size);
+
 			strip(&auxChar);
 			printf("La ruta del archivo es: %s\n", auxChar);
 			CFG = config_create(auxChar);
@@ -533,14 +542,17 @@ while(1){
 				BLOQUES=config_get_array_value(CFG ,"BLOQUES"); 
 				offsetAEscribir=deDondeEmpiezoALeer(&(escribirArchivoFS->offset),&tamBloques);
 				bloquesNecesarios=calcularPaginas(tamBloques,offsetAEscribir+escribirArchivoFS->size);
+						printf("size: %i\n", escribirArchivoFS->size);
+
 				printf("Para escribir lo pedido necesito %i bloques.\n", bloquesNecesarios);
-				cantAPedir=bloquesNecesarios-cantidadBloques;
+				cantAPedir=bloquesNecesarios-cantidadBloques+escribirArchivoFS->offset/tamBloques;
 				if (cantAPedir<0)
 				{
 					cantAPedir=0;
 				}
 				printf("Por lo que tengo que pedir %i bloques mas.\n", cantAPedir);
-				aux=calloc(1,250);
+				aux=calloc(1,strlen(bloquesArray)+2);
+				auxDeAux=aux;
 				strcpy(aux,bloquesArray);
 				if (cantAPedir>0)
 				{
@@ -556,14 +568,19 @@ while(1){
 					else{
 						rv=0;
 						printf("no hay bloques libres\n");
-						//IVAN FALTA CODEAR ESTO
 					}
-					printf("Mi cantidad total de bloques es: %i\n",cantidadBloques+cantAPedir);
-					strtok(aux,"]"); 
-					bloquesAsignadosChar++;
-					strcat(aux,",");
-					strcat(aux,bloquesAsignadosChar);
-					printf("Finalmente mis bloques son: %s\n",aux);
+					if (rv)
+					{
+						fflush(stdout);
+						printf("Mi cantidad total de bloques es: %i\n",cantidadBloques+cantAPedir);
+						aux=realloc(aux,strlen(aux)+strlen(bloquesAsignadosChar)+1);
+						auxDeAux=aux;
+						strtok(aux,"]"); 
+						bloquesAsignadosChar++;
+						strcat(aux,",");
+						strcat(aux,bloquesAsignadosChar);
+						printf("Finalmente mis bloques son: %s\n",aux);
+					}
 				}
 				else{
 					totalBloques=cantidadBloques;
@@ -573,16 +590,18 @@ while(1){
 				{
 					offsetAEscribir=deDondeEmpiezoALeer(&(escribirArchivoFS->offset),&tamBloques);
 					primerBloqueAEscribir=escribirArchivoFS->offset/tamBloques;
+						printf("size: %i\n", escribirArchivoFS->size);
+
 					strip(&BLOQUES_MONTAJE);
 					strcpy(ptoMont,BLOQUES_MONTAJE);
 					strcat(ptoMont,"/");
-					unBloque=calloc(1,250);
+					unBloque=calloc(1,strlen(aux)+2);
 					bloquesFinal=calloc(1,strlen(aux)+1); 
 					strcpy(bloquesFinal,aux); 
 					strcpy(unBloque,"-");
 					strcat(unBloque,aux);
 					strcpy(aux,unBloque);
-					free(unBloque);
+					auxDeUnBloque=unBloque;
 					strtok(aux,"["); 
 					for (i = 0; i < primerBloqueAEscribir; i++)
 					{
@@ -603,6 +622,7 @@ while(1){
 					
 					f=fopen(ptoMont,"wb");
 					fseek(f,offsetAEscribir,SEEK_SET);
+						printf("size: %i\n", escribirArchivoFS->size);
 					if (offsetAEscribir+escribirArchivoFS->size<tamBloques)
 					{
 						fwrite(escribirArchivoFS->buffer,escribirArchivoFS->size,1,f);
@@ -612,6 +632,7 @@ while(1){
 					else{
 						fwrite(escribirArchivoFS->buffer,tamBloques-offsetAEscribir,1,f);
 						escribirArchivoFS->size-=(tamBloques-offsetAEscribir);
+
 						escribirArchivoFS->buffer+=(tamBloques-offsetAEscribir);
 					}
 					fclose(f);
@@ -624,20 +645,24 @@ while(1){
 							unBloque=strtok(NULL,"]");
 						else
 							unBloque=strtok(NULL,",");
+						printf("unBloque: %s.\n", unBloque);
 						strcat(ptoMont,unBloque);
 						strcat(ptoMont,".bin");
 						
 						f=fopen(ptoMont,"wb");
-						if (offsetAEscribir+escribirArchivoFS->size<tamBloques)
+						printf("size: %i.\n", escribirArchivoFS->size);
+						if (escribirArchivoFS->size<=tamBloques)
 						{
+							printf("es el ultimo\n");
 							fwrite(escribirArchivoFS->buffer,escribirArchivoFS->size,1,f);
 							restoUltimoBloque=escribirArchivoFS->size;
 							escribirArchivoFS->size=0;
 						}
 						else{
-							fwrite(escribirArchivoFS->buffer,tamBloques-offsetAEscribir,1,f);
-							escribirArchivoFS->size-=(tamBloques-offsetAEscribir);
-							escribirArchivoFS->buffer+=(tamBloques-offsetAEscribir);
+							printf("no es el ultimo\n");
+							fwrite(escribirArchivoFS->buffer,tamBloques,1,f);
+							escribirArchivoFS->size-=(tamBloques);
+							escribirArchivoFS->buffer+=(tamBloques);
 						}
 						fclose(f);
 						i++;
@@ -657,8 +682,9 @@ while(1){
 				fflush(stdout); printf("%s\n","hice el send" );
 				free(ptoMont);
 				free(auxChar);
-				free(aux);
+				free(auxDeAux);
 				free(auxResultado);
+				free(auxDeUnBloque);
 				
 				free(escribirArchivoFS->path);
 				free(escribirArchivoFS);
